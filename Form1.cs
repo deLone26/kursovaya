@@ -1,0 +1,177 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Data.SqlClient;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Npgsql;
+
+namespace WindowsFormsApp1
+{
+    public partial class Form1 : Form
+    {
+        string connectionString = "Server=localhost; Port=5432; Database=dipl; User Id = postgres; Password=43898362Dd+-;";
+        ClassConnectionDataBase connBD = new ClassConnectionDataBase();
+
+        public Form1()
+        {
+            InitializeComponent();
+
+            SqlConnectionReader();
+        }
+
+        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+
+
+        public void SqlConnectionReader()
+        {
+            NpgsqlConnection sqlConnection = new NpgsqlConnection(connectionString);
+            sqlConnection.Open();
+
+            NpgsqlCommand command = new NpgsqlCommand();
+            command.Connection = sqlConnection;
+            command.CommandType = CommandType.Text;
+            command.CommandText = $"SELECT * FROM oborudovanie";
+
+            NpgsqlDataReader dataReader = command.ExecuteReader();
+
+            if (dataReader.HasRows)
+            {
+                DataTable data = new DataTable();
+                data.Load(dataReader);
+                dataGridView1.DataSource = data;
+            }
+
+            command.Dispose();
+            sqlConnection.Close();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            //ДЛЯ РАБОТЫ СТРОЧКИ СНИЗУ НЕОБХОДИМО В САМОЙ БД СОЗДАТЬ ТРИГГЕРЫ(НЕ УВЕРЕН НЕ ПОМНЮ КАК НАЗЫВАЮТСЯ) И МОЖНО БУДЕТ УДАЛЯТЬ ВСЕ КРОМЕ СТРОЧКИ qlConnectionReader()
+            //connBD.initializationOfDataBase($"CALL cost_of_installing_gbo('{textBox1.Text}','{textBox2.Text}','{textBox3.Text}','{textBox4.Text}','{textBox5.Text}','{textBox6.Text}','{textBox7.Text}')");
+
+            NpgsqlConnection sqlConnection = new NpgsqlConnection(connectionString);
+            sqlConnection.Open();
+            NpgsqlCommand command = new NpgsqlCommand();
+            command.Connection = sqlConnection;
+            command.CommandType = CommandType.Text;
+            command.CommandText = String.Format("INSERT INTO cost_of_installing_gbo(car_brand,number_of_cylinders,cylinder_capacity,price,installation_cost,model_gbo,manufacturer) VALUES ('{0}', '{1}', '{2}','{3}', '{4}', '{5}', '{6}')", textBox1.Text, textBox2.Text, textBox3.Text, textBox4.Text, textBox5.Text, textBox6.Text, textBox7.Text);
+
+            NpgsqlDataReader dataReader = command.ExecuteReader();
+            if (dataReader.HasRows)
+            {
+                DataTable data = new DataTable();
+                data.Load(dataReader);
+                dataGridView1.DataSource = data;
+            }
+
+            command.Dispose();
+            sqlConnection.Close();
+            SqlConnectionReader();
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            NpgsqlConnection sqlConnection = new NpgsqlConnection(connectionString);
+            sqlConnection.Open();
+            NpgsqlCommand command = new NpgsqlCommand();
+            command.Connection = sqlConnection;
+            command.CommandType = CommandType.Text;
+            command.CommandText = String.Format("UPDATE cost_of_installing_gbo SET car_brand = '{0}',number_of_cylinders = '{1}',cylinder_capacity = '{2}',price = '{3}',installation_cost = '{4}',model_gbo = '{5}',manufacturer = '{6}' WHERE cost_id = '{7}'",  textBox14.Text, textBox13.Text, textBox12.Text, textBox11.Text, textBox10.Text, textBox9.Text, textBox15.Text);
+
+            NpgsqlDataReader dataReader = command.ExecuteReader();
+            if (dataReader.HasRows)
+            {
+                DataTable data = new DataTable();
+                data.Load(dataReader);
+                dataGridView1.DataSource = data;
+            }
+
+            command.Dispose();
+            sqlConnection.Close();
+            SqlConnectionReader();
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            NpgsqlConnection sqlConnection = new NpgsqlConnection(connectionString);
+            sqlConnection.Open();
+            NpgsqlCommand command = new NpgsqlCommand();
+            command.Connection = sqlConnection;
+            command.CommandType = CommandType.Text;
+            command.CommandText = String.Format("DELETE FROM cost_of_installing_gbo WHERE cost_id = '{0}'", Convert.ToInt32(textBox16.Text));
+
+            NpgsqlDataReader dataReader = command.ExecuteReader();
+            if (dataReader.HasRows)
+            {
+                DataTable data = new DataTable();
+                data.Load(dataReader);
+                dataGridView1.DataSource = data;
+            }
+
+            command.Dispose();
+            sqlConnection.Close();
+            SqlConnectionReader();
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            NpgsqlConnection sqlConnection = new NpgsqlConnection(connectionString);
+            sqlConnection.Open();
+            NpgsqlCommand command = new NpgsqlCommand();
+            command.Connection = sqlConnection;
+            command.CommandType = CommandType.Text;
+            command.CommandText = String.Format("SELECT * FROM cost_of_installing_gbo WHERE cost_id = '{0}'", Convert.ToInt32(textBox17.Text));
+
+            NpgsqlDataReader dataReader = command.ExecuteReader();
+            if (dataReader.HasRows)
+            {
+                DataTable data = new DataTable();
+                data.Load(dataReader);
+                dataGridView1.DataSource = data;
+            }
+
+            command.Dispose();
+            sqlConnection.Close();
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            SqlConnectionReader();
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            /*
+            using (Form2 form2 = new Form2())
+            {
+                if (form2.ShowDialog() == DialogResult.OK)
+                {
+                    // Получаем выбранное имя таблицы из Form2
+                    string selectedTableName = form2.SelectedTableName;
+
+                    // Вызываем SqlConnectionReader с выбранным именем таблицы
+                    SqlConnectionReader(selectedTableName);
+                }
+                else
+                {
+                    MessageBox.Show("Выбор таблицы отменен.");
+                }
+            } */
+          } 
+        }
+    }
