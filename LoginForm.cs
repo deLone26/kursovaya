@@ -73,5 +73,10 @@ namespace WindowsFormsApp1
         {
             lastPoint = new Point();
         }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

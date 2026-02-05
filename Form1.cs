@@ -9,169 +9,378 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Npgsql;
+using System;                     // Базовые типы .NET
+using System.Data;                // Работа с таблицами DataTable
+using System.Drawing;             // Цвета для подсветки строк
+using System.Windows.Forms;       // Windows Forms
+using Npgsql;                     // Работа с PostgreSQL
 
 namespace WindowsFormsApp1
 {
     public partial class Form1 : Form
     {
-        string connectionString = "Server=localhost; Port=5432; Database=dipl; User Id = postgres; Password=43898362Dd+-;";
-        ClassConnectionDataBase connBD = new ClassConnectionDataBase();
+        // ================== СТРОКА ПОДКЛЮЧЕНИЯ К БД ==================
+        private readonly string connectionString =
+            "Host=localhost;Port=5432;Database=boiler_system;Username=postgres;Password=43898362Dd+-;";
 
+        // ================== ID ВЫБРАННОЙ ЗАПИСИ ==================
+        private int selectedId = -1;
+
+        // ================== КОНСТРУКТОР ФОРМЫ ==================
         public Form1()
         {
-            InitializeComponent();
+            InitializeComponent();   // Инициализация формы и элементов
 
-            SqlConnectionReader();
+            LoadStatuses();          // Загружаем статусы в ComboBox
+            LoadData();              // Загружаем данные в таблицу
         }
 
+        // ================== ЗАГРУЗКА СТАТУСОВ ==================
+        private void LoadStatuses()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open(); // Открываем соединение с БД
+
+                    string sql = "SELECT id, nazvanie FROM status_oborudovaniya ORDER BY id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    using (var adapter = new NpgsqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+                        adapter.Fill(dt);
+
+                        cmbStatus.DisplayMember = "nazvanie"; // Текст статуса
+                        cmbStatus.ValueMember = "id";         // ID статуса
+                        cmbStatus.DataSource = dt;            // Источник данных
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка загрузки статусов: " + ex.Message);
+            }
+        }
+
+        // ================== ЗАГРУЗКА ДАННЫХ ==================
+        private void LoadData(string filter = "")
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string sql = @"
+                        SELECT 
+                            o.id,
+                            o.nazvanie,
+                            o.tip,
+                            o.model,
+                            o.seriinomer,
+                            o.mesto,
+                            o.moshnost,
+                            o.davlenie,
+                            o.proizvoditel,
+                            o.data_ustanovki,
+                            s.nazvanie AS status,
+                            o.status_id
+                        FROM oborudovanie o
+                        LEFT JOIN status_oborudovaniya s ON o.status_id = s.id
+                    ";
+
+                    if (!string.IsNullOrWhiteSpace(filter))
+                    {
+                        sql += @" WHERE o.nazvanie ILIKE @filter
+                                  OR o.tip ILIKE @filter
+                                  OR o.model ILIKE @filter
+                                  OR o.proizvoditel ILIKE @filter";
+                    }
+
+                    sql += " ORDER BY o.id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        if (!string.IsNullOrWhiteSpace(filter))
+                            cmd.Parameters.AddWithValue("@filter", "%" + filter + "%");
+
+                        using (var adapter = new NpgsqlDataAdapter(cmd))
+                        {
+                            DataTable table = new DataTable();
+                            adapter.Fill(table);
+                            dataGridView1.DataSource = table;
+                        }
+                    }
+                }
+
+                HighlightRows(); // Подсветка строк
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка загрузки данных: " + ex.Message);
+            }
+        }
+
+        // ================== ПОДСВЕТКА СТРОК ==================
+        private void HighlightRows()
+        {
+            foreach (DataGridViewRow row in dataGridView1.Rows)
+            {
+                if (row.Cells["status"].Value != null)
+                {
+                    string status = row.Cells["status"].Value.ToString();
+
+                    if (status == "Просрочено ТО")
+                        row.DefaultCellStyle.BackColor = Color.LightCoral;
+                    else if (status == "На ремонте")
+                        row.DefaultCellStyle.BackColor = Color.LightYellow;
+                    else if (status == "Работает")
+                        row.DefaultCellStyle.BackColor = Color.LightGreen;
+                }
+            }
+        }
+
+        // ================== КЛИК ПО СТРОКЕ ТАБЛИЦЫ ==================
         private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
+            if (e.RowIndex < 0) return;
 
+            DataGridViewRow row = dataGridView1.Rows[e.RowIndex];
+
+            selectedId = Convert.ToInt32(row.Cells["id"].Value);
+            txtSelectedId.Text = selectedId.ToString();
+
+            txtNazvanie.Text = row.Cells["nazvanie"].Value.ToString();
+            txtTip.Text = row.Cells["tip"].Value.ToString();
+            txtModel.Text = row.Cells["model"].Value.ToString();
+            txtSeria.Text = row.Cells["seriinomer"].Value.ToString();
+            txtMesto.Text = row.Cells["mesto"].Value.ToString();
+            txtMoshnost.Text = row.Cells["moshnost"].Value.ToString();
+            txtDavlenie.Text = row.Cells["davlenie"].Value.ToString();
+            txtProizvoditel.Text = row.Cells["proizvoditel"].Value.ToString();
+
+            // ===== ДАТА УСТАНОВКИ =====
+            if (row.Cells["data_ustanovki"].Value != DBNull.Value)
+                txtDataUstanov.Text = Convert.ToDateTime(row.Cells["data_ustanovki"].Value).ToString("yyyy-MM-dd");
+
+            // ===== СТАТУС =====
+            if (row.Cells["status_id"].Value != DBNull.Value)
+                cmbStatus.SelectedValue = Convert.ToInt32(row.Cells["status_id"].Value);
         }
 
-
-
-        public void SqlConnectionReader()
+        // ================== ПРОВЕРКА ВВОДА ==================
+        private bool ValidateInput()
         {
-            NpgsqlConnection sqlConnection = new NpgsqlConnection(connectionString);
-            sqlConnection.Open();
-
-            NpgsqlCommand command = new NpgsqlCommand();
-            command.Connection = sqlConnection;
-            command.CommandType = CommandType.Text;
-            command.CommandText = $"SELECT * FROM oborudovanie";
-
-            NpgsqlDataReader dataReader = command.ExecuteReader();
-
-            if (dataReader.HasRows)
+            if (string.IsNullOrWhiteSpace(txtNazvanie.Text))
             {
-                DataTable data = new DataTable();
-                data.Load(dataReader);
-                dataGridView1.DataSource = data;
+                MessageBox.Show("Введите название!");
+                return false;
             }
 
-            command.Dispose();
-            sqlConnection.Close();
+            if (string.IsNullOrWhiteSpace(txtTip.Text))
+            {
+                MessageBox.Show("Введите тип!");
+                return false;
+            }
+
+            if (!decimal.TryParse(txtMoshnost.Text, out _))
+            {
+                MessageBox.Show("Мощность должна быть числом!");
+                return false;
+            }
+
+            if (!decimal.TryParse(txtDavlenie.Text, out _))
+            {
+                MessageBox.Show("Давление должно быть числом!");
+                return false;
+            }
+
+            if (!DateTime.TryParse(txtDataUstanov.Text, out _))
+            {
+                MessageBox.Show("Введите корректную дату установки!");
+                return false;
+            }
+
+            return true;
         }
 
+        // ================== ДОБАВЛЕНИЕ ==================
         private void button1_Click(object sender, EventArgs e)
         {
-            //ДЛЯ РАБОТЫ СТРОЧКИ СНИЗУ НЕОБХОДИМО В САМОЙ БД СОЗДАТЬ ТРИГГЕРЫ(НЕ УВЕРЕН НЕ ПОМНЮ КАК НАЗЫВАЮТСЯ) И МОЖНО БУДЕТ УДАЛЯТЬ ВСЕ КРОМЕ СТРОЧКИ qlConnectionReader()
-            //connBD.initializationOfDataBase($"CALL cost_of_installing_gbo('{textBox1.Text}','{textBox2.Text}','{textBox3.Text}','{textBox4.Text}','{textBox5.Text}','{textBox6.Text}','{textBox7.Text}')");
+            if (!ValidateInput()) return;
 
-            NpgsqlConnection sqlConnection = new NpgsqlConnection(connectionString);
-            sqlConnection.Open();
-            NpgsqlCommand command = new NpgsqlCommand();
-            command.Connection = sqlConnection;
-            command.CommandType = CommandType.Text;
-            command.CommandText = String.Format("INSERT INTO cost_of_installing_gbo(car_brand,number_of_cylinders,cylinder_capacity,price,installation_cost,model_gbo,manufacturer) VALUES ('{0}', '{1}', '{2}','{3}', '{4}', '{5}', '{6}')", textBox1.Text, textBox2.Text, textBox3.Text, textBox4.Text, textBox5.Text, textBox6.Text, textBox7.Text);
-
-            NpgsqlDataReader dataReader = command.ExecuteReader();
-            if (dataReader.HasRows)
+            try
             {
-                DataTable data = new DataTable();
-                data.Load(dataReader);
-                dataGridView1.DataSource = data;
-            }
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
 
-            command.Dispose();
-            sqlConnection.Close();
-            SqlConnectionReader();
+                    string sql = @"
+                        INSERT INTO oborudovanie
+                        (nazvanie, tip, model, seriinomer, mesto, moshnost, davlenie, proizvoditel, data_ustanovki, status_id)
+                        VALUES
+                        (@nazvanie, @tip, @model, @seria, @mesto, @moshnost, @davlenie, @proizvoditel, @data, @status_id)
+                    ";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@nazvanie", txtNazvanie.Text);
+                        cmd.Parameters.AddWithValue("@tip", txtTip.Text);
+                        cmd.Parameters.AddWithValue("@model", txtModel.Text);
+                        cmd.Parameters.AddWithValue("@seria", txtSeria.Text);
+                        cmd.Parameters.AddWithValue("@mesto", txtMesto.Text);
+                        cmd.Parameters.AddWithValue("@moshnost", decimal.Parse(txtMoshnost.Text));
+                        cmd.Parameters.AddWithValue("@davlenie", decimal.Parse(txtDavlenie.Text));
+                        cmd.Parameters.AddWithValue("@proizvoditel", txtProizvoditel.Text);
+                        cmd.Parameters.AddWithValue("@data", DateTime.Parse(txtDataUstanov.Text));
+                        cmd.Parameters.AddWithValue("@status_id", (int)cmbStatus.SelectedValue);
+
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                LoadData();
+                ClearFields();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка добавления: " + ex.Message);
+            }
         }
 
+        // ================== ОБНОВЛЕНИЕ ==================
         private void button2_Click(object sender, EventArgs e)
         {
-            NpgsqlConnection sqlConnection = new NpgsqlConnection(connectionString);
-            sqlConnection.Open();
-            NpgsqlCommand command = new NpgsqlCommand();
-            command.Connection = sqlConnection;
-            command.CommandType = CommandType.Text;
-            command.CommandText = String.Format("UPDATE cost_of_installing_gbo SET car_brand = '{0}',number_of_cylinders = '{1}',cylinder_capacity = '{2}',price = '{3}',installation_cost = '{4}',model_gbo = '{5}',manufacturer = '{6}' WHERE cost_id = '{7}'",  textBox14.Text, textBox13.Text, textBox12.Text, textBox11.Text, textBox10.Text, textBox9.Text, textBox15.Text);
-
-            NpgsqlDataReader dataReader = command.ExecuteReader();
-            if (dataReader.HasRows)
+            if (selectedId == -1)
             {
-                DataTable data = new DataTable();
-                data.Load(dataReader);
-                dataGridView1.DataSource = data;
+                MessageBox.Show("Выберите запись!");
+                return;
             }
 
-            command.Dispose();
-            sqlConnection.Close();
-            SqlConnectionReader();
+            if (!ValidateInput()) return;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string sql = @"
+                        UPDATE oborudovanie SET
+                        nazvanie=@nazvanie,
+                        tip=@tip,
+                        model=@model,
+                        seriinomer=@seria,
+                        mesto=@mesto,
+                        moshnost=@moshnost,
+                        davlenie=@davlenie,
+                        proizvoditel=@proizvoditel,
+                        data_ustanovki=@data,
+                        status_id=@status_id
+                        WHERE id=@id
+                    ";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", selectedId);
+                        cmd.Parameters.AddWithValue("@nazvanie", txtNazvanie.Text);
+                        cmd.Parameters.AddWithValue("@tip", txtTip.Text);
+                        cmd.Parameters.AddWithValue("@model", txtModel.Text);
+                        cmd.Parameters.AddWithValue("@seria", txtSeria.Text);
+                        cmd.Parameters.AddWithValue("@mesto", txtMesto.Text);
+                        cmd.Parameters.AddWithValue("@moshnost", decimal.Parse(txtMoshnost.Text));
+                        cmd.Parameters.AddWithValue("@davlenie", decimal.Parse(txtDavlenie.Text));
+                        cmd.Parameters.AddWithValue("@proizvoditel", txtProizvoditel.Text);
+                        cmd.Parameters.AddWithValue("@data", DateTime.Parse(txtDataUstanov.Text));
+                        cmd.Parameters.AddWithValue("@status_id", (int)cmbStatus.SelectedValue);
+
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                LoadData();
+                ClearFields();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка обновления: " + ex.Message);
+            }
         }
 
-        private void Form1_Load(object sender, EventArgs e)
-        {
-
-        }
-
+        // ================== УДАЛЕНИЕ ==================
         private void button3_Click(object sender, EventArgs e)
         {
-            NpgsqlConnection sqlConnection = new NpgsqlConnection(connectionString);
-            sqlConnection.Open();
-            NpgsqlCommand command = new NpgsqlCommand();
-            command.Connection = sqlConnection;
-            command.CommandType = CommandType.Text;
-            command.CommandText = String.Format("DELETE FROM cost_of_installing_gbo WHERE cost_id = '{0}'", Convert.ToInt32(textBox16.Text));
-
-            NpgsqlDataReader dataReader = command.ExecuteReader();
-            if (dataReader.HasRows)
+            if (selectedId == -1)
             {
-                DataTable data = new DataTable();
-                data.Load(dataReader);
-                dataGridView1.DataSource = data;
+                MessageBox.Show("Выберите запись!");
+                return;
             }
 
-            command.Dispose();
-            sqlConnection.Close();
-            SqlConnectionReader();
+            if (MessageBox.Show("Удалить запись?", "Подтверждение",
+                MessageBoxButtons.YesNo) != DialogResult.Yes)
+                return;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string sql = "DELETE FROM oborudovanie WHERE id=@id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", selectedId);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                LoadData();
+                ClearFields();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка удаления: " + ex.Message);
+            }
         }
 
-        private void button4_Click(object sender, EventArgs e)
+        // ================== ПОИСК ==================
+        private void txtSearch_TextChanged(object sender, EventArgs e)
         {
-            NpgsqlConnection sqlConnection = new NpgsqlConnection(connectionString);
-            sqlConnection.Open();
-            NpgsqlCommand command = new NpgsqlCommand();
-            command.Connection = sqlConnection;
-            command.CommandType = CommandType.Text;
-            command.CommandText = String.Format("SELECT * FROM cost_of_installing_gbo WHERE cost_id = '{0}'", Convert.ToInt32(textBox17.Text));
-
-            NpgsqlDataReader dataReader = command.ExecuteReader();
-            if (dataReader.HasRows)
-            {
-                DataTable data = new DataTable();
-                data.Load(dataReader);
-                dataGridView1.DataSource = data;
-            }
-
-            command.Dispose();
-            sqlConnection.Close();
+            LoadData(txtSearch.Text);
         }
 
+        // ================== ОБНОВЛЕНИЕ ТАБЛИЦЫ ==================
         private void button5_Click(object sender, EventArgs e)
         {
-            SqlConnectionReader();
+            LoadData();
         }
 
-        private void button6_Click(object sender, EventArgs e)
+        // ================== ОЧИСТКА ПОЛЕЙ ==================
+        private void ClearFields()
         {
-            /*
-            using (Form2 form2 = new Form2())
-            {
-                if (form2.ShowDialog() == DialogResult.OK)
-                {
-                    // Получаем выбранное имя таблицы из Form2
-                    string selectedTableName = form2.SelectedTableName;
+            selectedId = -1;
+            txtSelectedId.Clear();
 
-                    // Вызываем SqlConnectionReader с выбранным именем таблицы
-                    SqlConnectionReader(selectedTableName);
-                }
-                else
-                {
-                    MessageBox.Show("Выбор таблицы отменен.");
-                }
-            } */
-          } 
+            txtNazvanie.Clear();
+            txtTip.Clear();
+            txtModel.Clear();
+            txtSeria.Clear();
+            txtMesto.Clear();
+            txtMoshnost.Clear();
+            txtDavlenie.Clear();
+            txtProizvoditel.Clear();
+            txtDataUstanov.Clear();
+
+            if (cmbStatus.Items.Count > 0)
+                cmbStatus.SelectedIndex = 0;
         }
+
+        private void Form1_Load(object sender, EventArgs e) { }
+        private void label14_Click(object sender, EventArgs e) { }
+        private void button4_Click(object sender, EventArgs e) { }
+        private void label10_Click(object sender, EventArgs e) { }
     }
+}

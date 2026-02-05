@@ -5232,23 +5232,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Даниил\\.nuget\\packages\\": {},
+    "C:\\Users\\Daniil\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Даниил\\Desktop\\4\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectUniqueName": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya\\WindowsFormsApp1.csproj",
       "projectName": "WindowsFormsApp1",
-      "projectPath": "C:\\Users\\Даниил\\Desktop\\4\\kursovaya\\WindowsFormsApp1.csproj",
-      "packagesPath": "C:\\Users\\Даниил\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Даниил\\Desktop\\4\\kursovaya\\obj\\",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya\\WindowsFormsApp1.csproj",
+      "packagesPath": "C:\\Users\\Daniil\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Даниил\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Daniil\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -5257,7 +5257,6 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -5276,7 +5275,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "9.0.200"
     },
     "frameworks": {
       "net9.0-windows7.0": {
@@ -5322,7 +5321,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.200/PortableRuntimeIdentifierGraph.json"
       }
     }
   },

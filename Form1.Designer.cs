@@ -28,9 +28,9 @@
         /// </summary>
         private void InitializeComponent()
         {
-            button1 = new System.Windows.Forms.Button();
+            btnAdd = new System.Windows.Forms.Button();
             dataGridView1 = new System.Windows.Forms.DataGridView();
-            textBox1 = new System.Windows.Forms.TextBox();
+            txtNazvanie = new System.Windows.Forms.TextBox();
             label1 = new System.Windows.Forms.Label();
             label2 = new System.Windows.Forms.Label();
             label3 = new System.Windows.Forms.Label();
@@ -39,401 +39,271 @@
             label6 = new System.Windows.Forms.Label();
             label7 = new System.Windows.Forms.Label();
             label8 = new System.Windows.Forms.Label();
-            textBox2 = new System.Windows.Forms.TextBox();
-            textBox3 = new System.Windows.Forms.TextBox();
-            textBox4 = new System.Windows.Forms.TextBox();
-            textBox5 = new System.Windows.Forms.TextBox();
-            textBox6 = new System.Windows.Forms.TextBox();
-            textBox7 = new System.Windows.Forms.TextBox();
-            button2 = new System.Windows.Forms.Button();
-            textBox8 = new System.Windows.Forms.TextBox();
-            textBox9 = new System.Windows.Forms.TextBox();
-            textBox10 = new System.Windows.Forms.TextBox();
-            textBox11 = new System.Windows.Forms.TextBox();
-            textBox12 = new System.Windows.Forms.TextBox();
-            textBox13 = new System.Windows.Forms.TextBox();
-            label9 = new System.Windows.Forms.Label();
-            label10 = new System.Windows.Forms.Label();
-            label11 = new System.Windows.Forms.Label();
-            label12 = new System.Windows.Forms.Label();
-            label13 = new System.Windows.Forms.Label();
+            txtTip = new System.Windows.Forms.TextBox();
+            txtModel = new System.Windows.Forms.TextBox();
+            txtSeria = new System.Windows.Forms.TextBox();
+            txtMesto = new System.Windows.Forms.TextBox();
+            txtMoshnost = new System.Windows.Forms.TextBox();
+            txtDavlenie = new System.Windows.Forms.TextBox();
+            btnUpdate = new System.Windows.Forms.Button();
             label14 = new System.Windows.Forms.Label();
             label15 = new System.Windows.Forms.Label();
             label16 = new System.Windows.Forms.Label();
-            textBox14 = new System.Windows.Forms.TextBox();
+            txtProizvoditel = new System.Windows.Forms.TextBox();
             label17 = new System.Windows.Forms.Label();
-            textBox15 = new System.Windows.Forms.TextBox();
-            button3 = new System.Windows.Forms.Button();
+            txtSelectedId = new System.Windows.Forms.TextBox();
+            btnDelete = new System.Windows.Forms.Button();
             textBox16 = new System.Windows.Forms.TextBox();
             label18 = new System.Windows.Forms.Label();
             button4 = new System.Windows.Forms.Button();
             label19 = new System.Windows.Forms.Label();
-            textBox17 = new System.Windows.Forms.TextBox();
-            button5 = new System.Windows.Forms.Button();
-            button6 = new System.Windows.Forms.Button();
+            btnRefresh = new System.Windows.Forms.Button();
             fileSystemWatcher1 = new System.IO.FileSystemWatcher();
+            cmbStatus = new System.Windows.Forms.ComboBox();
+            txtSearch = new System.Windows.Forms.TextBox();
+            label9 = new System.Windows.Forms.Label();
+            label10 = new System.Windows.Forms.Label();
+            txtDataUstanov = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
             ((System.ComponentModel.ISupportInitialize)fileSystemWatcher1).BeginInit();
             SuspendLayout();
             // 
-            // button1
+            // btnAdd
             // 
-            button1.Location = new System.Drawing.Point(436, 223);
-            button1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            button1.Name = "button1";
-            button1.Size = new System.Drawing.Size(356, 27);
-            button1.TabIndex = 0;
-            button1.Text = "Добавить";
-            button1.UseVisualStyleBackColor = true;
-            button1.Click += button1_Click;
+            btnAdd.Location = new System.Drawing.Point(679, 490);
+            btnAdd.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
+            btnAdd.Name = "btnAdd";
+            btnAdd.Size = new System.Drawing.Size(509, 45);
+            btnAdd.TabIndex = 0;
+            btnAdd.Text = "Добавить";
+            btnAdd.UseVisualStyleBackColor = true;
+            btnAdd.Click += button1_Click;
             // 
             // dataGridView1
             // 
             dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridView1.Location = new System.Drawing.Point(10, 20);
-            dataGridView1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            dataGridView1.Location = new System.Drawing.Point(14, 33);
+            dataGridView1.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
             dataGridView1.Name = "dataGridView1";
             dataGridView1.RowHeadersWidth = 62;
-            dataGridView1.Size = new System.Drawing.Size(405, 306);
+            dataGridView1.Size = new System.Drawing.Size(579, 510);
             dataGridView1.TabIndex = 1;
             dataGridView1.CellContentClick += dataGridView1_CellContentClick;
             // 
-            // textBox1
+            // txtNazvanie
             // 
-            textBox1.Location = new System.Drawing.Point(561, 45);
-            textBox1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox1.Name = "textBox1";
-            textBox1.Size = new System.Drawing.Size(232, 23);
-            textBox1.TabIndex = 2;
+            txtNazvanie.Location = new System.Drawing.Point(830, 75);
+            txtNazvanie.Name = "txtNazvanie";
+            txtNazvanie.Size = new System.Drawing.Size(330, 31);
+            txtNazvanie.TabIndex = 2;
             // 
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new System.Drawing.Point(430, 48);
-            label1.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label1.Location = new System.Drawing.Point(623, 163);
             label1.Name = "label1";
-            label1.Size = new System.Drawing.Size(127, 15);
+            label1.Size = new System.Drawing.Size(76, 25);
             label1.TabIndex = 3;
-            label1.Text = "Номер оборудования";
+            label1.Text = "Модель";
             // 
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new System.Drawing.Point(561, 20);
-            label2.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label2.Location = new System.Drawing.Point(787, 9);
             label2.Name = "label2";
-            label2.Size = new System.Drawing.Size(102, 15);
+            label2.Size = new System.Drawing.Size(154, 25);
             label2.TabIndex = 4;
             label2.Text = "Добавить запись ";
             // 
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new System.Drawing.Point(435, 73);
-            label3.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label3.Location = new System.Drawing.Point(632, 81);
             label3.Name = "label3";
-            label3.Size = new System.Drawing.Size(59, 15);
+            label3.Size = new System.Drawing.Size(90, 25);
             label3.TabIndex = 5;
             label3.Text = "Название";
             // 
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new System.Drawing.Point(435, 98);
-            label4.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label4.Location = new System.Drawing.Point(623, 121);
             label4.Name = "label4";
-            label4.Size = new System.Drawing.Size(110, 15);
+            label4.Size = new System.Drawing.Size(167, 25);
             label4.TabIndex = 6;
             label4.Text = "Тип оборудования";
             // 
             // label5
             // 
             label5.AutoSize = true;
-            label5.Location = new System.Drawing.Point(436, 121);
-            label5.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label5.Location = new System.Drawing.Point(623, 202);
             label5.Name = "label5";
-            label5.Size = new System.Drawing.Size(67, 15);
+            label5.Size = new System.Drawing.Size(0, 25);
             label5.TabIndex = 7;
-            label5.Text = "Мощность";
             // 
             // label6
             // 
             label6.AutoSize = true;
-            label6.Location = new System.Drawing.Point(436, 147);
-            label6.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label6.Location = new System.Drawing.Point(623, 245);
             label6.Name = "label6";
-            label6.Size = new System.Drawing.Size(55, 15);
+            label6.Size = new System.Drawing.Size(63, 25);
             label6.TabIndex = 8;
-            label6.Text = "Топливо";
+            label6.Text = "Место";
             // 
             // label7
             // 
             label7.AutoSize = true;
-            label7.Location = new System.Drawing.Point(436, 172);
-            label7.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label7.Location = new System.Drawing.Point(623, 287);
             label7.Name = "label7";
-            label7.Size = new System.Drawing.Size(31, 15);
+            label7.Size = new System.Drawing.Size(99, 25);
             label7.TabIndex = 9;
-            label7.Text = "КПД";
+            label7.Text = "Мощность";
             // 
             // label8
             // 
             label8.AutoSize = true;
-            label8.Location = new System.Drawing.Point(409, 199);
-            label8.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label8.Location = new System.Drawing.Point(623, 330);
             label8.Name = "label8";
-            label8.Size = new System.Drawing.Size(157, 15);
+            label8.Size = new System.Drawing.Size(90, 25);
             label8.TabIndex = 10;
-            label8.Text = "Дата ввода в эксплуатацию";
+            label8.Text = "Давление";
             // 
-            // textBox2
+            // txtTip
             // 
-            textBox2.Location = new System.Drawing.Point(561, 69);
-            textBox2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox2.Name = "textBox2";
-            textBox2.Size = new System.Drawing.Size(232, 23);
-            textBox2.TabIndex = 11;
+            txtTip.Location = new System.Drawing.Point(830, 115);
+            txtTip.Name = "txtTip";
+            txtTip.Size = new System.Drawing.Size(330, 31);
+            txtTip.TabIndex = 11;
             // 
-            // textBox3
+            // txtModel
             // 
-            textBox3.Location = new System.Drawing.Point(561, 96);
-            textBox3.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox3.Name = "textBox3";
-            textBox3.Size = new System.Drawing.Size(232, 23);
-            textBox3.TabIndex = 12;
+            txtModel.Location = new System.Drawing.Point(830, 160);
+            txtModel.Name = "txtModel";
+            txtModel.Size = new System.Drawing.Size(330, 31);
+            txtModel.TabIndex = 12;
             // 
-            // textBox4
+            // txtSeria
             // 
-            textBox4.Location = new System.Drawing.Point(561, 119);
-            textBox4.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox4.Name = "textBox4";
-            textBox4.Size = new System.Drawing.Size(232, 23);
-            textBox4.TabIndex = 13;
+            txtSeria.Location = new System.Drawing.Point(830, 198);
+            txtSeria.Name = "txtSeria";
+            txtSeria.Size = new System.Drawing.Size(330, 31);
+            txtSeria.TabIndex = 13;
             // 
-            // textBox5
+            // txtMesto
             // 
-            textBox5.Location = new System.Drawing.Point(561, 145);
-            textBox5.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox5.Name = "textBox5";
-            textBox5.Size = new System.Drawing.Size(232, 23);
-            textBox5.TabIndex = 14;
+            txtMesto.Location = new System.Drawing.Point(830, 242);
+            txtMesto.Name = "txtMesto";
+            txtMesto.Size = new System.Drawing.Size(330, 31);
+            txtMesto.TabIndex = 14;
             // 
-            // textBox6
+            // txtMoshnost
             // 
-            textBox6.Location = new System.Drawing.Point(561, 170);
-            textBox6.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox6.Name = "textBox6";
-            textBox6.Size = new System.Drawing.Size(232, 23);
-            textBox6.TabIndex = 15;
+            txtMoshnost.Location = new System.Drawing.Point(830, 283);
+            txtMoshnost.Name = "txtMoshnost";
+            txtMoshnost.Size = new System.Drawing.Size(330, 31);
+            txtMoshnost.TabIndex = 15;
             // 
-            // textBox7
+            // txtDavlenie
             // 
-            textBox7.Location = new System.Drawing.Point(561, 196);
-            textBox7.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox7.Name = "textBox7";
-            textBox7.Size = new System.Drawing.Size(232, 23);
-            textBox7.TabIndex = 16;
+            txtDavlenie.Location = new System.Drawing.Point(830, 327);
+            txtDavlenie.Name = "txtDavlenie";
+            txtDavlenie.Size = new System.Drawing.Size(330, 31);
+            txtDavlenie.TabIndex = 16;
             // 
-            // button2
+            // btnUpdate
             // 
-            button2.Location = new System.Drawing.Point(436, 484);
-            button2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            button2.Name = "button2";
-            button2.Size = new System.Drawing.Size(356, 27);
-            button2.TabIndex = 17;
-            button2.Text = "Обновить";
-            button2.UseVisualStyleBackColor = true;
-            button2.Click += button2_Click;
-            // 
-            // textBox8
-            // 
-            textBox8.Location = new System.Drawing.Point(561, 458);
-            textBox8.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox8.Name = "textBox8";
-            textBox8.Size = new System.Drawing.Size(232, 23);
-            textBox8.TabIndex = 32;
-            // 
-            // textBox9
-            // 
-            textBox9.Location = new System.Drawing.Point(561, 431);
-            textBox9.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox9.Name = "textBox9";
-            textBox9.Size = new System.Drawing.Size(232, 23);
-            textBox9.TabIndex = 31;
-            // 
-            // textBox10
-            // 
-            textBox10.Location = new System.Drawing.Point(561, 403);
-            textBox10.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox10.Name = "textBox10";
-            textBox10.Size = new System.Drawing.Size(232, 23);
-            textBox10.TabIndex = 30;
-            // 
-            // textBox11
-            // 
-            textBox11.Location = new System.Drawing.Point(561, 374);
-            textBox11.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox11.Name = "textBox11";
-            textBox11.Size = new System.Drawing.Size(232, 23);
-            textBox11.TabIndex = 29;
-            // 
-            // textBox12
-            // 
-            textBox12.Location = new System.Drawing.Point(561, 348);
-            textBox12.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox12.Name = "textBox12";
-            textBox12.Size = new System.Drawing.Size(232, 23);
-            textBox12.TabIndex = 28;
-            // 
-            // textBox13
-            // 
-            textBox13.Location = new System.Drawing.Point(561, 324);
-            textBox13.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox13.Name = "textBox13";
-            textBox13.Size = new System.Drawing.Size(232, 23);
-            textBox13.TabIndex = 27;
-            // 
-            // label9
-            // 
-            label9.AutoSize = true;
-            label9.Location = new System.Drawing.Point(436, 458);
-            label9.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            label9.Name = "label9";
-            label9.Size = new System.Drawing.Size(82, 15);
-            label9.TabIndex = 26;
-            label9.Text = "Мануфактура";
-            // 
-            // label10
-            // 
-            label10.AutoSize = true;
-            label10.Location = new System.Drawing.Point(436, 433);
-            label10.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            label10.Name = "label10";
-            label10.Size = new System.Drawing.Size(75, 15);
-            label10.TabIndex = 25;
-            label10.Text = "Модель ГБО";
-            // 
-            // label11
-            // 
-            label11.AutoSize = true;
-            label11.Location = new System.Drawing.Point(436, 403);
-            label11.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            label11.Name = "label11";
-            label11.Size = new System.Drawing.Size(94, 15);
-            label11.TabIndex = 24;
-            label11.Text = "Цена установки";
-            // 
-            // label12
-            // 
-            label12.AutoSize = true;
-            label12.Location = new System.Drawing.Point(436, 374);
-            label12.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            label12.Name = "label12";
-            label12.Size = new System.Drawing.Size(35, 15);
-            label12.TabIndex = 23;
-            label12.Text = "Цена";
-            // 
-            // label13
-            // 
-            label13.AutoSize = true;
-            label13.Location = new System.Drawing.Point(435, 348);
-            label13.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            label13.Name = "label13";
-            label13.Size = new System.Drawing.Size(109, 15);
-            label13.TabIndex = 22;
-            label13.Text = "Объем цилиндров";
+            btnUpdate.Location = new System.Drawing.Point(636, 652);
+            btnUpdate.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
+            btnUpdate.Name = "btnUpdate";
+            btnUpdate.Size = new System.Drawing.Size(509, 45);
+            btnUpdate.TabIndex = 17;
+            btnUpdate.Text = "Обновить";
+            btnUpdate.UseVisualStyleBackColor = true;
+            btnUpdate.Click += button2_Click;
             // 
             // label14
             // 
             label14.AutoSize = true;
-            label14.Location = new System.Drawing.Point(435, 326);
-            label14.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label14.Location = new System.Drawing.Point(636, 449);
             label14.Name = "label14";
-            label14.Size = new System.Drawing.Size(106, 15);
+            label14.Size = new System.Drawing.Size(63, 25);
             label14.TabIndex = 21;
-            label14.Text = "Число цилиндров";
+            label14.Text = "Статус";
+            label14.Click += label14_Click;
             // 
             // label15
             // 
             label15.AutoSize = true;
-            label15.Location = new System.Drawing.Point(561, 254);
-            label15.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label15.Location = new System.Drawing.Point(776, 549);
             label15.Name = "label15";
-            label15.Size = new System.Drawing.Size(104, 15);
+            label15.Size = new System.Drawing.Size(157, 25);
             label15.TabIndex = 20;
             label15.Text = "Обновить запись ";
             // 
             // label16
             // 
             label16.AutoSize = true;
-            label16.Location = new System.Drawing.Point(436, 303);
-            label16.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label16.Location = new System.Drawing.Point(605, 370);
             label16.Name = "label16";
-            label16.Size = new System.Drawing.Size(95, 15);
+            label16.Size = new System.Drawing.Size(140, 25);
             label16.TabIndex = 19;
-            label16.Text = "Марка машины";
+            label16.Text = "Производитель";
             // 
-            // textBox14
+            // txtProizvoditel
             // 
-            textBox14.Location = new System.Drawing.Point(561, 301);
-            textBox14.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox14.Name = "textBox14";
-            textBox14.Size = new System.Drawing.Size(232, 23);
-            textBox14.TabIndex = 18;
+            txtProizvoditel.Location = new System.Drawing.Point(830, 364);
+            txtProizvoditel.Name = "txtProizvoditel";
+            txtProizvoditel.Size = new System.Drawing.Size(330, 31);
+            txtProizvoditel.TabIndex = 18;
             // 
             // label17
             // 
             label17.AutoSize = true;
-            label17.Location = new System.Drawing.Point(436, 280);
-            label17.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label17.Location = new System.Drawing.Point(623, 39);
             label17.Name = "label17";
-            label17.Size = new System.Drawing.Size(86, 15);
+            label17.Size = new System.Drawing.Size(129, 25);
             label17.TabIndex = 33;
             label17.Text = "Номер записи";
             // 
-            // textBox15
+            // txtSelectedId
             // 
-            textBox15.Location = new System.Drawing.Point(561, 278);
-            textBox15.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox15.Name = "textBox15";
-            textBox15.Size = new System.Drawing.Size(231, 23);
-            textBox15.TabIndex = 34;
+            txtSelectedId.Location = new System.Drawing.Point(833, 33);
+            txtSelectedId.Name = "txtSelectedId";
+            txtSelectedId.Size = new System.Drawing.Size(328, 31);
+            txtSelectedId.TabIndex = 34;
             // 
-            // button3
+            // btnDelete
             // 
-            button3.Location = new System.Drawing.Point(114, 336);
-            button3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            button3.Name = "button3";
-            button3.Size = new System.Drawing.Size(80, 21);
-            button3.TabIndex = 35;
-            button3.Text = "Удалить";
-            button3.UseVisualStyleBackColor = true;
-            button3.Click += button3_Click;
+            btnDelete.Location = new System.Drawing.Point(163, 560);
+            btnDelete.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
+            btnDelete.Name = "btnDelete";
+            btnDelete.Size = new System.Drawing.Size(114, 35);
+            btnDelete.TabIndex = 35;
+            btnDelete.Text = "Удалить";
+            btnDelete.UseVisualStyleBackColor = true;
+            btnDelete.Click += button3_Click;
             // 
             // textBox16
             // 
-            textBox16.Location = new System.Drawing.Point(38, 337);
-            textBox16.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            textBox16.Location = new System.Drawing.Point(54, 562);
             textBox16.Name = "textBox16";
-            textBox16.Size = new System.Drawing.Size(70, 23);
+            textBox16.Size = new System.Drawing.Size(98, 31);
             textBox16.TabIndex = 36;
             // 
             // label18
             // 
             label18.AutoSize = true;
-            label18.Location = new System.Drawing.Point(10, 338);
-            label18.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label18.Location = new System.Drawing.Point(14, 563);
             label18.Name = "label18";
-            label18.Size = new System.Drawing.Size(21, 15);
+            label18.Size = new System.Drawing.Size(34, 25);
             label18.TabIndex = 37;
             label18.Text = "ID:";
             // 
             // button4
             // 
-            button4.Location = new System.Drawing.Point(330, 337);
-            button4.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            button4.Location = new System.Drawing.Point(471, 562);
             button4.Name = "button4";
-            button4.Size = new System.Drawing.Size(78, 20);
+            button4.Size = new System.Drawing.Size(111, 33);
             button4.TabIndex = 38;
             button4.Text = "Найти";
             button4.UseVisualStyleBackColor = true;
@@ -442,85 +312,98 @@
             // label19
             // 
             label19.AutoSize = true;
-            label19.Location = new System.Drawing.Point(220, 339);
-            label19.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            label19.Location = new System.Drawing.Point(314, 565);
             label19.Name = "label19";
-            label19.Size = new System.Drawing.Size(21, 15);
+            label19.Size = new System.Drawing.Size(34, 25);
             label19.TabIndex = 39;
             label19.Text = "ID:";
             // 
-            // textBox17
+            // btnRefresh
             // 
-            textBox17.Location = new System.Drawing.Point(248, 337);
-            textBox17.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            textBox17.Name = "textBox17";
-            textBox17.Size = new System.Drawing.Size(70, 23);
-            textBox17.TabIndex = 40;
-            // 
-            // button5
-            // 
-            button5.Location = new System.Drawing.Point(10, 374);
-            button5.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            button5.Name = "button5";
-            button5.Size = new System.Drawing.Size(398, 27);
-            button5.TabIndex = 41;
-            button5.Text = "Обновить таблицу";
-            button5.UseVisualStyleBackColor = true;
-            button5.Click += button5_Click;
-            // 
-            // button6
-            // 
-            button6.Location = new System.Drawing.Point(11, 409);
-            button6.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            button6.Name = "button6";
-            button6.Size = new System.Drawing.Size(398, 25);
-            button6.TabIndex = 42;
-            button6.Text = "Выбрать другую таблицу";
-            button6.UseVisualStyleBackColor = true;
-            button6.Click += button6_Click;
+            btnRefresh.Location = new System.Drawing.Point(14, 623);
+            btnRefresh.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
+            btnRefresh.Name = "btnRefresh";
+            btnRefresh.Size = new System.Drawing.Size(569, 45);
+            btnRefresh.TabIndex = 41;
+            btnRefresh.Text = "Обновить таблицу";
+            btnRefresh.UseVisualStyleBackColor = true;
+            btnRefresh.Click += button5_Click;
             // 
             // fileSystemWatcher1
             // 
             fileSystemWatcher1.EnableRaisingEvents = true;
             fileSystemWatcher1.SynchronizingObject = this;
             // 
+            // cmbStatus
+            // 
+            cmbStatus.FormattingEnabled = true;
+            cmbStatus.Location = new System.Drawing.Point(834, 449);
+            cmbStatus.Name = "cmbStatus";
+            cmbStatus.Size = new System.Drawing.Size(329, 33);
+            cmbStatus.TabIndex = 43;
+            // 
+            // txtSearch
+            // 
+            txtSearch.Location = new System.Drawing.Point(352, 560);
+            txtSearch.Name = "txtSearch";
+            txtSearch.Size = new System.Drawing.Size(113, 31);
+            txtSearch.TabIndex = 44;
+            // 
+            // label9
+            // 
+            label9.AutoSize = true;
+            label9.Location = new System.Drawing.Point(623, 204);
+            label9.Name = "label9";
+            label9.Size = new System.Drawing.Size(123, 25);
+            label9.TabIndex = 45;
+            label9.Text = "Серия\\номер";
+            // 
+            // label10
+            // 
+            label10.AutoSize = true;
+            label10.Location = new System.Drawing.Point(615, 410);
+            label10.Name = "label10";
+            label10.Size = new System.Drawing.Size(137, 25);
+            label10.TabIndex = 46;
+            label10.Text = "Дата установки";
+            label10.Click += label10_Click;
+            // 
+            // txtDataUstanov
+            // 
+            txtDataUstanov.Location = new System.Drawing.Point(832, 407);
+            txtDataUstanov.Name = "txtDataUstanov";
+            txtDataUstanov.Size = new System.Drawing.Size(329, 31);
+            txtDataUstanov.TabIndex = 47;
+            // 
             // Form1
             // 
-            AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
+            AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize = new System.Drawing.Size(850, 519);
-            Controls.Add(button6);
-            Controls.Add(button5);
-            Controls.Add(textBox17);
+            ClientSize = new System.Drawing.Size(1214, 865);
+            Controls.Add(txtDataUstanov);
+            Controls.Add(label10);
+            Controls.Add(label9);
+            Controls.Add(txtSearch);
+            Controls.Add(cmbStatus);
+            Controls.Add(btnRefresh);
             Controls.Add(label19);
             Controls.Add(button4);
             Controls.Add(label18);
             Controls.Add(textBox16);
-            Controls.Add(button3);
-            Controls.Add(textBox15);
+            Controls.Add(btnDelete);
+            Controls.Add(txtSelectedId);
             Controls.Add(label17);
-            Controls.Add(textBox8);
-            Controls.Add(textBox9);
-            Controls.Add(textBox10);
-            Controls.Add(textBox11);
-            Controls.Add(textBox12);
-            Controls.Add(textBox13);
-            Controls.Add(label9);
-            Controls.Add(label10);
-            Controls.Add(label11);
-            Controls.Add(label12);
-            Controls.Add(label13);
             Controls.Add(label14);
             Controls.Add(label15);
             Controls.Add(label16);
-            Controls.Add(textBox14);
-            Controls.Add(button2);
-            Controls.Add(textBox7);
-            Controls.Add(textBox6);
-            Controls.Add(textBox5);
-            Controls.Add(textBox4);
-            Controls.Add(textBox3);
-            Controls.Add(textBox2);
+            Controls.Add(txtProizvoditel);
+            Controls.Add(btnUpdate);
+            Controls.Add(txtDavlenie);
+            Controls.Add(txtMoshnost);
+            Controls.Add(txtMesto);
+            Controls.Add(txtSeria);
+            Controls.Add(txtModel);
+            Controls.Add(txtTip);
             Controls.Add(label8);
             Controls.Add(label7);
             Controls.Add(label6);
@@ -529,10 +412,10 @@
             Controls.Add(label3);
             Controls.Add(label2);
             Controls.Add(label1);
-            Controls.Add(textBox1);
+            Controls.Add(txtNazvanie);
             Controls.Add(dataGridView1);
-            Controls.Add(button1);
-            Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            Controls.Add(btnAdd);
+            Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
             Name = "Form1";
             Text = "Form1";
             Load += Form1_Load;
@@ -545,9 +428,9 @@
 
         #endregion
 
-        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Button btnAdd;
         private System.Windows.Forms.DataGridView dataGridView1;
-        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.TextBox txtNazvanie;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label3;
@@ -556,39 +439,31 @@
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.TextBox textBox2;
-        private System.Windows.Forms.TextBox textBox3;
-        private System.Windows.Forms.TextBox textBox4;
-        private System.Windows.Forms.TextBox textBox5;
-        private System.Windows.Forms.TextBox textBox6;
-        private System.Windows.Forms.TextBox textBox7;
-        private System.Windows.Forms.Button button2;
-        private System.Windows.Forms.TextBox textBox8;
-        private System.Windows.Forms.TextBox textBox9;
-        private System.Windows.Forms.TextBox textBox10;
-        private System.Windows.Forms.TextBox textBox11;
-        private System.Windows.Forms.TextBox textBox12;
-        private System.Windows.Forms.TextBox textBox13;
-        private System.Windows.Forms.Label label9;
-        private System.Windows.Forms.Label label10;
-        private System.Windows.Forms.Label label11;
-        private System.Windows.Forms.Label label12;
-        private System.Windows.Forms.Label label13;
+        private System.Windows.Forms.TextBox txtTip;
+        private System.Windows.Forms.TextBox txtModel;
+        private System.Windows.Forms.TextBox txtSeria;
+        private System.Windows.Forms.TextBox txtMesto;
+        private System.Windows.Forms.TextBox txtMoshnost;
+        private System.Windows.Forms.TextBox txtDavlenie;
+        private System.Windows.Forms.Button btnUpdate;
         private System.Windows.Forms.Label label14;
         private System.Windows.Forms.Label label15;
         private System.Windows.Forms.Label label16;
-        private System.Windows.Forms.TextBox textBox14;
+        private System.Windows.Forms.TextBox txtProizvoditel;
         private System.Windows.Forms.Label label17;
-        private System.Windows.Forms.TextBox textBox15;
-        private System.Windows.Forms.Button button3;
+        private System.Windows.Forms.TextBox txtSelectedId;
+        private System.Windows.Forms.Button btnDelete;
         private System.Windows.Forms.TextBox textBox16;
         private System.Windows.Forms.Label label18;
         private System.Windows.Forms.Button button4;
         private System.Windows.Forms.Label label19;
-        private System.Windows.Forms.TextBox textBox17;
-        private System.Windows.Forms.Button button5;
-        private System.Windows.Forms.Button button6;
+        private System.Windows.Forms.Button btnRefresh;
         private System.IO.FileSystemWatcher fileSystemWatcher1;
+        private System.Windows.Forms.ComboBox cmbStatus;
+        private System.Windows.Forms.TextBox txtSearch;
+        private System.Windows.Forms.Label label9;
+        private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.TextBox txtDataUstanov;
     }
 }
 
