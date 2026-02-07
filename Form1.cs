@@ -380,7 +380,63 @@ namespace WindowsFormsApp1
 
         private void Form1_Load(object sender, EventArgs e) { }
         private void label14_Click(object sender, EventArgs e) { }
-        private void button4_Click(object sender, EventArgs e) { }
+        private void button4_Click(object sender, EventArgs e) 
+        {
+            // Проверяем: введён ли ID
+            if (string.IsNullOrWhiteSpace(txtSearch.Text))
+            {
+                MessageBox.Show("Введите ID записи!");
+                return;
+            }
+
+            // Проверяем: число ли это
+            if (!int.TryParse(txtSearch.Text, out int id))
+            {
+                MessageBox.Show("ID должен быть числом!");
+                return;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // SQL-запрос: ищем запись по ID
+                    string sql = @"SELECT id, nazvanie, tip, model, seriinomer, mesto, 
+                                  moshnost, davlenie, proizvoditel, data_ustanovki, status_id
+                           FROM oborudovanie
+                           WHERE id = @id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", id);
+
+                        using (var adapter = new NpgsqlDataAdapter(cmd))
+                        {
+                            DataTable table = new DataTable();
+                            adapter.Fill(table);
+
+                            // Если запись найдена — показываем её
+                            if (table.Rows.Count > 0)
+                            {
+                                dataGridView1.DataSource = table;
+                            }
+                            else
+                            {
+                                // Если запись не найдена — очищаем таблицу
+                                dataGridView1.DataSource = null;
+                                MessageBox.Show("Запись с таким ID не найдена!");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка поиска: " + ex.Message);
+            }
+        }
         private void label10_Click(object sender, EventArgs e) { }
     }
 }

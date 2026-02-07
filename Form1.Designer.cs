@@ -53,8 +53,6 @@
             label17 = new System.Windows.Forms.Label();
             txtSelectedId = new System.Windows.Forms.TextBox();
             btnDelete = new System.Windows.Forms.Button();
-            textBox16 = new System.Windows.Forms.TextBox();
-            label18 = new System.Windows.Forms.Label();
             button4 = new System.Windows.Forms.Button();
             label19 = new System.Windows.Forms.Label();
             btnRefresh = new System.Windows.Forms.Button();
@@ -212,12 +210,12 @@
             // 
             // btnUpdate
             // 
-            btnUpdate.Location = new System.Drawing.Point(636, 652);
+            btnUpdate.Location = new System.Drawing.Point(632, 623);
             btnUpdate.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
             btnUpdate.Name = "btnUpdate";
             btnUpdate.Size = new System.Drawing.Size(509, 45);
             btnUpdate.TabIndex = 17;
-            btnUpdate.Text = "Обновить";
+            btnUpdate.Text = "Изменить запись";
             btnUpdate.UseVisualStyleBackColor = true;
             btnUpdate.Click += button2_Click;
             // 
@@ -274,30 +272,14 @@
             // 
             // btnDelete
             // 
-            btnDelete.Location = new System.Drawing.Point(163, 560);
+            btnDelete.Location = new System.Drawing.Point(15, 562);
             btnDelete.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
             btnDelete.Name = "btnDelete";
-            btnDelete.Size = new System.Drawing.Size(114, 35);
+            btnDelete.Size = new System.Drawing.Size(269, 33);
             btnDelete.TabIndex = 35;
-            btnDelete.Text = "Удалить";
+            btnDelete.Text = "Удалить запись";
             btnDelete.UseVisualStyleBackColor = true;
             btnDelete.Click += button3_Click;
-            // 
-            // textBox16
-            // 
-            textBox16.Location = new System.Drawing.Point(54, 562);
-            textBox16.Name = "textBox16";
-            textBox16.Size = new System.Drawing.Size(98, 31);
-            textBox16.TabIndex = 36;
-            // 
-            // label18
-            // 
-            label18.AutoSize = true;
-            label18.Location = new System.Drawing.Point(14, 563);
-            label18.Name = "label18";
-            label18.Size = new System.Drawing.Size(34, 25);
-            label18.TabIndex = 37;
-            label18.Text = "ID:";
             // 
             // button4
             // 
@@ -388,8 +370,6 @@
             Controls.Add(btnRefresh);
             Controls.Add(label19);
             Controls.Add(button4);
-            Controls.Add(label18);
-            Controls.Add(textBox16);
             Controls.Add(btnDelete);
             Controls.Add(txtSelectedId);
             Controls.Add(label17);
@@ -453,8 +433,6 @@
         private System.Windows.Forms.Label label17;
         private System.Windows.Forms.TextBox txtSelectedId;
         private System.Windows.Forms.Button btnDelete;
-        private System.Windows.Forms.TextBox textBox16;
-        private System.Windows.Forms.Label label18;
         private System.Windows.Forms.Button button4;
         private System.Windows.Forms.Label label19;
         private System.Windows.Forms.Button btnRefresh;

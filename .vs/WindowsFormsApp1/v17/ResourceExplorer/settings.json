@@ -1,17 +1,1 @@
-{
-  "ShowEmptyProjects": false,
-  "SelectedGroups": [],
-  "ExpandedProjects": [],
-  "EnableSpellChecker": true,
-  "ColumnOrder": [
-    "name",
-    "type",
-    "neutral-value",
-    "neutral-comment"
-  ],
-  "VisibleColumnKeys": [
-    "name",
-    "neutral-comment",
-    "neutral-value"
-  ]
-}
+{"ShowEmptyProjects":false,"CustomColumnOrderings":{"name":0,"type":1,"neutral-value":2,"neutral-comment":3},"ShowValidationErrors":true,"SelectedResourceGroupsByProjectFilePath":{"C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya\\WindowsFormsApp1.csproj":["C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya\\Form2.resx"]},"VisibleColumnKeys":["name","neutral-comment","neutral-value"]}
