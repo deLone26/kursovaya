@@ -148,13 +148,21 @@ namespace WindowsFormsApp1
             return true;
         }
 
+
+        // строка подключения админа
+        private readonly string adminConnectionString =
+    "Host=localhost;Username=postgres;Password=43898362Dd+-;Database=boiler_system;";
+
+
+
         // ================== ДОБАВЛЕНИЕ СОТРУДНИКА ==================
         private void btnAdd_Click(object sender, EventArgs e)
         {
             if (!ValidateInput()) return;
 
-            string login = txtLogin.Text;
-            string password = txtPassword.Text;
+            string login = txtLogin.Text.Trim();
+            string password = txtPassword.Text.Trim();
+            string selectedRole = cmbRole.SelectedItem?.ToString();
 
             if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
             {
@@ -162,10 +170,24 @@ namespace WindowsFormsApp1
                 return;
             }
 
-            string passwordHash = HashPassword(password);
+            if (selectedRole == null)
+            {
+                MessageBox.Show("Выберите роль!");
+                return;
+            }
+
+            // Защита от опасных символов
+            if (login.Contains("\"") || login.Contains("'") || login.Contains(";"))
+            {
+                MessageBox.Show("Недопустимые символы в логине!");
+                return;
+            }
 
             try
             {
+                int sotrudnikId;
+
+                // 1️⃣ Добавляем сотрудника
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     conn.Open();
@@ -174,13 +196,10 @@ namespace WindowsFormsApp1
                     {
                         try
                         {
-                            // 1️⃣ Добавляем сотрудника
                             string sqlSotrudnik = @"INSERT INTO sotrudniki
-                        (familiya, imya, otchestvo, dolzhnost, telefon, email)
-                        VALUES (@familiya, @imya, @otchestvo, @dolzhnost, @telefon, @email)
-                        RETURNING id";
-
-                            int sotrudnikId;
+                    (familiya, imya, otchestvo, dolzhnost, telefon, email)
+                    VALUES (@familiya, @imya, @otchestvo, @dolzhnost, @telefon, @email)
+                    RETURNING id";
 
                             using (var cmd = new NpgsqlCommand(sqlSotrudnik, conn))
                             {
@@ -194,30 +213,14 @@ namespace WindowsFormsApp1
                                 sotrudnikId = Convert.ToInt32(cmd.ExecuteScalar());
                             }
 
-                            // 2️⃣ Проверяем уникальность логина
-                            string checkLogin = "SELECT COUNT(*) FROM users WHERE login=@login";
-
-                            using (var checkCmd = new NpgsqlCommand(checkLogin, conn))
-                            {
-                                checkCmd.Parameters.AddWithValue("@login", login);
-                                int exists = Convert.ToInt32(checkCmd.ExecuteScalar());
-
-                                if (exists > 0)
-                                    throw new Exception("Такой логин уже существует!");
-                            }
-
-                            // 3️⃣ Добавляем пользователя
-                            string sqlUser = @"INSERT INTO users
-                        (login, password_hash, role, sotrudnik_id, is_active)
-                        VALUES (@login, @password_hash, @role, @sotrudnik_id, true)";
+                            // Добавляем запись в таблицу users (без пароля и роли)
+                            string sqlUser = @"INSERT INTO users (login, sotrudnik_id)
+                                       VALUES (@login, @sotrudnik_id)";
 
                             using (var cmd = new NpgsqlCommand(sqlUser, conn))
                             {
                                 cmd.Parameters.AddWithValue("@login", login);
-                                cmd.Parameters.AddWithValue("@password_hash", passwordHash);
-                                cmd.Parameters.AddWithValue("@role", "user");
                                 cmd.Parameters.AddWithValue("@sotrudnik_id", sotrudnikId);
-
                                 cmd.ExecuteNonQuery();
                             }
 
@@ -229,9 +232,39 @@ namespace WindowsFormsApp1
                             throw;
                         }
                     }
+                    txtLogin.Clear();
+                    txtPassword.Clear();
                 }
 
-                MessageBox.Show("Сотрудник и пользователь успешно добавлены!");
+                // 2️⃣ Создаём пользователя PostgreSQL и назначаем роль
+                using (var adminConn = new NpgsqlConnection(adminConnectionString))
+                {
+                    adminConn.Open();
+
+                    using (var cmd = new NpgsqlCommand())
+                    {
+                        cmd.Connection = adminConn;
+
+                        // Проверка — не существует ли уже пользователь
+                        cmd.CommandText = $"SELECT 1 FROM pg_roles WHERE rolname = '{login}'";
+                        var exists = cmd.ExecuteScalar();
+
+                        if (exists != null)
+                            throw new Exception("Пользователь PostgreSQL с таким логином уже существует!");
+
+                        // CREATE USER
+                        cmd.CommandText =
+                            $"CREATE USER \"{login}\" WITH PASSWORD '{password}'";
+                        cmd.ExecuteNonQuery();
+
+                        // GRANT ROLE
+                        cmd.CommandText =
+                            $"GRANT app_{selectedRole} TO \"{login}\"";
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                MessageBox.Show("Сотрудник и пользователь БД успешно созданы!");
                 LoadData();
                 ClearFields();
             }

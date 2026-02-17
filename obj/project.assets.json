@@ -5238,11 +5238,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectUniqueName": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "projectName": "WindowsFormsApp1",
-      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "packagesPath": "C:\\Users\\Daniil\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\obj\\",
+      "outputPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -5275,7 +5275,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "10.0.200"
+      "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
       "net9.0-windows7.0": {
@@ -5313,6 +5313,24 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[9.0.12, 9.0.12]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Host.win-x64",
+            "version": "[9.0.12, 9.0.12]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[9.0.12, 9.0.12]"
+          },
+          {
+            "name": "Microsoft.WindowsDesktop.App.Ref",
+            "version": "[9.0.12, 9.0.12]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
@@ -5321,7 +5339,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.200-preview.0.26103.119/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json"
       }
     }
   },
@@ -5333,7 +5351,7 @@
       "message": "Пакет \"Bunifu.Charts.WinForms 1.1.5\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Bunifu.Charts.WinForms",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
@@ -5343,7 +5361,7 @@
       "message": "Пакет \"Bunifu.UI.WinForms 5.3.0\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Bunifu.UI.WinForms",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
@@ -5353,7 +5371,7 @@
       "message": "Пакет \"Bunifu.Utils 1.0.6\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Bunifu.Utils",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
@@ -5363,7 +5381,7 @@
       "message": "Пакет \"GumroadLicensing 2.0.2\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "GumroadLicensing",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
@@ -5373,7 +5391,7 @@
       "message": "Пакет \"Jenga.NET 4.0.0\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Jenga.NET",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
@@ -5383,7 +5401,7 @@
       "message": "Пакет \"Kimtoo.BindingProvider 1.2.7\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Kimtoo.BindingProvider",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
@@ -5393,7 +5411,7 @@
       "message": "Пакет \"Kimtoo.ButtonGroup 1.0.1\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Kimtoo.ButtonGroup",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
@@ -5403,7 +5421,7 @@
       "message": "Пакет \"Kimtoo.DbManager 1.0.8\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Kimtoo.DbManager",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
@@ -5413,7 +5431,7 @@
       "message": "Пакет \"Kimtoo.NavigationMenu 1.0.2\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Kimtoo.NavigationMenu",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
@@ -5423,7 +5441,7 @@
       "message": "Пакет \"Kimtoo.ValidationProvider 1.0.8\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Kimtoo.ValidationProvider",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     }
   ]

@@ -18,10 +18,30 @@ namespace WindowsFormsApp1
         private int collapsedWidth = 30;
         private int expandedWidth = 200;
 
+        private string userLogin; // новое поле для хранения логина
+
         // Ссылки на ваши формы
         private Form1 form1;
         private Form2 form2;
 
+        // Новый конструктор с логином
+        public MainForm(string login)
+        {
+            InitializeComponent();
+            userLogin = login;
+
+            // Показываем логин в заголовке формы
+            this.Text = $"Добро пожаловать, {userLogin}";
+
+            CreateContentPanel();
+            CreateSidePanel();
+            AdjustMainContent();
+
+            // Показываем главный контент по умолчанию
+            ShowMainContent();
+        }
+
+        // Оставляем старый конструктор без параметров (если нужно)
         public MainForm()
         {
             InitializeComponent();
@@ -29,7 +49,6 @@ namespace WindowsFormsApp1
             CreateSidePanel();
             AdjustMainContent();
 
-            // Показываем главный контент по умолчанию
             ShowMainContent();
         }
 
@@ -150,14 +169,12 @@ namespace WindowsFormsApp1
         {
             ClearContentPanel();
 
-            // Создаем Form1 если еще не создана
             if (form1 == null)
             {
                 form1 = new Form1();
                 PrepareFormForEmbedding(form1);
             }
 
-            // Добавляем Form1 в contentPanel
             form1.TopLevel = false;
             form1.FormBorderStyle = FormBorderStyle.None;
             form1.Dock = DockStyle.Fill;
@@ -171,14 +188,12 @@ namespace WindowsFormsApp1
         {
             ClearContentPanel();
 
-            // Создаем Form2 если еще не создана
             if (form2 == null)
             {
                 form2 = new Form2();
                 PrepareFormForEmbedding(form2);
             }
 
-            // Добавляем Form2 в contentPanel
             form2.TopLevel = false;
             form2.FormBorderStyle = FormBorderStyle.None;
             form2.Dock = DockStyle.Fill;
@@ -188,7 +203,6 @@ namespace WindowsFormsApp1
             CollapsePanel();
         }
 
-        // Подготовка формы для встраивания
         private void PrepareFormForEmbedding(Form form)
         {
             form.TopLevel = false;
@@ -210,7 +224,6 @@ namespace WindowsFormsApp1
                 Location = new Point(20, 20)
             };
 
-            // Элементы настроек
             CheckBox checkBox1 = new CheckBox()
             {
                 Text = "Включить уведомления",
@@ -263,22 +276,18 @@ namespace WindowsFormsApp1
             CollapsePanel();
         }
 
-        // Очистка панели контента
         private void ClearContentPanel()
         {
-            // Скрываем стандартные кнопки
             button1.Visible = false;
             button2.Visible = false;
             if (panel1 != null)
                 panel1.Visible = false;
 
-            // Скрываем встроенные формы
             if (form1 != null)
                 form1.Visible = false;
             if (form2 != null)
                 form2.Visible = false;
 
-            // Удаляем все динамически добавленные контролы
             for (int i = contentPanel.Controls.Count - 1; i >= 0; i--)
             {
                 Control control = contentPanel.Controls[i];
@@ -290,7 +299,6 @@ namespace WindowsFormsApp1
                 }
             }
 
-            // Удаляем формы из панели (они будут добавлены заново при показе)
             if (form1 != null && contentPanel.Controls.Contains(form1))
                 contentPanel.Controls.Remove(form1);
             if (form2 != null && contentPanel.Controls.Contains(form2))
@@ -310,14 +318,12 @@ namespace WindowsFormsApp1
             }
         }
 
-        // Обработка изменения размера формы
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
             AdjustMainContent();
         }
 
-        // Остальные методы остаются без изменений
         private async void ToggleBtn_Click(object sender, EventArgs e)
         {
             if (isPanelExpanded)
@@ -394,16 +400,13 @@ namespace WindowsFormsApp1
             }
         }
 
-        // Ваши существующие методы
         private void button1_Click(object sender, EventArgs e)
         {
-            // Показываем Form1 при нажатии на button1
             ShowForm1(sender, e);
         }
 
         private void button2_Click(object sender, EventArgs e)
         {
-            // Показываем Form2 при нажатии на button2
             ShowForm2(sender, e);
         }
 
@@ -412,7 +415,6 @@ namespace WindowsFormsApp1
             // Ваш существующий код
         }
 
-        // Очистка ресурсов при закрытии формы
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             base.OnFormClosed(e);

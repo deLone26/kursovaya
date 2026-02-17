@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "1ZOdQu10s68=",
+  "dgSpecHash": "WVEik1ntWU0=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+  "projectFilePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Daniil\\.nuget\\packages\\bouncycastle.netcore\\1.8.5\\bouncycastle.netcore.1.8.5.nupkg.sha512",
     "C:\\Users\\Daniil\\.nuget\\packages\\bunifu.charts.winforms\\1.1.5\\bunifu.charts.winforms.1.1.5.nupkg.sha512",
@@ -91,127 +91,131 @@
     "C:\\Users\\Daniil\\.nuget\\packages\\system.threading.tasks.extensions\\4.3.0\\system.threading.tasks.extensions.4.3.0.nupkg.sha512",
     "C:\\Users\\Daniil\\.nuget\\packages\\system.windows.extensions\\6.0.0\\system.windows.extensions.6.0.0.nupkg.sha512",
     "C:\\Users\\Daniil\\.nuget\\packages\\system.xml.readerwriter\\4.3.0\\system.xml.readerwriter.4.3.0.nupkg.sha512",
-    "C:\\Users\\Daniil\\.nuget\\packages\\system.xml.xmldocument\\4.3.0\\system.xml.xmldocument.4.3.0.nupkg.sha512"
+    "C:\\Users\\Daniil\\.nuget\\packages\\system.xml.xmldocument\\4.3.0\\system.xml.xmldocument.4.3.0.nupkg.sha512",
+    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\9.0.12\\microsoft.windowsdesktop.app.ref.9.0.12.nupkg.sha512",
+    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.12\\microsoft.netcore.app.ref.9.0.12.nupkg.sha512",
+    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.12\\microsoft.aspnetcore.app.ref.9.0.12.nupkg.sha512",
+    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\9.0.12\\microsoft.netcore.app.host.win-x64.9.0.12.nupkg.sha512"
   ],
   "logs": [
     {
       "code": "NU1701",
       "level": "Warning",
       "message": "Пакет \"Bunifu.Charts.WinForms 1.1.5\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Bunifu.Charts.WinForms",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
       "code": "NU1701",
       "level": "Warning",
       "message": "Пакет \"Bunifu.UI.WinForms 5.3.0\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Bunifu.UI.WinForms",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
       "code": "NU1701",
       "level": "Warning",
       "message": "Пакет \"Bunifu.Utils 1.0.6\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Bunifu.Utils",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
       "code": "NU1701",
       "level": "Warning",
       "message": "Пакет \"GumroadLicensing 2.0.2\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "GumroadLicensing",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
       "code": "NU1701",
       "level": "Warning",
       "message": "Пакет \"Jenga.NET 4.0.0\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Jenga.NET",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
       "code": "NU1701",
       "level": "Warning",
       "message": "Пакет \"Kimtoo.BindingProvider 1.2.7\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Kimtoo.BindingProvider",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
       "code": "NU1701",
       "level": "Warning",
       "message": "Пакет \"Kimtoo.ButtonGroup 1.0.1\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Kimtoo.ButtonGroup",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
       "code": "NU1701",
       "level": "Warning",
       "message": "Пакет \"Kimtoo.DbManager 1.0.8\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Kimtoo.DbManager",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
       "code": "NU1701",
       "level": "Warning",
       "message": "Пакет \"Kimtoo.NavigationMenu 1.0.2\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Kimtoo.NavigationMenu",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     },
     {
       "code": "NU1701",
       "level": "Warning",
       "message": "Пакет \"Kimtoo.ValidationProvider 1.0.8\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "projectPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya\\dipl\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
+      "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Kimtoo.ValidationProvider",
       "targetGraphs": [
-        "net9.0-windows"
+        "net9.0-windows7.0"
       ]
     }
   ]
