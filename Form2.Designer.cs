@@ -51,6 +51,12 @@
             label2 = new System.Windows.Forms.Label();
             label1 = new System.Windows.Forms.Label();
             txtId = new System.Windows.Forms.TextBox();
+            txtLogin = new System.Windows.Forms.TextBox();
+            txtPassword = new System.Windows.Forms.TextBox();
+            label9 = new System.Windows.Forms.Label();
+            label10 = new System.Windows.Forms.Label();
+            cmbRole = new System.Windows.Forms.ComboBox();
+            label11 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
             SuspendLayout();
             // 
@@ -104,7 +110,7 @@
             // 
             // btnUpdate
             // 
-            btnUpdate.Location = new System.Drawing.Point(631, 489);
+            btnUpdate.Location = new System.Drawing.Point(649, 630);
             btnUpdate.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
             btnUpdate.Name = "btnUpdate";
             btnUpdate.Size = new System.Drawing.Size(508, 45);
@@ -127,7 +133,7 @@
             // 
             // btnAdd
             // 
-            btnAdd.Location = new System.Drawing.Point(631, 415);
+            btnAdd.Location = new System.Drawing.Point(649, 556);
             btnAdd.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
             btnAdd.Name = "btnAdd";
             btnAdd.Size = new System.Drawing.Size(508, 45);
@@ -257,11 +263,68 @@
             txtId.Size = new System.Drawing.Size(330, 31);
             txtId.TabIndex = 72;
             // 
+            // txtLogin
+            // 
+            txtLogin.Location = new System.Drawing.Point(809, 348);
+            txtLogin.Name = "txtLogin";
+            txtLogin.Size = new System.Drawing.Size(330, 31);
+            txtLogin.TabIndex = 87;
+            // 
+            // txtPassword
+            // 
+            txtPassword.Location = new System.Drawing.Point(809, 399);
+            txtPassword.Name = "txtPassword";
+            txtPassword.Size = new System.Drawing.Size(330, 31);
+            txtPassword.TabIndex = 88;
+            txtPassword.UseSystemPasswordChar = true;
+            // 
+            // label9
+            // 
+            label9.AutoSize = true;
+            label9.Location = new System.Drawing.Point(631, 351);
+            label9.Name = "label9";
+            label9.Size = new System.Drawing.Size(62, 25);
+            label9.TabIndex = 89;
+            label9.Text = "Логин";
+            // 
+            // label10
+            // 
+            label10.AutoSize = true;
+            label10.Location = new System.Drawing.Point(631, 399);
+            label10.Name = "label10";
+            label10.Size = new System.Drawing.Size(74, 25);
+            label10.TabIndex = 90;
+            label10.Text = "Пароль";
+            // 
+            // cmbRole
+            // 
+            cmbRole.FormattingEnabled = true;
+            cmbRole.Items.AddRange(new object[] { "AddRange(roles)" });
+            cmbRole.Location = new System.Drawing.Point(809, 449);
+            cmbRole.Name = "cmbRole";
+            cmbRole.Size = new System.Drawing.Size(329, 33);
+            cmbRole.TabIndex = 91;
+            // 
+            // label11
+            // 
+            label11.AutoSize = true;
+            label11.Location = new System.Drawing.Point(631, 452);
+            label11.Name = "label11";
+            label11.Size = new System.Drawing.Size(102, 25);
+            label11.TabIndex = 92;
+            label11.Text = "Должность";
+            // 
             // Form2
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             ClientSize = new System.Drawing.Size(1273, 860);
+            Controls.Add(label11);
+            Controls.Add(cmbRole);
+            Controls.Add(label10);
+            Controls.Add(label9);
+            Controls.Add(txtPassword);
+            Controls.Add(txtLogin);
             Controls.Add(txtEmail);
             Controls.Add(txtTelefon);
             Controls.Add(txtDolzhnost);
@@ -316,5 +379,11 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.TextBox txtId;
+        private System.Windows.Forms.TextBox txtLogin;
+        private System.Windows.Forms.TextBox txtPassword;
+        private System.Windows.Forms.Label label9;
+        private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.ComboBox cmbRole;
+        private System.Windows.Forms.Label label11;
     }
 }
