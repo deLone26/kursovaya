@@ -110,9 +110,13 @@ namespace WindowsFormsApp1
                         {
                             DataTable dt = new DataTable();
                             dt.Load(reader);
+
                             cmbEquipment.DisplayMember = "nazvanie";
                             cmbEquipment.ValueMember = "id";
                             cmbEquipment.DataSource = dt;
+
+                            if (dt.Rows.Count > 0)
+                                cmbEquipment.SelectedIndex = 0;
                         }
                     }
                 }
@@ -137,9 +141,13 @@ namespace WindowsFormsApp1
                         {
                             DataTable dt = new DataTable();
                             dt.Load(reader);
+
                             cmbTip.DisplayMember = "nazvanie";
                             cmbTip.ValueMember = "id";
                             cmbTip.DataSource = dt;
+
+                            if (dt.Rows.Count > 0)
+                                cmbTip.SelectedIndex = 0;
                         }
                     }
                 }
@@ -147,6 +155,20 @@ namespace WindowsFormsApp1
             catch (Exception ex)
             {
                 MessageBox.Show("Ошибка загрузки типов ТО: " + ex.Message);
+
+                // Запасной вариант
+                cmbTip.Items.Clear();
+                cmbTip.Items.Add("Ежедневное ТО");
+                cmbTip.Items.Add("Еженедельное ТО");
+                cmbTip.Items.Add("Месячное ТО");
+                cmbTip.Items.Add("Квартальное ТО");
+                cmbTip.Items.Add("Годовое ТО");
+                cmbTip.Items.Add("Текущий ремонт");
+                cmbTip.Items.Add("Капитальный ремонт");
+                cmbTip.Items.Add("Аварийный ремонт");
+                cmbTip.Items.Add("Проверка КИП");
+                cmbTip.Items.Add("Регулировка");
+                cmbTip.SelectedIndex = 0;
             }
         }
 
@@ -160,17 +182,24 @@ namespace WindowsFormsApp1
                     string sql = @"
                         SELECT id, familiya || ' ' || imya || ' ' || otchestvo AS fio 
                         FROM sotrudniki 
-                        WHERE dolzhnost ILIKE '%слесар%'
+                        WHERE dolzhnost ILIKE '%слесар%' OR dolzhnost ILIKE '%Слесар%'
                         ORDER BY familiya";
+
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         using (var reader = cmd.ExecuteReader())
                         {
                             DataTable dt = new DataTable();
                             dt.Load(reader);
+
                             cmbResponsible.DisplayMember = "fio";
                             cmbResponsible.ValueMember = "id";
                             cmbResponsible.DataSource = dt;
+
+                            if (dt.Rows.Count > 0)
+                                cmbResponsible.SelectedIndex = 0;
+                            else
+                                MessageBox.Show("В системе нет слесарей!");
                         }
                     }
                 }
@@ -178,6 +207,13 @@ namespace WindowsFormsApp1
             catch (Exception ex)
             {
                 MessageBox.Show("Ошибка загрузки сотрудников: " + ex.Message);
+
+                // Запасной вариант
+                cmbResponsible.Items.Clear();
+                cmbResponsible.Items.Add("Иванов Иван Иванович");
+                cmbResponsible.Items.Add("Петров Петр Петрович");
+                cmbResponsible.Items.Add("Сидоров Сидор Сидорович");
+                cmbResponsible.SelectedIndex = 0;
             }
         }
 
@@ -279,7 +315,7 @@ namespace WindowsFormsApp1
                             a.data_avarii AS Дата,
                             a.opisanie AS Описание,
                             a.posledstviya AS Последствия,
-                            COALESCE(a.status, 'Зарегистрирована') AS Статус,
+                            a.status AS Статус,
                             CASE WHEN p.id IS NOT NULL THEN '✅' ELSE '❌' END AS План
                         FROM avariya a
                         JOIN oborudovanie o ON a.oborudovanie_id = o.id
@@ -330,9 +366,9 @@ namespace WindowsFormsApp1
                     string sql = @"
                         SELECT 
                             (SELECT COUNT(*) FROM avariya) as total_avariya,
-                            (SELECT COUNT(*) FROM avariya WHERE COALESCE(status, '') != 'Завершена' AND ustraneno = false) as need_plan,
+                            (SELECT COUNT(*) FROM avariya WHERE status != 'Завершена') as need_plan,
                             (SELECT COUNT(*) FROM avariya WHERE status = 'В работе') as avariya_in_progress,
-                            (SELECT COUNT(*) FROM avariya WHERE status = 'Завершена' OR ustraneno = true) as avariya_completed,
+                            (SELECT COUNT(*) FROM avariya WHERE status = 'Завершена') as avariya_completed,
                             (SELECT COUNT(*) FROM plan_to) as total_plans,
                             (SELECT COUNT(*) FROM plan_to WHERE status = 'Завершен') as completed_plans,
                             (SELECT COUNT(*) FROM plan_to WHERE status = 'В работе') as plans_in_progress,
@@ -345,17 +381,14 @@ namespace WindowsFormsApp1
                         {
                             if (reader.Read())
                             {
-                                // Общая статистика
                                 int total = Convert.ToInt32(reader["total_avariya"]) + Convert.ToInt32(reader["total_plans"]);
                                 lblTotal.Text = $"Всего записей: {total}";
 
-                                // Статистика по авариям
                                 lblAvariyaTotal.Text = $"Всего аварий: {reader["total_avariya"]}";
                                 lblAvariyaNeedPlan.Text = $"Требуют плана: {reader["need_plan"]}";
                                 lblAvariyaInProgress.Text = $"В работе: {reader["avariya_in_progress"]}";
                                 lblAvariyaCompleted.Text = $"Завершено: {reader["avariya_completed"]}";
 
-                                // Статистика по планам
                                 lblInProgress.Text = $"В работе: {reader["plans_in_progress"]}";
                                 lblCompleted.Text = $"Завершено: {reader["completed_plans"]}";
                                 lblPlanned.Text = $"Запланировано: {reader["plans_planned"]}";
@@ -370,14 +403,204 @@ namespace WindowsFormsApp1
             }
         }
 
+        // ========== МЕТОДЫ ДЛЯ РАБОТЫ С КОМБОБОКСАМИ ==========
+
+        private int GetSelectedId(ComboBox comboBox, string columnName)
+        {
+            try
+            {
+                if (comboBox.SelectedItem == null)
+                    return -1;
+
+                if (comboBox.SelectedItem is DataRowView rowView)
+                {
+                    return Convert.ToInt32(rowView[columnName]);
+                }
+                return -1;
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+
+        private void SelectEquipmentByName(string equipmentName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(equipmentName)) return;
+
+                if (cmbEquipment.DataSource is DataTable dt)
+                {
+                    foreach (DataRowView item in cmbEquipment.Items)
+                    {
+                        if (item["nazvanie"].ToString() == equipmentName)
+                        {
+                            cmbEquipment.SelectedItem = item;
+                            return;
+                        }
+                    }
+                }
+
+                foreach (var item in cmbEquipment.Items)
+                {
+                    if (item.ToString() == equipmentName)
+                    {
+                        cmbEquipment.SelectedItem = item;
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка выбора оборудования: {ex.Message}");
+            }
+        }
+
+        private void SelectTipByName(string tipName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(tipName)) return;
+
+                if (cmbTip.DataSource is DataTable dt)
+                {
+                    foreach (DataRowView item in cmbTip.Items)
+                    {
+                        if (item["nazvanie"].ToString() == tipName)
+                        {
+                            cmbTip.SelectedItem = item;
+                            return;
+                        }
+                    }
+                }
+
+                foreach (var item in cmbTip.Items)
+                {
+                    if (item.ToString() == tipName)
+                    {
+                        cmbTip.SelectedItem = item;
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка выбора типа ТО: {ex.Message}");
+            }
+        }
+
+        private void SelectResponsibleByName(string responsibleName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(responsibleName)) return;
+
+                if (cmbResponsible.DataSource is DataTable dt)
+                {
+                    foreach (DataRowView item in cmbResponsible.Items)
+                    {
+                        if (item["fio"].ToString() == responsibleName)
+                        {
+                            cmbResponsible.SelectedItem = item;
+                            return;
+                        }
+                    }
+                }
+
+                foreach (var item in cmbResponsible.Items)
+                {
+                    if (item.ToString() == responsibleName)
+                    {
+                        cmbResponsible.SelectedItem = item;
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка выбора ответственного: {ex.Message}");
+            }
+        }
+
+        private void SelectEquipmentById(int equipmentId)
+        {
+            try
+            {
+                if (equipmentId <= 0) return;
+
+                try
+                {
+                    cmbEquipment.SelectedValue = equipmentId;
+                    return;
+                }
+                catch { }
+
+                if (cmbEquipment.DataSource is DataTable dt)
+                {
+                    foreach (DataRowView item in cmbEquipment.Items)
+                    {
+                        if (Convert.ToInt32(item["id"]) == equipmentId)
+                        {
+                            cmbEquipment.SelectedItem = item;
+                            return;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка выбора оборудования: {ex.Message}");
+            }
+        }
+
         // ========== ОБРАБОТЧИКИ ДЛЯ ПЛАНОВ ==========
 
         private void DgvPlans_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
 
-            DataGridViewRow row = dgvPlans.Rows[e.RowIndex];
-            selectedPlanId = Convert.ToInt32(row.Cells["id"].Value);
+            try
+            {
+                DataGridViewRow row = dgvPlans.Rows[e.RowIndex];
+                selectedPlanId = Convert.ToInt32(row.Cells["id"].Value);
+
+                string equipment = row.Cells["Оборудование"].Value?.ToString() ?? "";
+                string tipTo = row.Cells["Тип_ТО"].Value?.ToString() ?? "";
+                string responsible = row.Cells["Ответственный"].Value?.ToString() ?? "";
+                string status = row.Cells["Статус"].Value?.ToString() ?? "";
+
+                if (!string.IsNullOrEmpty(equipment))
+                    SelectEquipmentByName(equipment);
+
+                if (!string.IsNullOrEmpty(tipTo))
+                    SelectTipByName(tipTo);
+
+                if (!string.IsNullOrEmpty(responsible))
+                    SelectResponsibleByName(responsible);
+
+                if (!string.IsNullOrEmpty(status))
+                {
+                    for (int i = 0; i < cmbStatus.Items.Count; i++)
+                    {
+                        if (cmbStatus.Items[i].ToString() == status)
+                        {
+                            cmbStatus.SelectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (row.Cells["Дата_начала"].Value != null)
+                    dtpStartRepair.Value = Convert.ToDateTime(row.Cells["Дата_начала"].Value);
+
+                if (row.Cells["Дата_окончания"].Value != null && row.Cells["Дата_окончания"].Value != DBNull.Value)
+                    dtpEndRepair.Value = Convert.ToDateTime(row.Cells["Дата_окончания"].Value);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при выборе строки: {ex.Message}");
+            }
         }
 
         private void BtnPlanFilter_Click(object sender, EventArgs e)
@@ -600,7 +823,6 @@ namespace WindowsFormsApp1
                 return;
             }
 
-            // Проверяем, есть ли уже план
             using (var conn = new NpgsqlConnection(connectionString))
             {
                 conn.Open();
@@ -617,7 +839,6 @@ namespace WindowsFormsApp1
                 }
             }
 
-            // Получаем данные аварии
             try
             {
                 using (var conn = new NpgsqlConnection(connectionString))
@@ -634,20 +855,13 @@ namespace WindowsFormsApp1
                             {
                                 int oborudovanieId = reader.GetInt32(0);
 
-                                // Переключаемся на вкладку планов
                                 tabControl1.SelectedTab = tabPlans;
-
-                                // Устанавливаем оборудование
                                 SelectEquipmentById(oborudovanieId);
 
-                                // Устанавливаем даты
                                 dtpStartRepair.Value = DateTime.Now;
                                 dtpEndRepair.Value = DateTime.Now.AddDays(7);
-
-                                // Статус по умолчанию
                                 cmbStatus.SelectedIndex = 0;
 
-                                // Очищаем другие поля
                                 cmbTip.SelectedIndex = -1;
                                 cmbResponsible.SelectedIndex = -1;
 
@@ -667,49 +881,323 @@ namespace WindowsFormsApp1
 
         private void BtnExcel_Click(object sender, EventArgs e)
         {
-            DataTable reportData = GetReportData();
-            if (reportData.Rows.Count == 0)
+            try
             {
-                MessageBox.Show("Нет данных для экспорта!");
-                return;
+                if (dgvPlans.Rows.Count == 0 && dgvAvariya.Rows.Count == 0)
+                {
+                    MessageBox.Show("Нет данных для экспорта!");
+                    return;
+                }
+
+                SaveFileDialog save = new SaveFileDialog();
+                save.Filter = "CSV files (*.csv)|*.csv";
+                save.FileName = $"Отчет_о_планах_ремонтов_проект_Котельная_{DateTime.Now:dd-MM-yyyy}.csv";
+
+                if (save.ShowDialog() == DialogResult.OK)
+                {
+                    ExportToCsvWithFormatting(save.FileName);
+                    MessageBox.Show($"Отчет сохранен!\nФайл: {save.FileName}\n\nОтчет можно открыть в Excel.",
+                        "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             }
-
-            SaveFileDialog save = new SaveFileDialog();
-            save.Filter = "CSV files (*.csv)|*.csv";
-            save.FileName = $"Отчет_{cmbReportType.Text}_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
-
-            if (save.ShowDialog() == DialogResult.OK)
+            catch (Exception ex)
             {
-                ExportToCsv(reportData, save.FileName);
-                MessageBox.Show($"Отчет сохранен!\nЗаписей: {reportData.Rows.Count}");
+                MessageBox.Show("Ошибка экспорта: " + ex.Message);
+            }
+        }
+
+        private void ExportToCsvWithFormatting(string fileName)
+        {
+            using (StreamWriter sw = new StreamWriter(fileName, false, Encoding.UTF8))
+            {
+                sw.WriteLine("Отчет о планах ремонтов по проекту: Котельная");
+                sw.WriteLine($"Дата составления отчета: {DateTime.Now:dd.MM.yyyy}");
+
+                int totalPlans = dgvPlans.Rows.Count;
+                int completedPlans = 0, inProgressPlans = 0, plannedPlans = 0;
+
+                foreach (DataGridViewRow row in dgvPlans.Rows)
+                {
+                    if (row.IsNewRow) continue;
+                    string status = row.Cells["Статус"].Value?.ToString() ?? "";
+                    if (status == "Завершен") completedPlans++;
+                    else if (status == "В работе") inProgressPlans++;
+                    else if (status == "Запланирован") plannedPlans++;
+                }
+
+                int totalAvariya = dgvAvariya?.Rows.Count ?? 0;
+                int avariyaWithoutPlan = 0;
+
+                if (dgvAvariya != null)
+                {
+                    foreach (DataGridViewRow row in dgvAvariya.Rows)
+                    {
+                        if (row.IsNewRow) continue;
+                        string hasPlan = row.Cells["План"].Value?.ToString() ?? "";
+                        if (hasPlan == "❌") avariyaWithoutPlan++;
+                    }
+                }
+
+                sw.WriteLine($"Всего планов: {totalPlans}");
+                sw.WriteLine($"Выполнено: {completedPlans}");
+                sw.WriteLine($"В работе: {inProgressPlans}");
+                sw.WriteLine($"Запланировано: {plannedPlans}");
+                sw.WriteLine($"Процент выполнения: {(totalPlans > 0 ? (completedPlans * 100 / totalPlans) : 0)}%");
+                sw.WriteLine($"Всего аварий: {totalAvariya}");
+                sw.WriteLine($"Аварий без плана: {avariyaWithoutPlan}");
+                sw.WriteLine();
+
+                sw.WriteLine("ПЛАНЫ РЕМОНТОВ");
+                sw.WriteLine();
+
+                string headers = "ID;Оборудование;Тип ТО;Дата начала;Дата окончания;Ответственный;Статус;Связь с аварией";
+                sw.WriteLine(headers);
+
+                foreach (DataGridViewRow row in dgvPlans.Rows)
+                {
+                    if (row.IsNewRow) continue;
+
+                    string startDate = Convert.ToDateTime(row.Cells["Дата_начала"].Value).ToString("dd.MM.yyyy");
+                    string endDate = row.Cells["Дата_окончания"].Value != null ?
+                        Convert.ToDateTime(row.Cells["Дата_окончания"].Value).ToString("dd.MM.yyyy") : "";
+
+                    string line = $"{row.Cells["id"].Value};" +
+                                 $"{row.Cells["Оборудование"].Value};" +
+                                 $"{row.Cells["Тип_ТО"].Value};" +
+                                 $"{startDate};" +
+                                 $"{endDate};" +
+                                 $"{row.Cells["Ответственный"].Value};" +
+                                 $"{row.Cells["Статус"].Value};" +
+                                 $"{row.Cells["Связь_с_аварией"].Value}";
+
+                    sw.WriteLine(line);
+                }
+
+                sw.WriteLine();
+                sw.WriteLine();
+
+                if (dgvAvariya != null && dgvAvariya.Rows.Count > 0)
+                {
+                    sw.WriteLine("АВАРИИ");
+                    sw.WriteLine();
+
+                    string avHeaders = "ID;Оборудование;Дата;Описание;Последствия;Статус;План";
+                    sw.WriteLine(avHeaders);
+
+                    foreach (DataGridViewRow row in dgvAvariya.Rows)
+                    {
+                        if (row.IsNewRow) continue;
+
+                        string avDate = Convert.ToDateTime(row.Cells["Дата"].Value).ToString("dd.MM.yyyy HH:mm");
+
+                        string line = $"{row.Cells["id"].Value};" +
+                                     $"{row.Cells["Оборудование"].Value};" +
+                                     $"{avDate};" +
+                                     $"{row.Cells["Описание"].Value};" +
+                                     $"{row.Cells["Последствия"].Value};" +
+                                     $"{row.Cells["Статус"].Value};" +
+                                     $"{row.Cells["План"].Value}";
+
+                        sw.WriteLine(line);
+                    }
+                }
+
+                sw.WriteLine();
+                sw.WriteLine($"Отчет сформирован: {DateTime.Now:dd.MM.yyyy HH:mm}");
             }
         }
 
         private void BtnWord_Click(object sender, EventArgs e)
         {
-            DataTable reportData = GetReportData();
-            if (reportData.Rows.Count == 0)
+            try
             {
-                MessageBox.Show("Нет данных для экспорта!");
-                return;
+                if (dgvPlans.Rows.Count == 0)
+                {
+                    MessageBox.Show("Нет данных для экспорта!");
+                    return;
+                }
+
+                SaveFileDialog save = new SaveFileDialog();
+                save.Filter = "Rich Text Format (*.rtf)|*.rtf";
+                save.FileName = $"Отчет_о_планах_ремонтов_{DateTime.Now:dd-MM-yyyy}.rtf";
+
+                if (save.ShowDialog() == DialogResult.OK)
+                {
+                    ExportToRtfWithFormatting(save.FileName);
+                    MessageBox.Show($"Отчет сохранен в формате RTF!\nФайл: {save.FileName}",
+                        "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    try { System.Diagnostics.Process.Start(save.FileName); } catch { }
+                }
             }
-
-            SaveFileDialog save = new SaveFileDialog();
-            save.Filter = "Rich Text Format (*.rtf)|*.rtf";
-            save.FileName = $"Отчет_{cmbReportType.Text}_{DateTime.Now:yyyyMMdd_HHmmss}.rtf";
-
-            if (save.ShowDialog() == DialogResult.OK)
+            catch (Exception ex)
             {
-                ExportToRtf(reportData, save.FileName);
-                MessageBox.Show($"Отчет сохранен!\nЗаписей: {reportData.Rows.Count}");
+                MessageBox.Show("Ошибка экспорта в Word: " + ex.Message);
+            }
+        }
+
+        private void ExportToRtfWithFormatting(string fileName)
+        {
+            using (StreamWriter sw = new StreamWriter(fileName, false, Encoding.UTF8))
+            {
+                sw.WriteLine(@"{\rtf1\ansi\deff0");
+                sw.WriteLine(@"{\fonttbl{\f0 Times New Roman;}{\f1 Arial;}{\f2 Courier New;}}");
+                sw.WriteLine(@"\f0\fs24");
+
+                sw.WriteLine(@"\pard\qc\b\fs32 Отчет о планах ремонтов по проекту: Котельная\b0\fs24\par");
+                sw.WriteLine(@"\pard\qc\fs20 Дата составления отчета: " + DateTime.Now.ToString("dd.MM.yyyy") + @"\par");
+                sw.WriteLine(@"\par");
+
+                int totalPlans = dgvPlans.Rows.Count;
+                int completedPlans = 0, inProgressPlans = 0, plannedPlans = 0;
+
+                foreach (DataGridViewRow row in dgvPlans.Rows)
+                {
+                    if (row.IsNewRow) continue;
+                    string status = row.Cells["Статус"].Value?.ToString() ?? "";
+                    if (status == "Завершен") completedPlans++;
+                    else if (status == "В работе") inProgressPlans++;
+                    else if (status == "Запланирован") plannedPlans++;
+                }
+
+                sw.WriteLine(@"\pard\box\brdrs\brdrw10 ");
+                sw.WriteLine(@"Статистика:\line ");
+                sw.WriteLine($"Всего планов: {totalPlans}\\line ");
+                sw.WriteLine($"Выполнено: {completedPlans}\\line ");
+                sw.WriteLine($"В работе: {inProgressPlans}\\line ");
+                sw.WriteLine($"Запланировано: {plannedPlans}\\line ");
+                sw.WriteLine($"Процент выполнения: {(totalPlans > 0 ? (completedPlans * 100 / totalPlans) : 0)}%\\par ");
+                sw.WriteLine(@"\par\par");
+
+                sw.WriteLine(@"\pard\b\fs28 ПЛАНЫ РЕМОНТОВ\b0\fs24\par");
+                sw.WriteLine(@"\par");
+
+                sw.WriteLine(@"\trowd");
+                for (int i = 0; i < 8; i++)
+                {
+                    sw.WriteLine(@"\cellx" + ((i + 1) * 2000));
+                }
+                sw.WriteLine(@"\clbrdrt\brdrw10\brdrs");
+                sw.WriteLine(@"\clbrdrl\brdrw10\brdrs");
+                sw.WriteLine(@"\clbrdrb\brdrw10\brdrs");
+                sw.WriteLine(@"\clbrdrr\brdrw10\brdrs");
+                sw.WriteLine(@"\clcbpat8\cell");
+                sw.WriteLine(@"\intbl\b\fs20 ");
+                sw.Write(@"ID \cell Оборудование \cell Тип ТО \cell Дата начала \cell Дата окончания \cell Ответственный \cell Статус \cell Связь \cell ");
+                sw.WriteLine(@"\row\b0");
+
+                int rowCount = 0;
+                foreach (DataGridViewRow row in dgvPlans.Rows)
+                {
+                    if (row.IsNewRow) continue;
+
+                    sw.WriteLine(@"\trowd");
+                    for (int i = 0; i < 8; i++)
+                    {
+                        sw.WriteLine(@"\cellx" + ((i + 1) * 2000));
+                    }
+                    sw.WriteLine(@"\clbrdrt\brdrw10\brdrs");
+                    sw.WriteLine(@"\clbrdrl\brdrw10\brdrs");
+                    sw.WriteLine(@"\clbrdrb\brdrw10\brdrs");
+                    sw.WriteLine(@"\clbrdrr\brdrw10\brdrs");
+
+                    if (rowCount % 2 == 0)
+                        sw.WriteLine(@"\clcbpat1");
+
+                    sw.WriteLine(@"\cell");
+                    sw.WriteLine(@"\intbl\fs20 ");
+
+                    string startDate = Convert.ToDateTime(row.Cells["Дата_начала"].Value).ToString("dd.MM.yyyy");
+                    string endDate = row.Cells["Дата_окончания"].Value != null ?
+                        Convert.ToDateTime(row.Cells["Дата_окончания"].Value).ToString("dd.MM.yyyy") : "";
+
+                    sw.Write($"{row.Cells["id"].Value} \\cell ");
+                    sw.Write($"{row.Cells["Оборудование"].Value} \\cell ");
+                    sw.Write($"{row.Cells["Тип_ТО"].Value} \\cell ");
+                    sw.Write($"{startDate} \\cell ");
+                    sw.Write($"{endDate} \\cell ");
+                    sw.Write($"{row.Cells["Ответственный"].Value} \\cell ");
+                    sw.Write($"{row.Cells["Статус"].Value} \\cell ");
+                    sw.Write($"{row.Cells["Связь_с_аварией"].Value} \\cell ");
+
+                    sw.WriteLine(@"\row");
+                    rowCount++;
+                }
+
+                sw.WriteLine(@"\trowd");
+                for (int i = 0; i < 8; i++)
+                {
+                    sw.WriteLine(@"\cellx" + ((i + 1) * 2000));
+                }
+                sw.WriteLine(@"\clbrdrt\brdrw10\brdrs");
+                sw.WriteLine(@"\clbrdrl\brdrw10\brdrs");
+                sw.WriteLine(@"\clbrdrb\brdrw10\brdrs");
+                sw.WriteLine(@"\clbrdrr\brdrw10\brdrs");
+                sw.WriteLine(@"\clcbpat8\cell");
+                sw.WriteLine(@"\intbl\b\fs20 ");
+                sw.Write($"Итого записей: {rowCount} \\cell ");
+                for (int i = 1; i < 8; i++)
+                {
+                    sw.Write(@" \cell ");
+                }
+                sw.WriteLine(@"\row");
+
+                sw.WriteLine(@"\pard\qr\fs20 Отчет сформирован: " + DateTime.Now.ToString("dd.MM.yyyy HH:mm") + @"\par");
+                sw.WriteLine(@"}");
             }
         }
 
         private void BtnPreview_Click(object sender, EventArgs e)
         {
-            DataTable reportData = GetReportData();
-            MessageBox.Show($"Тип отчета: {cmbReportType.Text}\nВсего записей: {reportData.Rows.Count}",
-                "Предпросмотр", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            int totalPlans = dgvPlans.Rows.Count;
+            int completedPlans = 0, inProgressPlans = 0, plannedPlans = 0;
+
+            foreach (DataGridViewRow row in dgvPlans.Rows)
+            {
+                if (row.IsNewRow) continue;
+                string status = row.Cells["Статус"].Value?.ToString() ?? "";
+                if (status == "Завершен") completedPlans++;
+                else if (status == "В работе") inProgressPlans++;
+                else if (status == "Запланирован") plannedPlans++;
+            }
+
+            int totalAvariya = dgvAvariya?.Rows.Count ?? 0;
+            int avariyaWithoutPlan = 0;
+
+            if (dgvAvariya != null)
+            {
+                foreach (DataGridViewRow row in dgvAvariya.Rows)
+                {
+                    if (row.IsNewRow) continue;
+                    string hasPlan = row.Cells["План"].Value?.ToString() ?? "";
+                    if (hasPlan == "❌") avariyaWithoutPlan++;
+                }
+            }
+
+            string message = $"╔══════════════════════════════════════════════════════════╗\n" +
+                            $"║           ПРЕДПРОСМОТР ОТЧЕТА                           ║\n" +
+                            $"╠══════════════════════════════════════════════════════════╣\n" +
+                            $"║ Проект: Котельная                                        ║\n" +
+                            $"║ Дата: {DateTime.Now:dd.MM.yyyy HH:mm}                              ║\n" +
+                            $"╟──────────────────────────────────────────────────────────╢\n" +
+                            $"║ СТАТИСТИКА:                                              ║\n" +
+                            $"║ Всего планов: {totalPlans,-38} ║\n" +
+                            $"║ ├─ Завершено: {completedPlans,-37} ║\n" +
+                            $"║ ├─ В работе: {inProgressPlans,-38} ║\n" +
+                            $"║ └─ Запланировано: {plannedPlans,-34} ║\n" +
+                            $"║ Процент выполнения: {(totalPlans > 0 ? (completedPlans * 100 / totalPlans) : 0),-3}%                                     ║\n" +
+                            $"╟──────────────────────────────────────────────────────────╢\n" +
+                            $"║ АВАРИИ:                                                  ║\n" +
+                            $"║ Всего аварий: {totalAvariya,-39} ║\n" +
+                            $"║ Аварий без плана: {avariyaWithoutPlan,-35} ║\n" +
+                            $"╟──────────────────────────────────────────────────────────╢\n" +
+                            $"║ ФОРМАТЫ ЭКСПОРТА:                                        ║\n" +
+                            $"║ Excel: CSV файл (открывается в Excel)                    ║\n" +
+                            $"║ Word:  RTF файл (открывается в Word)                     ║\n" +
+                            $"╚══════════════════════════════════════════════════════════╝";
+
+            MessageBox.Show(message, "Предпросмотр отчета",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
@@ -742,216 +1230,27 @@ namespace WindowsFormsApp1
         private void ClearPlanForm()
         {
             selectedPlanId = -1;
-            if (cmbEquipment.Items.Count > 0) cmbEquipment.SelectedIndex = -1;
-            if (cmbTip.Items.Count > 0) cmbTip.SelectedIndex = -1;
-            if (cmbResponsible.Items.Count > 0) cmbResponsible.SelectedIndex = -1;
-            cmbStatus.SelectedIndex = 0;
+
+            try { cmbEquipment.SelectedIndex = -1; } catch { }
+            try { cmbTip.SelectedIndex = -1; } catch { }
+            try { cmbResponsible.SelectedIndex = -1; } catch { }
+
+            if (cmbStatus.Items.Count > 0)
+                cmbStatus.SelectedIndex = 0;
+
             dtpStartRepair.Value = DateTime.Now;
             dtpEndRepair.Value = DateTime.Now.AddDays(7);
         }
 
-        private int GetSelectedId(ComboBox comboBox, string columnName)
-        {
-            DataRowView selectedItem = comboBox.SelectedItem as DataRowView;
-            if (selectedItem != null)
-            {
-                return Convert.ToInt32(selectedItem[columnName]);
-            }
-            return -1;
-        }
+        // ========== МЕТОДЫ ИЗ ДИЗАЙНЕРА ==========
+        private void label3_Click(object sender, EventArgs e) { }
 
-        private void SelectEquipmentById(int equipmentId)
-        {
-            foreach (var item in cmbEquipment.Items)
-            {
-                DataRowView row = item as DataRowView;
-                if (row != null && Convert.ToInt32(row["id"]) == equipmentId)
-                {
-                    cmbEquipment.SelectedItem = item;
-                    break;
-                }
-            }
-        }
-
-        private DataTable GetReportData()
-        {
-            DataTable dt = new DataTable();
-
-            if (cmbReportType.SelectedIndex <= 3) // Отчеты по планам
-            {
-                dt.Columns.Add("ID");
-                dt.Columns.Add("Оборудование");
-                dt.Columns.Add("Тип ТО");
-                dt.Columns.Add("Дата начала");
-                dt.Columns.Add("Дата окончания");
-                dt.Columns.Add("Ответственный");
-                dt.Columns.Add("Статус");
-
-                foreach (DataGridViewRow row in dgvPlans.Rows)
-                {
-                    if (row.IsNewRow) continue;
-
-                    bool include = false;
-                    string status = row.Cells["Статус"].Value?.ToString() ?? "";
-
-                    switch (cmbReportType.SelectedIndex)
-                    {
-                        case 0: include = true; break;
-                        case 1: include = (status == "Запланирован"); break;
-                        case 2: include = (status == "В работе"); break;
-                        case 3: include = (status == "Завершен"); break;
-                    }
-
-                    if (include)
-                    {
-                        dt.Rows.Add(
-                            row.Cells["id"].Value,
-                            row.Cells["Оборудование"].Value,
-                            row.Cells["Тип_ТО"].Value,
-                            row.Cells["Дата_начала"].Value,
-                            row.Cells["Дата_окончания"].Value,
-                            row.Cells["Ответственный"].Value,
-                            row.Cells["Статус"].Value
-                        );
-                    }
-                }
-            }
-            else // Отчеты по авариям
-            {
-                dt.Columns.Add("ID");
-                dt.Columns.Add("Оборудование");
-                dt.Columns.Add("Дата");
-                dt.Columns.Add("Описание");
-                dt.Columns.Add("Последствия");
-                dt.Columns.Add("Статус");
-                dt.Columns.Add("План");
-
-                foreach (DataGridViewRow row in dgvAvariya.Rows)
-                {
-                    if (row.IsNewRow) continue;
-
-                    bool include = false;
-                    string hasPlan = row.Cells["План"].Value?.ToString() ?? "";
-
-                    switch (cmbReportType.SelectedIndex)
-                    {
-                        case 4: include = true; break;
-                        case 5: include = (hasPlan == "❌"); break;
-                    }
-
-                    if (include)
-                    {
-                        dt.Rows.Add(
-                            row.Cells["id"].Value,
-                            row.Cells["Оборудование"].Value,
-                            row.Cells["Дата"].Value,
-                            row.Cells["Описание"].Value,
-                            row.Cells["Последствия"].Value,
-                            row.Cells["Статус"].Value,
-                            row.Cells["План"].Value
-                        );
-                    }
-                }
-            }
-
-            return dt;
-        }
-
-        private void ExportToCsv(DataTable data, string fileName)
-        {
-            using (StreamWriter sw = new StreamWriter(fileName, false, Encoding.UTF8))
-            {
-                for (int i = 0; i < data.Columns.Count; i++)
-                {
-                    sw.Write(data.Columns[i].ColumnName);
-                    if (i < data.Columns.Count - 1) sw.Write(";");
-                }
-                sw.WriteLine();
-
-                foreach (DataRow row in data.Rows)
-                {
-                    for (int i = 0; i < data.Columns.Count; i++)
-                    {
-                        sw.Write(row[i].ToString());
-                        if (i < data.Columns.Count - 1) sw.Write(";");
-                    }
-                    sw.WriteLine();
-                }
-            }
-        }
-
-        private void ExportToRtf(DataTable data, string fileName)
-        {
-            using (StreamWriter sw = new StreamWriter(fileName, false, Encoding.UTF8))
-            {
-                sw.WriteLine(@"{\rtf1\ansi\deff0");
-                sw.WriteLine(@"{\fonttbl{\f0 Times New Roman;}}");
-                sw.WriteLine(@"\f0\fs24");
-
-                sw.WriteLine(@"\pard\qc\b\fs32 Отчет\b0\fs24\par");
-                sw.WriteLine(@"\pard\qc\fs20 Тип отчета: " + cmbReportType.Text + @"\par");
-                sw.WriteLine(@"\pard\qc\fs20 Дата: " + DateTime.Now.ToString("dd.MM.yyyy HH:mm") + @"\par");
-                sw.WriteLine(@"\par\par");
-
-                int colWidth = 18000 / Math.Max(data.Columns.Count, 1);
-
-                sw.WriteLine(@"\trowd");
-                for (int i = 0; i < data.Columns.Count; i++)
-                    sw.WriteLine(@"\cellx" + ((i + 1) * colWidth));
-
-                sw.WriteLine(@"\intbl\b ");
-                for (int i = 0; i < data.Columns.Count; i++)
-                    sw.Write(data.Columns[i].ColumnName + @" \cell ");
-                sw.WriteLine(@"\row\b0");
-
-                foreach (DataRow row in data.Rows)
-                {
-                    sw.WriteLine(@"\trowd");
-                    for (int i = 0; i < data.Columns.Count; i++)
-                        sw.WriteLine(@"\cellx" + ((i + 1) * colWidth));
-
-                    sw.WriteLine(@"\intbl ");
-                    for (int i = 0; i < data.Columns.Count; i++)
-                        sw.Write(row[i].ToString() + @" \cell ");
-                    sw.WriteLine(@"\row");
-                }
-
-                sw.WriteLine(@"}");
-            }
-
-            try { System.Diagnostics.Process.Start(fileName); } catch { }
-        }
-
-        private void label3_Click(object sender, EventArgs e)
-        {
-            // Этот метод можно оставить пустым
-            // Он нужен только для того, чтобы удовлетворить привязку в дизайнере
-        }
-
-        /// <summary>
-        /// Обработчик загрузки формы
-        /// </summary>
         private void FormBoss_Load(object sender, EventArgs e)
         {
-            // Инициализация при загрузке формы
-            try
-            {
-                // Устанавливаем значения по умолчанию для фильтров
-                dtpStart.Value = DateTime.Now.AddMonths(-1);
-                dtpEnd.Value = DateTime.Now;
-
-                dtpAvariyaStart.Value = DateTime.Now.AddMonths(-1);
-                dtpAvariyaEnd.Value = DateTime.Now;
-
-                // Загружаем данные
-                LoadPlans();
-                LoadAvariya();
-                LoadStatistics();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Ошибка при загрузке формы: " + ex.Message);
-            }
+            dtpStart.Value = DateTime.Now.AddMonths(-1);
+            dtpEnd.Value = DateTime.Now;
+            dtpAvariyaStart.Value = DateTime.Now.AddMonths(-1);
+            dtpAvariyaEnd.Value = DateTime.Now;
         }
     }
 }

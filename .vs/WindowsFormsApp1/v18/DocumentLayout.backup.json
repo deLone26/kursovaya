@@ -3,32 +3,32 @@
   "WorkspaceRootPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya2\\kursovaya\\formboss.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
-      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formboss.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya2\\kursovaya\\formboss.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formboss.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya2\\kursovaya\\formboss.designer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formboss.designer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya2\\kursovaya\\currentuser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:currentuser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya2\\kursovaya\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya2\\kursovaya\\loginform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
-      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:loginform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya2\\kursovaya\\currentuser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:currentuser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya2\\kursovaya\\loginform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:loginform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya2\\kursovaya\\formboss.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formboss.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\loginform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:loginform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya2\\kursovaya\\formboss.designer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formboss.designer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya2\\kursovaya\\properties\\resources.resx||{81828910-B8B3-4D2B-99A3-067027C180C1}",
@@ -42,11 +42,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 6,
               "Title": "FormBoss.Designer.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\FormBoss.Designer.cs",
               "RelativeDocumentMoniker": "FormBoss.Designer.cs",
@@ -59,13 +59,13 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 3,
               "Title": "LoginForm.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\LoginForm.cs",
               "RelativeDocumentMoniker": "LoginForm.cs",
               "ToolTip": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\LoginForm.cs",
               "RelativeToolTip": "LoginForm.cs",
-              "ViewState": "AgIAAFMAAAAAAAAAAAA7wMgAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAFQAAAAAAAAAAAAkwMgAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-17T17:37:50.567Z",
               "EditorCaption": ""
@@ -84,7 +84,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 4,
               "Title": "FormBoss.cs [\u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440]",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\FormBoss.cs",
               "RelativeDocumentMoniker": "FormBoss.cs",
@@ -96,20 +96,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "FormBoss.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\FormBoss.cs",
               "RelativeDocumentMoniker": "FormBoss.cs",
               "ToolTip": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\FormBoss.cs",
               "RelativeToolTip": "FormBoss.cs",
-              "ViewState": "AgIAAHoDAAAAAAAAAAAkwKsDAAA8AAAAAAAAAA==",
+              "ViewState": "AgIAADADAAAAAAAAAAAAAOcEAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-17T17:21:20.283Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 1,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
@@ -122,7 +122,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 2,
               "Title": "CurrentUser.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\CurrentUser.cs",
               "RelativeDocumentMoniker": "CurrentUser.cs",
@@ -142,8 +142,7 @@
               "ToolTip": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya2\\kursovaya\\Properties\\Resources.resx",
               "RelativeToolTip": "Properties\\Resources.resx",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001005|",
-              "WhenOpened": "2026-02-14T21:07:53.65Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-14T21:07:53.65Z"
             }
           ]
         }
