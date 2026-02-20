@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление оборудованием</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header h1 i {
+            margin-right: 10px;
+            color: #f1c40f;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+
+        .content {
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            background: #f5f7fa;
+        }
+
+        /* Меню слева */
+        .menu-panel {
+            width: 250px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            padding: 20px;
+        }
+
+        .menu-section {
+            margin-bottom: 25px;
+        }
+
+        .menu-section h3 {
+            color: #7f8c8d;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            color: #2c3e50;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .menu-item:hover {
+            background: #f0f7ff;
+            color: #3498db;
+        }
+
+        .menu-item i {
+            width: 20px;
+            color: #3498db;
+        }
+
+        .menu-item.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .menu-item.active i {
+            color: white;
+        }
+
+        .left-panel {
+            flex: 2;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            padding: 20px;
+        }
+
+        .right-panel {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            padding: 20px;
+        }
+
+        .panel-header {
+            margin-bottom: 20px;
+        }
+
+        .panel-header h2 {
+            color: #2c3e50;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .panel-header h2 i {
+            color: #3498db;
+            margin-right: 8px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .search-box button {
+            padding: 12px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ecf0f1;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            font-size: 13px;
+            text-transform: uppercase;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ecf0f1;
+            font-size: 14px;
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #f5f9ff;
+        }
+
+        tbody tr.selected {
+            background: #e3f2fd;
+            border-left: 4px solid #3498db;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .status-work {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .status-repair {
+            background: #f39c12;
+            color: white;
+        }
+
+        .status-emergency {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .form-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .form-section h3 i {
+            color: #3498db;
+            margin-right: 8px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            flex: 1;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #7f8c8d;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .form-group label.required::after {
+            content: " *";
+            color: #e74c3c;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+            color: white;
+        }
+
+        .btn-add { background: #00b09b; }
+        .btn-update { background: #3498db; }
+        .btn-delete { background: #e74c3c; }
+        .btn-clear { background: #95a5a6; }
+
+        .stats-bar {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .stat-item {
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-industry"></i> УПРАВЛЕНИЕ ОБОРУДОВАНИЕМ</h1>
+            <div class="user-info">
+                <i class="fas fa-user-circle"></i>
+                <span id="userName">Администратор</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Меню слева -->
+            <div class="menu-panel">
+                <div class="menu-section">
+                    <h3>ГЛАВНОЕ</h3>
+                    <div class="menu-item" onclick="navigateTo('main')">
+                        <i class="fas fa-home"></i>
+                        <span>Главная</span>
+                    </div>
+                    <div class="menu-item" onclick="navigateTo('dashboard')">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Дашборд</span>
+                    </div>
+                </div>
+
+                <div class="menu-section">
+                    <h3>ОБОРУДОВАНИЕ</h3>
+                    <div class="menu-item active" onclick="navigateTo('equipment')">
+                        <i class="fas fa-cog"></i>
+                        <span>Всё оборудование</span>
+                    </div>
+                    <div class="menu-item" onclick="navigateTo('accidents')">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Аварии</span>
+                    </div>
+                    <div class="menu-item" onclick="navigateTo('repairs')">
+                        <i class="fas fa-tools"></i>
+                        <span>Ремонты</span>
+                    </div>
+                    <div class="menu-item" onclick="navigateTo('passports')">
+                        <i class="fas fa-id-card"></i>
+                        <span>Паспорта</span>
+                    </div>
+                    <div class="menu-item" onclick="navigateTo('plans')">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Планы ТО</span>
+                    </div>
+                    <div class="menu-item" onclick="navigateTo('charts')">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Графики</span>
+                    </div>
+                </div>
+
+                <div class="menu-section">
+                    <h3>РУКОВОДСТВО</h3>
+                    <div class="menu-item" onclick="navigateTo('boss')">
+                        <i class="fas fa-user-tie"></i>
+                        <span>Панель начальника</span>
+                    </div>
+                    <div class="menu-item" onclick="navigateTo('employees')">
+                        <i class="fas fa-users"></i>
+                        <span>Сотрудники</span>
+                    </div>
+                    <div class="menu-item" onclick="navigateTo('budget')">
+                        <i class="fas fa-ruble-sign"></i>
+                        <span>Бюджет</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Левая панель - таблица -->
+            <div class="left-panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-list"></i> СПИСОК ОБОРУДОВАНИЯ</h2>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Поиск по названию, модели или ID...">
+                        <button onclick="searchEquipment()">
+                            <i class="fas fa-search"></i> Найти
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>НАЗВАНИЕ</th>
+                                <th>ТИП</th>
+                                <th>МОДЕЛЬ</th>
+                                <th>СЕРИЙНЫЙ №</th>
+                                <th>МЕСТО</th>
+                                <th>СТАТУС</th>
+                            </tr>
+                        </thead>
+                        <tbody id="equipmentTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 50px;">
+                                    <i class="fas fa-spinner fa-spin" style="font-size: 30px; color: #3498db;"></i>
+                                    <p style="margin-top: 10px; color: #7f8c8d;">Загрузка данных...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalEquipment">0</div>
+                        <div class="stat-label">Всего единиц</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="activeEquipment">0</div>
+                        <div class="stat-label">В работе</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="repairEquipment">0</div>
+                        <div class="stat-label">В ремонте</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая панель - форма -->
+            <div class="right-panel">
+                <div class="form-section">
+                    <h3><i class="fas fa-cog"></i> ОСНОВНЫЕ ДАННЫЕ</h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="required">Название</label>
+                            <input type="text" id="nazvanie" placeholder="Введите название">
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Тип</label>
+                            <input type="text" id="tip" placeholder="Введите тип">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="required">Модель</label>
+                            <input type="text" id="model" placeholder="Введите модель">
+                        </div>
+                        <div class="form-group">
+                            <label>Серийный номер</label>
+                            <input type="text" id="seriinomer" placeholder="Введите серийный номер">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Место установки</label>
+                        <input type="text" id="mesto" placeholder="Введите место установки">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3><i class="fas fa-chart-line"></i> ТЕХНИЧЕСКИЕ ХАРАКТЕРИСТИКИ</h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Мощность (кВт)</label>
+                            <input type="number" id="moshnost" placeholder="0.00" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label>Давление (МПа)</label>
+                            <input type="number" id="davlenie" placeholder="0.00" step="0.01">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Производитель</label>
+                            <input type="text" id="proizvoditel" placeholder="Введите производителя">
+                        </div>
+                        <div class="form-group">
+                            <label>Дата установки</label>
+                            <input type="date" id="dataUstanovki">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3><i class="fas fa-info-circle"></i> СОСТОЯНИЕ</h3>
+                    
+                    <div class="form-group">
+                        <label class="required">Статус</label>
+                        <select id="status">
+                            <option value="1">Работает</option>
+                            <option value="2">В ремонте</option>
+                            <option value="3">На консервации</option>
+                            <option value="4">Аварийное</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-add" onclick="addEquipment()">
+                        <i class="fas fa-plus"></i> ДОБАВИТЬ
+                    </button>
+                    <button class="btn btn-update" onclick="updateEquipment()">
+                        <i class="fas fa-save"></i> ОБНОВИТЬ
+                    </button>
+                    <button class="btn btn-delete" onclick="deleteEquipment()">
+                        <i class="fas fa-trash"></i> УДАЛИТЬ
+                    </button>
+                    <button class="btn btn-clear" onclick="clearForm()">
+                        <i class="fas fa-eraser"></i> ОЧИСТИТЬ
+                    </button>
+                </div>
+
+                <input type="hidden" id="selectedEquipmentId" value="-1">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let equipmentData = [];
+        let selectedEquipmentId = -1;
+
+        function navigateTo(page) {
+            console.log("Навигация на страницу:", page);
+            
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            const activeItem = Array.from(document.querySelectorAll('.menu-item')).find(
+                item => item.getAttribute('onclick')?.includes(page)
+            );
+            if (activeItem) {
+                activeItem.classList.add('active');
+            }
+            
+            if (page === 'employees') {
+                if (window.chrome?.webview) {
+                    window.chrome.webview.postMessage(JSON.stringify({
+                        action: 'navigate',
+                        page: 'employees'
+                    }));
+                }
+            } else if (page !== 'equipment') {
+                alert(`Раздел "${page}" в разработке`);
+            }
+        }
+
+        function loadEquipment() {
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage(JSON.stringify({
+                    action: 'loadEquipment'
+                }));
+            }
+        }
+
+        window.updateEquipment = function(data) {
+            if (data && data.equipment) {
+                equipmentData = data.equipment;
+                displayEquipment(equipmentData);
+                updateStatistics();
+            }
+        };
+
+        function displayEquipment(equipment) {
+            const tbody = document.getElementById('equipmentTableBody');
+            if (!tbody) return;
+            
+            if (!equipment || equipment.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 50px;">Нет данных</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            
+            equipment.forEach(eq => {
+                const row = document.createElement('tr');
+                row.onclick = () => selectEquipment(eq.id);
+                row.id = `eq-${eq.id}`;
+                
+                let statusClass = 'status-work';
+                let statusText = 'Работает';
+                
+                if (eq.status_id === 2) {
+                    statusClass = 'status-repair';
+                    statusText = 'В ремонте';
+                } else if (eq.status_id === 4) {
+                    statusClass = 'status-emergency';
+                    statusText = 'Аварийное';
+                }
+                
+                row.innerHTML = `
+                    <td>${eq.id}</td>
+                    <td>${eq.nazvanie || ''}</td>
+                    <td>${eq.tip || ''}</td>
+                    <td>${eq.model || ''}</td>
+                    <td>${eq.seriinomer || ''}</td>
+                    <td>${eq.mesto || ''}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function selectEquipment(id) {
+            selectedEquipmentId = id;
+            document.getElementById('selectedEquipmentId').value = id;
+            
+            document.querySelectorAll('tbody tr').forEach(row => {
+                row.classList.remove('selected');
+            });
+            
+            const selectedRow = document.getElementById(`eq-${id}`);
+            if (selectedRow) selectedRow.classList.add('selected');
+            
+            const eq = equipmentData.find(e => e.id === id);
+            if (eq) {
+                document.getElementById('nazvanie').value = eq.nazvanie || '';
+                document.getElementById('tip').value = eq.tip || '';
+                document.getElementById('model').value = eq.model || '';
+                document.getElementById('seriinomer').value = eq.seriinomer || '';
+                document.getElementById('mesto').value = eq.mesto || '';
+                document.getElementById('moshnost').value = eq.moshnost || '';
+                document.getElementById('davlenie').value = eq.davlenie || '';
+                document.getElementById('proizvoditel').value = eq.proizvoditel || '';
+                if (eq.data_ustanovki) {
+                    document.getElementById('dataUstanovki').value = eq.data_ustanovki.substring(0, 10);
+                }
+                document.getElementById('status').value = eq.status_id || 1;
+            }
+        }
+
+        function searchEquipment() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            if (!searchText) {
+                displayEquipment(equipmentData);
+                return;
+            }
+            
+            const filtered = equipmentData.filter(eq => 
+                (eq.nazvanie && eq.nazvanie.toLowerCase().includes(searchText)) ||
+                eq.id.toString().includes(searchText)
+            );
+            displayEquipment(filtered);
+        }
+
+        function addEquipment() {
+            if (!validateForm()) return;
+            
+            if (window.chrome?.webview) {
+                const equipment = {
+                    nazvanie: document.getElementById('nazvanie').value,
+                    tip: document.getElementById('tip').value,
+                    model: document.getElementById('model').value,
+                    seriinomer: document.getElementById('seriinomer').value,
+                    mesto: document.getElementById('mesto').value,
+                    moshnost: document.getElementById('moshnost').value,
+                    davlenie: document.getElementById('davlenie').value,
+                    proizvoditel: document.getElementById('proizvoditel').value,
+                    data_ustanovki: document.getElementById('dataUstanovki').value,
+                    status_id: parseInt(document.getElementById('status').value)
+                };
+                
+                window.chrome.webview.postMessage(JSON.stringify({
+                    action: 'addEquipment',
+                    data: equipment
+                }));
+            }
+        }
+
+        function updateEquipment() {
+            if (selectedEquipmentId === -1) {
+                alert('Выберите оборудование!');
+                return;
+            }
+            if (!validateForm()) return;
+            
+            if (window.chrome?.webview) {
+                const equipment = {
+                    id: selectedEquipmentId,
+                    nazvanie: document.getElementById('nazvanie').value,
+                    tip: document.getElementById('tip').value,
+                    model: document.getElementById('model').value,
+                    seriinomer: document.getElementById('seriinomer').value,
+                    mesto: document.getElementById('mesto').value,
+                    moshnost: document.getElementById('moshnost').value,
+                    davlenie: document.getElementById('davlenie').value,
+                    proizvoditel: document.getElementById('proizvoditel').value,
+                    data_ustanovki: document.getElementById('dataUstanovki').value,
+                    status_id: parseInt(document.getElementById('status').value)
+                };
+                
+                window.chrome.webview.postMessage(JSON.stringify({
+                    action: 'updateEquipment',
+                    data: equipment
+                }));
+            }
+        }
+
+        function deleteEquipment() {
+            if (selectedEquipmentId === -1) {
+                alert('Выберите оборудование!');
+                return;
+            }
+            
+            if (confirm('Удалить оборудование?')) {
+                if (window.chrome?.webview) {
+                    window.chrome.webview.postMessage(JSON.stringify({
+                        action: 'deleteEquipment',
+                        id: selectedEquipmentId
+                    }));
+                }
+            }
+        }
+
+        function clearForm() {
+            selectedEquipmentId = -1;
+            document.getElementById('selectedEquipmentId').value = '-1';
+            document.getElementById('nazvanie').value = '';
+            document.getElementById('tip').value = '';
+            document.getElementById('model').value = '';
+            document.getElementById('seriinomer').value = '';
+            document.getElementById('mesto').value = '';
+            document.getElementById('moshnost').value = '';
+            document.getElementById('davlenie').value = '';
+            document.getElementById('proizvoditel').value = '';
+            document.getElementById('dataUstanovki').value = '';
+            document.getElementById('status').value = '1';
+            
+            document.querySelectorAll('tbody tr').forEach(row => {
+                row.classList.remove('selected');
+            });
+        }
+
+        function validateForm() {
+            const nazvanie = document.getElementById('nazvanie').value.trim();
+            const tip = document.getElementById('tip').value.trim();
+            const model = document.getElementById('model').value.trim();
+            
+            if (!nazvanie) { alert('Введите название!'); return false; }
+            if (!tip) { alert('Введите тип!'); return false; }
+            if (!model) { alert('Введите модель!'); return false; }
+            return true;
+        }
+
+        function updateStatistics() {
+            document.getElementById('totalEquipment').textContent = equipmentData.length;
+            document.getElementById('activeEquipment').textContent = equipmentData.filter(eq => eq.status_id === 1).length;
+            document.getElementById('repairEquipment').textContent = equipmentData.filter(eq => eq.status_id === 2 || eq.status_id === 4).length;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEquipment();
+        });
+
+        if (window.chrome?.webview) {
+            window.chrome.webview.addEventListener('message', event => {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                switch(data.action) {
+                    case 'userInfo':
+                        document.getElementById('userName').textContent = data.userName || 'Администратор';
+                        break;
+                    case 'equipmentLoaded':
+                        equipmentData = data.data;
+                        displayEquipment(equipmentData);
+                        updateStatistics();
+                        break;
+                    case 'success':
+                        alert('✅ ' + data.message);
+                        loadEquipment();
+                        clearForm();
+                        break;
+                    case 'warning':
+                        alert('⚠️ ' + data.message);
+                        break;
+                    case 'error':
+                        alert('❌ ' + data.message);
+                        break;
+                }
+            });
+        }
+    </script>
+</body>
+</html>

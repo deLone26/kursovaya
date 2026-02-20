@@ -1,3 +1,2 @@
-2026/02/20-04:11:10.426 4cdc Reusing MANIFEST C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Local Storage\leveldb/MANIFEST-000001
-2026/02/20-04:11:10.431 4cdc Recovering log #3
-2026/02/20-04:11:10.432 4cdc Reusing old log C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Local Storage\leveldb/000003.log 
+2026/02/20-16:12:12.721 49a8 Creating DB C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Local Storage\leveldb since it was missing.
+2026/02/20-16:12:12.729 49a8 Reusing MANIFEST C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Local Storage\leveldb/MANIFEST-000001
