@@ -39,7 +39,7 @@ namespace WindowsFormsApp1
             InitializeComponent();
 
             // Путь к папке WebUI
-            webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\WebUI";
+            webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
 
             // Настройка формы
             this.Text = "Управление сотрудниками";

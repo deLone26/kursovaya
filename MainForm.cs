@@ -1,6 +1,7 @@
 ﻿using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -28,6 +29,7 @@ namespace WindowsFormsApp1
 
             InitializeComponent();
             InitializeLayout();
+            CreateMenuButtons();
             this.Load += async (s, e) => await InitializeWebView();
             ShowHome();
         }
@@ -41,6 +43,9 @@ namespace WindowsFormsApp1
             sidePanel = new Panel();
             sidePanel.Dock = DockStyle.Left;
             sidePanel.Width = expandedWidth;
+            sidePanel.BackColor = Color.FromArgb(24, 28, 40);
+            sidePanel.AutoScroll = true;
+            sidePanel.Padding = new Padding(10, 20, 10, 10);
 
             contentPanel = new Panel();
             contentPanel.Dock = DockStyle.Fill;
@@ -51,17 +56,212 @@ namespace WindowsFormsApp1
             this.Controls.Add(sidePanel);
         }
 
+        private void CreateMenuButtons()
+        {
+            sidePanel.Controls.Clear();
+
+            TableLayoutPanel tlp = new TableLayoutPanel();
+            tlp.Dock = DockStyle.Top;
+            tlp.AutoSize = true;
+            tlp.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            tlp.ColumnCount = 1;
+            tlp.Padding = new Padding(0);
+            tlp.Margin = new Padding(0);
+
+            int row = 0;
+
+            // ГЛАВНОЕ
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateHeaderLabel("ГЛАВНОЕ"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+            row++;
+
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateMenuButton("🏠", "Главная", "home"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            row++;
+
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateMenuButton("📊", "Дашборд", "dashboard"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            row++;
+
+            tlp.Controls.Add(CreateSeparator(), 0, row++);
+
+            // ОБОРУДОВАНИЕ
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateHeaderLabel("ОБОРУДОВАНИЕ"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+            row++;
+
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateMenuButton("🔧", "Всё оборудование", "equipment"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            row++;
+
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateMenuButton("⚠️", "Аварии", "accidents"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            row++;
+
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateMenuButton("🔨", "Ремонты", "repairs"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            row++;
+
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateMenuButton("📋", "Паспорта", "passports"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            row++;
+
+            tlp.Controls.Add(CreateSeparator(), 0, row++);
+
+            // ПЛАНИРОВАНИЕ
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateHeaderLabel("ПЛАНИРОВАНИЕ"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+            row++;
+
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateMenuButton("📅", "Планы ТО", "plans"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            row++;
+
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateMenuButton("📈", "Графики", "schedules"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            row++;
+
+            tlp.Controls.Add(CreateSeparator(), 0, row++);
+
+            // РУКОВОДСТВО (показываем всем, но в menu.html будет скрыто для обычных пользователей)
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateHeaderLabel("РУКОВОДСТВО"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+            row++;
+
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateMenuButton("👑", "Панель начальника", "boss"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            row++;
+
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateMenuButton("👥", "Сотрудники", "employees"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            row++;
+
+            tlp.RowCount = row + 1;
+            tlp.Controls.Add(CreateMenuButton("💰", "Бюджет", "budget"), 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            row++;
+
+            tlp.Controls.Add(CreateSeparator(), 0, row++);
+
+            // ВЫХОД
+            tlp.RowCount = row + 1;
+            Button btnExit = CreateMenuButton("🚪", "Выход", "exit");
+            btnExit.BackColor = Color.FromArgb(220, 53, 69);
+            tlp.Controls.Add(btnExit, 0, row);
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+
+            sidePanel.Controls.Add(tlp);
+        }
+
+        private Button CreateMenuButton(string icon, string text, string tag)
+        {
+            Button btn = new Button();
+            btn.Text = $"  {icon}  {text}";
+            btn.TextAlign = ContentAlignment.MiddleLeft;
+            btn.Dock = DockStyle.Top;
+            btn.Height = 45;
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.ForeColor = Color.White;
+            btn.BackColor = Color.FromArgb(24, 28, 40);
+            btn.Font = new Font("Segoe UI", 11);
+            btn.Tag = tag;
+            btn.Cursor = Cursors.Hand;
+            btn.Margin = new Padding(0);
+            btn.Padding = new Padding(10, 0, 0, 0);
+
+            btn.MouseEnter += (s, e) => {
+                if (btn.BackColor != Color.FromArgb(0, 123, 255) && btn.BackColor != Color.FromArgb(220, 53, 69))
+                    btn.BackColor = Color.FromArgb(52, 58, 64);
+            };
+
+            btn.MouseLeave += (s, e) => {
+                if (btn.BackColor != Color.FromArgb(0, 123, 255) && btn.BackColor != Color.FromArgb(220, 53, 69))
+                    btn.BackColor = Color.FromArgb(24, 28, 40);
+            };
+
+            btn.Click += MenuButton_Click;
+
+            return btn;
+        }
+
+        private Label CreateHeaderLabel(string text)
+        {
+            Label lbl = new Label();
+            lbl.Text = text;
+            lbl.ForeColor = Color.FromArgb(160, 174, 192);
+            lbl.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            lbl.Dock = DockStyle.Top;
+            lbl.Height = 30;
+            lbl.Padding = new Padding(10, 10, 0, 0);
+            lbl.Margin = new Padding(0);
+            return lbl;
+        }
+
+        private Panel CreateSeparator()
+        {
+            Panel sep = new Panel();
+            sep.Dock = DockStyle.Top;
+            sep.Height = 1;
+            sep.BackColor = Color.FromArgb(52, 58, 64);
+            sep.Margin = new Padding(10, 5, 10, 5);
+            return sep;
+        }
+
+        private void MenuButton_Click(object sender, EventArgs e)
+        {
+            Button btn = sender as Button;
+            string page = btn.Tag.ToString();
+
+            foreach (Control ctrl in sidePanel.Controls)
+            {
+                if (ctrl is TableLayoutPanel tlp)
+                {
+                    foreach (Control subCtrl in tlp.Controls)
+                    {
+                        if (subCtrl is Button b)
+                        {
+                            b.BackColor = Color.FromArgb(24, 28, 40);
+                            b.ForeColor = Color.White;
+                        }
+                    }
+                }
+            }
+
+            btn.BackColor = Color.FromArgb(0, 123, 255);
+            btn.ForeColor = Color.White;
+
+            HandleMenuClick(page);
+        }
+
         private async System.Threading.Tasks.Task InitializeWebView()
         {
             try
             {
                 webView = new WebView2();
                 webView.Dock = DockStyle.Fill;
-                sidePanel.Controls.Add(webView);
+
+                contentPanel.Controls.Clear();
+                contentPanel.Controls.Add(webView);
 
                 await webView.EnsureCoreWebView2Async(null);
 
-                string htmlPath = Path.Combine(Application.StartupPath, "WebUI", "menu.html");
+                string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
+                string htmlPath = Path.Combine(webUIPath, "menu.html");
 
                 if (File.Exists(htmlPath))
                 {
@@ -73,35 +273,11 @@ namespace WindowsFormsApp1
                     string page = e.TryGetWebMessageAsString();
                     HandleMenuClick(page);
                 };
-
-                webView.CoreWebView2.NavigationCompleted += (s, e) =>
-                {
-                    string role = CurrentUser.Role?.ToLower() ?? "user";
-                    webView.CoreWebView2.ExecuteScriptAsync($"setUserRole('{role}')");
-
-                    var data = new { accidentsCount = 3, notificationsCount = 5 };
-                    string json = System.Text.Json.JsonSerializer.Serialize(data);
-                    webView.CoreWebView2.ExecuteScriptAsync($"updateBadges({json})");
-                };
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка WebView2: {ex.Message}\n\nПроверьте установку WebView2 Runtime");
-                CreateBackupMenu();
+                MessageBox.Show($"Ошибка WebView2: {ex.Message}");
             }
-        }
-
-        private void CreateBackupMenu()
-        {
-            Button btnHome = new Button();
-            btnHome.Text = "Главная";
-            btnHome.Dock = DockStyle.Top;
-            btnHome.Height = 40;
-            btnHome.FlatStyle = FlatStyle.Flat;
-            btnHome.ForeColor = Color.White;
-            btnHome.BackColor = Color.FromArgb(24, 28, 40);
-            btnHome.Click += (s, e) => ShowHome();
-            sidePanel.Controls.Add(btnHome);
         }
 
         private void HandleMenuClick(string page)
@@ -121,7 +297,6 @@ namespace WindowsFormsApp1
                     ShowDashboard();
                     break;
                 case "equipment":
-                case "passports":
                     OpenChildForm(new Form1());
                     break;
                 case "accidents":
@@ -129,6 +304,9 @@ namespace WindowsFormsApp1
                     break;
                 case "repairs":
                     ShowPlaceholder("Учет ремонтов");
+                    break;
+                case "passports":
+                    ShowPlaceholder("Паспорта оборудования");
                     break;
                 case "plans":
                     ShowPlaceholder("Планы технического обслуживания");
@@ -204,143 +382,21 @@ namespace WindowsFormsApp1
 
             contentPanel.Controls.Clear();
 
-            Panel homePanel = new Panel();
-            homePanel.Dock = DockStyle.Fill;
-            homePanel.BackColor = Color.FromArgb(245, 247, 250);
-            homePanel.Padding = new Padding(30);
-            homePanel.AutoScroll = true;
-
-            // Заголовок
-            Label lblMainTitle = new Label();
-            lblMainTitle.Text = "Информационная система для автоматизации,\nпланирования и учета технического обслуживания\nкотельного оборудования";
-            lblMainTitle.Font = new Font("Segoe UI", 28, FontStyle.Bold);
-            lblMainTitle.ForeColor = Color.FromArgb(15, 23, 42);
-            lblMainTitle.Location = new Point(30, 30);
-            lblMainTitle.AutoSize = true;
-
-            // Подзаголовок
-            Label lblSub = new Label();
-            lblSub.Text = "Организация пищевого производства • ООО «Промконсервы»";
-            lblSub.Font = new Font("Segoe UI", 14);
-            lblSub.ForeColor = Color.FromArgb(71, 85, 105);
-            lblSub.Location = new Point(30, 150);
-            lblSub.AutoSize = true;
-
-            // Статистика
-            FlowLayoutPanel statsPanel = new FlowLayoutPanel();
-            statsPanel.Location = new Point(30, 200);
-            statsPanel.Size = new Size(1100, 150);
-            statsPanel.FlowDirection = FlowDirection.LeftToRight;
-
-            string[,] stats = {
-                { "🔧", "24", "Единиц оборудования" },
-                { "⚠️", "3", "Аварии за месяц" },
-                { "📅", "12", "Планов ТО" },
-                { "✅", "8", "Выполнено" },
-                { "👥", "15", "Сотрудников" },
-                { "💰", "1.2M", "Бюджет" }
-            };
-
-            for (int i = 0; i < 6; i++)
+            if (webView != null && webView.CoreWebView2 != null)
             {
-                Panel card = CreateStatCard(stats[i, 0], stats[i, 1], stats[i, 2]);
-                statsPanel.Controls.Add(card);
+                contentPanel.Controls.Add(webView);
+                string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
+                string htmlPath = Path.Combine(webUIPath, "menu.html");
+                if (File.Exists(htmlPath))
+                {
+                    webView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
+                }
             }
-
-            // Последние события
-            Label lblEvents = new Label();
-            lblEvents.Text = "📋 Последние события";
-            lblEvents.Font = new Font("Segoe UI", 18, FontStyle.Bold);
-            lblEvents.Location = new Point(30, 370);
-            lblEvents.AutoSize = true;
-
-            // Таблица последних событий
-            DataGridView eventsGrid = new DataGridView();
-            eventsGrid.Location = new Point(30, 410);
-            eventsGrid.Size = new Size(1100, 200);
-            eventsGrid.BackgroundColor = Color.White;
-            eventsGrid.BorderStyle = BorderStyle.None;
-            eventsGrid.ColumnHeadersHeight = 40;
-            eventsGrid.RowTemplate.Height = 35;
-            eventsGrid.AllowUserToAddRows = false;
-            eventsGrid.ReadOnly = true;
-            eventsGrid.EnableHeadersVisualStyles = false;
-            eventsGrid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(15, 23, 42);
-            eventsGrid.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            eventsGrid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
-
-            eventsGrid.Columns.Add("date", "Дата");
-            eventsGrid.Columns.Add("event", "Событие");
-            eventsGrid.Columns.Add("equipment", "Оборудование");
-            eventsGrid.Columns.Add("status", "Статус");
-
-            eventsGrid.Rows.Add("20.02.2026", "Плановое ТО", "Котел ДКВР 10-13", "Выполнено");
-            eventsGrid.Rows.Add("19.02.2026", "Аварийный ремонт", "Насос ПЭ 580-185", "В работе");
-            eventsGrid.Rows.Add("18.02.2026", "Диагностика", "Горелка Weishaupt", "Завершено");
-            eventsGrid.Rows.Add("17.02.2026", "Замена фильтров", "Водоподготовка", "Запланировано");
-
-            eventsGrid.Columns[0].Width = 100;
-            eventsGrid.Columns[1].Width = 200;
-            eventsGrid.Columns[2].Width = 250;
-            eventsGrid.Columns[3].Width = 150;
-
-            homePanel.Controls.Add(lblMainTitle);
-            homePanel.Controls.Add(lblSub);
-            homePanel.Controls.Add(statsPanel);
-            homePanel.Controls.Add(lblEvents);
-            homePanel.Controls.Add(eventsGrid);
-
-            contentPanel.Controls.Add(homePanel);
         }
 
         private void ShowDashboard()
         {
-            ShowHome(); // Пока просто показываем главную
-        }
-
-        private Panel CreateStatCard(string icon, string number, string text)
-        {
-            Panel card = new Panel();
-            card.Size = new Size(170, 100);
-            card.BackColor = Color.White;
-            card.Margin = new Padding(10);
-            card.Padding = new Padding(15);
-
-            // Тень
-            card.Paint += (s, e) =>
-            {
-                Control c = (Control)s;
-                using (Pen pen = new Pen(Color.FromArgb(20, 0, 0, 0), 1))
-                {
-                    e.Graphics.DrawRectangle(pen, 0, 0, c.Width - 1, c.Height - 1);
-                }
-            };
-
-            Label lblIcon = new Label();
-            lblIcon.Text = icon;
-            lblIcon.Font = new Font("Segoe UI", 24);
-            lblIcon.Location = new Point(10, 10);
-            lblIcon.AutoSize = true;
-
-            Label lblNumber = new Label();
-            lblNumber.Text = number;
-            lblNumber.Font = new Font("Segoe UI", 20, FontStyle.Bold);
-            lblNumber.ForeColor = Color.FromArgb(59, 130, 246);
-            lblNumber.Location = new Point(10, 45);
-            lblNumber.AutoSize = true;
-
-            Label lblText = new Label();
-            lblText.Text = text;
-            lblText.Font = new Font("Segoe UI", 9);
-            lblText.ForeColor = Color.Gray;
-            lblText.Location = new Point(10, 75);
-            lblText.AutoSize = true;
-
-            card.Controls.Add(lblIcon);
-            card.Controls.Add(lblNumber);
-            card.Controls.Add(lblText);
-
-            return card;
+            ShowHome();
         }
     }
 }

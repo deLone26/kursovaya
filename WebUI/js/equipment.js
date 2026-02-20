@@ -1,36 +1,49 @@
 // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
 let equipmentData = [];
+let statusesData = [];
 let selectedEquipmentId = -1;
 
 console.log("===== equipment.js загружен =====");
 
-// ================== НАВИГАЦИЯ ==================
-function navigateTo(page) {
-    if (window.chrome?.webview) {
-        window.chrome.webview.postMessage(JSON.stringify({
-            action: 'navigate',
-            page: page
-        }));
-    }
-}
+// ================== ИНИЦИАЛИЗАЦИЯ ==================
+document.addEventListener('DOMContentLoaded', function() {
+    loadEquipment();
+});
 
 // ================== ЗАГРУЗКА ДАННЫХ ==================
-function loadEquipment() {
+function loadEquipment(filter = '') {
     if (window.chrome?.webview) {
         window.chrome.webview.postMessage(JSON.stringify({
-            action: 'loadEquipment'
+            action: 'loadEquipment',
+            filter: filter
         }));
     }
 }
 
-// Функция для обновления таблицы из C#
+// ================== ОБНОВЛЕНИЕ ТАБЛИЦЫ ИЗ C# ==================
 window.updateEquipment = function(data) {
     console.log("updateEquipment вызван с данными:", data);
     
-    if (data && data.equipment) {
-        equipmentData = data.equipment;
+    if (data && data.data) {
+        equipmentData = data.data;
         displayEquipment(equipmentData);
         updateStatistics();
+    }
+};
+
+// ================== ЗАГРУЗКА СТАТУСОВ ==================
+window.loadStatuses = function(data) {
+    if (data && data.data) {
+        statusesData = data.data;
+        const select = document.getElementById('status');
+        select.innerHTML = '';
+        
+        statusesData.forEach(status => {
+            const option = document.createElement('option');
+            option.value = status.id;
+            option.textContent = status.nazvanie;
+            select.appendChild(option);
+        });
     }
 };
 
@@ -61,17 +74,13 @@ function displayEquipment(equipment) {
         
         // Определяем класс для статуса
         let statusClass = 'status-work';
-        let statusText = 'Работает';
         
-        if (eq.status_id === 2) {
+        if (eq.status_name?.toLowerCase().includes('ремонт')) {
             statusClass = 'status-repair';
-            statusText = 'В ремонте';
-        } else if (eq.status_id === 3) {
+        } else if (eq.status_name?.toLowerCase().includes('консерв')) {
             statusClass = 'status-conservation';
-            statusText = 'На консервации';
-        } else if (eq.status_id === 4) {
+        } else if (eq.status_name?.toLowerCase().includes('авар')) {
             statusClass = 'status-emergency';
-            statusText = 'Аварийное';
         }
         
         row.innerHTML = `
@@ -79,9 +88,9 @@ function displayEquipment(equipment) {
             <td>${eq.nazvanie || ''}</td>
             <td>${eq.tip || ''}</td>
             <td>${eq.model || ''}</td>
-            <td>${eq.seriynomer || ''}</td>
+            <td>${eq.seriinomer || ''}</td>
             <td>${eq.mesto || ''}</td>
-            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+            <td><span class="status-badge ${statusClass}">${eq.status_name || 'Работает'}</span></td>
         `;
         
         tbody.appendChild(row);
@@ -109,7 +118,7 @@ function selectEquipment(id) {
         document.getElementById('nazvanie').value = eq.nazvanie || '';
         document.getElementById('tip').value = eq.tip || '';
         document.getElementById('model').value = eq.model || '';
-        document.getElementById('seriynomer').value = eq.seriynomer || '';
+        document.getElementById('seriinomer').value = eq.seriinomer || '';
         document.getElementById('mesto').value = eq.mesto || '';
         document.getElementById('moshnost').value = eq.moshnost || '';
         document.getElementById('davlenie').value = eq.davlenie || '';
@@ -124,21 +133,7 @@ function selectEquipment(id) {
 // ================== ПОИСК ==================
 function searchEquipment() {
     const searchText = document.getElementById('searchInput').value.toLowerCase();
-    
-    if (!searchText) {
-        displayEquipment(equipmentData);
-        return;
-    }
-    
-    const filtered = equipmentData.filter(eq => 
-        (eq.nazvanie && eq.nazvanie.toLowerCase().includes(searchText)) ||
-        eq.id.toString().includes(searchText) ||
-        (eq.model && eq.model.toLowerCase().includes(searchText)) ||
-        (eq.seriynomer && eq.seriynomer.toLowerCase().includes(searchText)) ||
-        (eq.tip && eq.tip.toLowerCase().includes(searchText))
-    );
-    
-    displayEquipment(filtered);
+    loadEquipment(searchText);
 }
 
 // ================== ДОБАВЛЕНИЕ ==================
@@ -150,10 +145,10 @@ function addEquipment() {
             nazvanie: document.getElementById('nazvanie').value,
             tip: document.getElementById('tip').value,
             model: document.getElementById('model').value,
-            seriynomer: document.getElementById('seriynomer').value,
+            seriinomer: document.getElementById('seriinomer').value,
             mesto: document.getElementById('mesto').value,
-            moshnost: document.getElementById('moshnost').value,
-            davlenie: document.getElementById('davlenie').value,
+            moshnost: parseFloat(document.getElementById('moshnost').value) || 0,
+            davlenie: parseFloat(document.getElementById('davlenie').value) || 0,
             proizvoditel: document.getElementById('proizvoditel').value,
             data_ustanovki: document.getElementById('dataUstanovki').value,
             status_id: parseInt(document.getElementById('status').value)
@@ -181,10 +176,10 @@ function updateEquipment() {
             nazvanie: document.getElementById('nazvanie').value,
             tip: document.getElementById('tip').value,
             model: document.getElementById('model').value,
-            seriynomer: document.getElementById('seriynomer').value,
+            seriinomer: document.getElementById('seriinomer').value,
             mesto: document.getElementById('mesto').value,
-            moshnost: document.getElementById('moshnost').value,
-            davlenie: document.getElementById('davlenie').value,
+            moshnost: parseFloat(document.getElementById('moshnost').value) || 0,
+            davlenie: parseFloat(document.getElementById('davlenie').value) || 0,
             proizvoditel: document.getElementById('proizvoditel').value,
             data_ustanovki: document.getElementById('dataUstanovki').value,
             status_id: parseInt(document.getElementById('status').value)
@@ -221,13 +216,15 @@ function clearForm() {
     document.getElementById('nazvanie').value = '';
     document.getElementById('tip').value = '';
     document.getElementById('model').value = '';
-    document.getElementById('seriynomer').value = '';
+    document.getElementById('seriinomer').value = '';
     document.getElementById('mesto').value = '';
     document.getElementById('moshnost').value = '';
     document.getElementById('davlenie').value = '';
     document.getElementById('proizvoditel').value = '';
     document.getElementById('dataUstanovki').value = '';
-    document.getElementById('status').value = '1';
+    if (statusesData.length > 0) {
+        document.getElementById('status').value = statusesData[0].id;
+    }
     
     // Снимаем выделение
     document.querySelectorAll('tbody tr').forEach(row => {
@@ -240,6 +237,9 @@ function validateForm() {
     const nazvanie = document.getElementById('nazvanie').value.trim();
     const tip = document.getElementById('tip').value.trim();
     const model = document.getElementById('model').value.trim();
+    const moshnost = document.getElementById('moshnost').value;
+    const davlenie = document.getElementById('davlenie').value;
+    const dataUstanovki = document.getElementById('dataUstanovki').value;
     
     if (!nazvanie) {
         showMessage('Введите название оборудования!', 'warning');
@@ -256,6 +256,21 @@ function validateForm() {
         return false;
     }
     
+    if (moshnost && isNaN(parseFloat(moshnost))) {
+        showMessage('Мощность должна быть числом!', 'warning');
+        return false;
+    }
+    
+    if (davlenie && isNaN(parseFloat(davlenie))) {
+        showMessage('Давление должно быть числом!', 'warning');
+        return false;
+    }
+    
+    if (!dataUstanovki) {
+        showMessage('Введите дату установки!', 'warning');
+        return false;
+    }
+    
     return true;
 }
 
@@ -266,56 +281,60 @@ function updateStatistics() {
     const repairEl = document.getElementById('repairEquipment');
     
     if (totalEl) totalEl.textContent = equipmentData.length;
-    if (activeEl) activeEl.textContent = equipmentData.filter(eq => eq.status_id === 1).length;
-    if (repairEl) repairEl.textContent = equipmentData.filter(eq => eq.status_id === 2 || eq.status_id === 4).length;
+    
+    const active = equipmentData.filter(eq => 
+        eq.status_name?.toLowerCase().includes('работает')).length;
+    if (activeEl) activeEl.textContent = active;
+    
+    const repair = equipmentData.filter(eq => 
+        eq.status_name?.toLowerCase().includes('ремонт') || 
+        eq.status_name?.toLowerCase().includes('авар')).length;
+    if (repairEl) repairEl.textContent = repair;
 }
 
 // ================== СООБЩЕНИЯ ==================
 function showMessage(text, type = 'info') {
-    // Можно реализовать красивые всплывающие сообщения
     alert(text);
 }
 
-// ================== ЗАГРУЗКА ПРИ СТАРТЕ ==================
-document.addEventListener('DOMContentLoaded', function() {
-    // Загружаем оборудование
-    loadEquipment();
-    
-    // Получаем информацию о пользователе
-    if (window.chrome?.webview) {
-        window.chrome.webview.postMessage(JSON.stringify({
-            action: 'getUserInfo'
-        }));
-    }
-});
-
-// Слушаем сообщения от C#
-window.chrome?.webview?.addEventListener('message', event => {
-    const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-    
-    switch(data.action) {
-        case 'userInfo':
-            document.getElementById('userName').textContent = data.userName || 'Администратор';
-            break;
-            
-        case 'equipmentLoaded':
-            equipmentData = data.data;
-            displayEquipment(equipmentData);
-            updateStatistics();
-            break;
-            
-        case 'success':
-            showMessage(data.message, 'success');
-            loadEquipment();
-            clearForm();
-            break;
-            
-        case 'warning':
-            showMessage(data.message, 'warning');
-            break;
-            
-        case 'error':
-            showMessage(data.message, 'error');
-            break;
-    }
-});
+// ================== СЛУШАЕМ СООБЩЕНИЯ ОТ C# ==================
+if (window.chrome?.webview) {
+    window.chrome.webview.addEventListener('message', event => {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        console.log("Получено от C#:", data);
+        
+        switch(data.action) {
+            case 'equipmentLoaded':
+                equipmentData = data.data;
+                displayEquipment(equipmentData);
+                updateStatistics();
+                break;
+                
+            case 'statusesLoaded':
+                statusesData = data.data;
+                const select = document.getElementById('status');
+                select.innerHTML = '';
+                statusesData.forEach(status => {
+                    const option = document.createElement('option');
+                    option.value = status.id;
+                    option.textContent = status.nazvanie;
+                    select.appendChild(option);
+                });
+                break;
+                
+            case 'success':
+                showMessage('✅ ' + data.message, 'success');
+                loadEquipment();
+                clearForm();
+                break;
+                
+            case 'warning':
+                showMessage('⚠️ ' + data.message, 'warning');
+                break;
+                
+            case 'error':
+                showMessage('❌ ' + data.message, 'error');
+                break;
+        }
+    });
+}

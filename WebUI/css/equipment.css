@@ -55,60 +55,6 @@ body {
     background: #f5f7fa;
 }
 
-/* Меню */
-.menu-panel {
-    width: 250px;
-    background: white;
-    border-radius: 15px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-    padding: 20px;
-}
-
-.menu-section {
-    margin-bottom: 25px;
-}
-
-.menu-section h3 {
-    color: #7f8c8d;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 15px;
-}
-
-.menu-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 15px;
-    color: #2c3e50;
-    text-decoration: none;
-    border-radius: 8px;
-    margin-bottom: 5px;
-    transition: all 0.3s;
-    cursor: pointer;
-}
-
-.menu-item:hover {
-    background: #f0f7ff;
-    color: #3498db;
-}
-
-.menu-item i {
-    width: 20px;
-    color: #3498db;
-}
-
-.menu-item.active {
-    background: #3498db;
-    color: white;
-}
-
-.menu-item.active i {
-    color: white;
-}
-
-/* Левая панель */
 .left-panel {
     flex: 2;
     background: white;
@@ -245,7 +191,6 @@ tbody tr.selected {
     border-radius: 20px;
     font-size: 11px;
     font-weight: bold;
-    text-align: center;
 }
 
 .status-work {
@@ -258,17 +203,16 @@ tbody tr.selected {
     color: white;
 }
 
-.status-emergency {
-    background: #e74c3c;
-    color: white;
-}
-
 .status-conservation {
     background: #95a5a6;
     color: white;
 }
 
-/* Форма */
+.status-emergency {
+    background: #e74c3c;
+    color: white;
+}
+
 .form-section {
     margin-bottom: 25px;
     padding: 20px;
@@ -339,7 +283,6 @@ tbody tr.selected {
     margin: 0;
 }
 
-/* Кнопки */
 .action-buttons {
     display: flex;
     gap: 10px;
@@ -384,7 +327,6 @@ tbody tr.selected {
     background: linear-gradient(135deg, #95a5a6, #7f8c8d);
 }
 
-/* Статистика */
 .stats-bar {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
@@ -409,9 +351,4 @@ tbody tr.selected {
 .stat-label {
     font-size: 13px;
     opacity: 0.9;
-}
-
-/* Скрытое поле */
-.hidden {
-    display: none;
 }

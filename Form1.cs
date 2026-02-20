@@ -1,19 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Data.SqlClient;
 using System.Drawing;
-using System.Linq;
+using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Web.WebView2.Core;
 using Npgsql;
-using System;                     // Базовые типы .NET
-using System.Data;                // Работа с таблицами DataTable
-using System.Drawing;             // Цвета для подсветки строк
-using System.Windows.Forms;       // Windows Forms
-using Npgsql;                     // Работа с PostgreSQL
 
 namespace WindowsFormsApp1
 {
@@ -23,73 +19,145 @@ namespace WindowsFormsApp1
         private readonly string connectionString =
             "Host=localhost;Port=5432;Database=boiler_system;Username=postgres;Password=43898362Dd+-;";
 
+        // ================== WebView2 ==================
+        private WebView2 webView;
+        private string webUIPath;
+        private bool isWebViewInitialized = false;
+
         // ================== ID ВЫБРАННОЙ ЗАПИСИ ==================
         private int selectedId = -1;
 
-        // ================== КОНСТРУКТОР ФОРМЫ ==================
         public Form1()
         {
-            InitializeComponent();   // Инициализация формы и элементов
+            InitializeComponent();
 
-            LoadStatuses();          // Загружаем статусы в ComboBox
-            LoadData();              // Загружаем данные в таблицу
+            // Путь к папке WebUI
+            webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
+
+            // Настройка формы
+            this.Text = "Управление оборудованием";
+            this.WindowState = FormWindowState.Maximized;
+            this.StartPosition = FormStartPosition.CenterScreen;
+
+            // Очищаем все старые элементы
+            this.Controls.Clear();
+
+            InitializeWebView();
         }
 
-        // ================== ЗАГРУЗКА СТАТУСОВ ==================
-        private void LoadStatuses()
+        private async void InitializeWebView()
         {
             try
             {
-                using (var conn = new NpgsqlConnection(connectionString))
+                webView = new WebView2();
+                webView.Dock = DockStyle.Fill;
+                this.Controls.Add(webView);
+
+                await webView.EnsureCoreWebView2Async(null);
+
+                // Разрешаем скрипты и сообщения
+                webView.CoreWebView2.Settings.IsScriptEnabled = true;
+                webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+
+                // Регистрируем обработчик для сообщений от JavaScript
+                webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+
+                string htmlPath = Path.Combine(webUIPath, "equipment.html");
+                System.Diagnostics.Debug.WriteLine($"Загрузка HTML из: {htmlPath}");
+
+                if (File.Exists(htmlPath))
                 {
-                    conn.Open(); // Открываем соединение с БД
+                    webView.CoreWebView2.Navigate($"file:///{htmlPath}");
+                    isWebViewInitialized = true;
 
-                    string sql = "SELECT id, nazvanie FROM status_oborudovaniya ORDER BY id";
-
-                    using (var cmd = new NpgsqlCommand(sql, conn))
-                    using (var adapter = new NpgsqlDataAdapter(cmd))
+                    webView.CoreWebView2.NavigationCompleted += async (s, e) =>
                     {
-                        DataTable dt = new DataTable();
-                        adapter.Fill(dt);
-
-                        cmbStatus.DisplayMember = "nazvanie"; // Текст статуса
-                        cmbStatus.ValueMember = "id";         // ID статуса
-                        cmbStatus.DataSource = dt;            // Источник данных
-                    }
+                        System.Diagnostics.Debug.WriteLine("Навигация завершена");
+                        await Task.Delay(1000);
+                        await LoadEquipment();
+                        await LoadStatuses();
+                    };
+                }
+                else
+                {
+                    MessageBox.Show($"Файл не найден: {htmlPath}\n\nПроверьте путь к папке WebUI",
+                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Ошибка загрузки статусов: " + ex.Message);
+                MessageBox.Show($"Ошибка инициализации WebView2: {ex.Message}",
+                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        // ================== ЗАГРУЗКА ДАННЫХ ==================
-        private void LoadData(string filter = "")
+        // ================== ЗАГРУЗКА СТАТУСОВ ==================
+        private async Task LoadStatuses()
         {
             try
             {
+                var statuses = new List<object>();
+
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
+
+                    string sql = "SELECT id, nazvanie FROM status_oborudovaniya ORDER BY id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            statuses.Add(new
+                            {
+                                id = Convert.ToInt32(reader["id"]),
+                                nazvanie = reader["nazvanie"].ToString()
+                            });
+                        }
+                    }
+                }
+
+                SendToJavaScript(new
+                {
+                    action = "statusesLoaded",
+                    data = statuses
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки статусов: {ex.Message}");
+            }
+        }
+
+        // ================== ЗАГРУЗКА ОБОРУДОВАНИЯ ==================
+        private async Task LoadEquipment(string filter = "")
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("========== НАЧАЛО ЗАГРУЗКИ ОБОРУДОВАНИЯ ==========");
+                var equipment = new List<object>();
+
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
 
                     string sql = @"
                         SELECT 
-                            o.id,
-                            o.nazvanie,
-                            o.tip,
-                            o.model,
+                            o.id, 
+                            o.nazvanie, 
+                            o.tip, 
+                            o.model, 
                             o.seriinomer,
-                            o.mesto,
-                            o.moshnost,
-                            o.davlenie,
-                            o.proizvoditel,
+                            o.mesto, 
+                            o.moshnost, 
+                            o.davlenie, 
+                            o.proizvoditel, 
                             o.data_ustanovki,
-                            s.nazvanie AS status,
-                            o.status_id
+                            o.status_id,
+                            s.nazvanie as status_name
                         FROM oborudovanie o
-                        LEFT JOIN status_oborudovaniya s ON o.status_id = s.id
-                    ";
+                        LEFT JOIN status_oborudovaniya s ON o.status_id = s.id";
 
                     if (!string.IsNullOrWhiteSpace(filter))
                     {
@@ -106,327 +174,179 @@ namespace WindowsFormsApp1
                         if (!string.IsNullOrWhiteSpace(filter))
                             cmd.Parameters.AddWithValue("@filter", "%" + filter + "%");
 
-                        using (var adapter = new NpgsqlDataAdapter(cmd))
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            DataTable table = new DataTable();
-                            adapter.Fill(table);
-                            dataGridView1.DataSource = table;
+                            while (await reader.ReadAsync())
+                            {
+                                var eq = new
+                                {
+                                    id = Convert.ToInt32(reader["id"]),
+                                    nazvanie = reader["nazvanie"]?.ToString() ?? "",
+                                    tip = reader["tip"]?.ToString() ?? "",
+                                    model = reader["model"]?.ToString() ?? "",
+                                    seriinomer = reader["seriinomer"]?.ToString() ?? "",
+                                    mesto = reader["mesto"]?.ToString() ?? "",
+                                    moshnost = reader["moshnost"] != DBNull.Value ? Convert.ToDecimal(reader["moshnost"]) : 0,
+                                    davlenie = reader["davlenie"] != DBNull.Value ? Convert.ToDecimal(reader["davlenie"]) : 0,
+                                    proizvoditel = reader["proizvoditel"]?.ToString() ?? "",
+                                    data_ustanovki = reader["data_ustanovki"]?.ToString() ?? "",
+                                    status_id = reader["status_id"] != DBNull.Value ? Convert.ToInt32(reader["status_id"]) : 1,
+                                    status_name = reader["status_name"]?.ToString() ?? "Работает"
+                                };
+                                equipment.Add(eq);
+                            }
                         }
                     }
                 }
 
-                HighlightRows(); // Подсветка строк
+                System.Diagnostics.Debug.WriteLine($"Загружено оборудования: {equipment.Count}");
+
+                SendToJavaScript(new
+                {
+                    action = "equipmentLoaded",
+                    data = equipment,
+                    filter = filter
+                });
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Ошибка загрузки данных: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine($"ОШИБКА: {ex.Message}");
+                SendToJavaScript(new
+                {
+                    action = "error",
+                    message = "Ошибка загрузки данных: " + ex.Message
+                });
             }
         }
 
-        // ================== ПОДСВЕТКА СТРОК ==================
-        private void HighlightRows()
+        // ================== ОТПРАВКА В JAVASCRIPT ==================
+        private void SendToJavaScript(object data)
         {
-            foreach (DataGridViewRow row in dataGridView1.Rows)
+            try
             {
-                if (row.Cells["status"].Value != null)
+                if (isWebViewInitialized && webView?.CoreWebView2 != null)
                 {
-                    string status = row.Cells["status"].Value.ToString();
-
-                    if (status == "Просрочено ТО")
-                        row.DefaultCellStyle.BackColor = Color.LightCoral;
-                    else if (status == "На ремонте")
-                        row.DefaultCellStyle.BackColor = Color.LightYellow;
-                    else if (status == "Работает")
-                        row.DefaultCellStyle.BackColor = Color.LightGreen;
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    };
+                    string json = JsonSerializer.Serialize(data, options);
+                    webView.CoreWebView2.PostWebMessageAsString(json);
                 }
             }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка отправки: {ex.Message}");
+            }
         }
 
-        // ================== КЛИК ПО СТРОКЕ ТАБЛИЦЫ ==================
-        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        // ================== ОБРАБОТКА СООБЩЕНИЙ ОТ JAVASCRIPT ==================
+        private async void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
-            if (e.RowIndex < 0) return;
+            string message = e.TryGetWebMessageAsString();
+            System.Diagnostics.Debug.WriteLine($"Получено от JS: {message}");
 
-            DataGridViewRow row = dataGridView1.Rows[e.RowIndex];
+            try
+            {
+                var jsonDoc = JsonDocument.Parse(message);
+                var root = jsonDoc.RootElement;
 
-            selectedId = Convert.ToInt32(row.Cells["id"].Value);
-            txtSelectedId.Text = selectedId.ToString();
+                string action = root.GetProperty("action").GetString();
 
-            txtNazvanie.Text = row.Cells["nazvanie"].Value.ToString();
-            txtTip.Text = row.Cells["tip"].Value.ToString();
-            txtModel.Text = row.Cells["model"].Value.ToString();
-            txtSeria.Text = row.Cells["seriinomer"].Value.ToString();
-            txtMesto.Text = row.Cells["mesto"].Value.ToString();
-            txtMoshnost.Text = row.Cells["moshnost"].Value.ToString();
-            txtDavlenie.Text = row.Cells["davlenie"].Value.ToString();
-            txtProizvoditel.Text = row.Cells["proizvoditel"].Value.ToString();
+                switch (action)
+                {
+                    case "loadEquipment":
+                        string filter = "";
+                        if (root.TryGetProperty("filter", out var filterElement))
+                            filter = filterElement.GetString();
+                        await LoadEquipment(filter);
+                        break;
 
-            // ===== ДАТА УСТАНОВКИ =====
-            if (row.Cells["data_ustanovki"].Value != DBNull.Value)
-                txtDataUstanov.Text = Convert.ToDateTime(row.Cells["data_ustanovki"].Value).ToString("yyyy-MM-dd");
+                    case "getEquipment":
+                        int getId = root.GetProperty("id").GetInt32();
+                        await GetEquipmentById(getId);
+                        break;
 
-            // ===== СТАТУС =====
-            if (row.Cells["status_id"].Value != DBNull.Value)
-                cmbStatus.SelectedValue = Convert.ToInt32(row.Cells["status_id"].Value);
+                    case "addEquipment":
+                        var newEquipment = JsonSerializer.Deserialize<EquipmentData>(root.GetProperty("data").GetRawText());
+                        await AddEquipment(newEquipment);
+                        break;
+
+                    case "updateEquipment":
+                        var updateData = JsonSerializer.Deserialize<EquipmentData>(root.GetProperty("data").GetRawText());
+                        await UpdateEquipment(updateData);
+                        break;
+
+                    case "deleteEquipment":
+                        int deleteId = root.GetProperty("id").GetInt32();
+                        await DeleteEquipment(deleteId);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка парсинга: {ex.Message}");
+                SendToJavaScript(new
+                {
+                    action = "error",
+                    message = "Ошибка обработки запроса: " + ex.Message
+                });
+            }
         }
 
-        // ================== ПРОВЕРКА ВВОДА ==================
-        private bool ValidateInput()
+        // ================== ПОЛУЧЕНИЕ ОБОРУДОВАНИЯ ПО ID ==================
+        private async Task GetEquipmentById(int id)
         {
-            if (string.IsNullOrWhiteSpace(txtNazvanie.Text))
-            {
-                MessageBox.Show("Введите название!");
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(txtTip.Text))
-            {
-                MessageBox.Show("Введите тип!");
-                return false;
-            }
-
-            if (!decimal.TryParse(txtMoshnost.Text, out _))
-            {
-                MessageBox.Show("Мощность должна быть числом!");
-                return false;
-            }
-
-            if (!decimal.TryParse(txtDavlenie.Text, out _))
-            {
-                MessageBox.Show("Давление должно быть числом!");
-                return false;
-            }
-
-            if (!DateTime.TryParse(txtDataUstanov.Text, out _))
-            {
-                MessageBox.Show("Введите корректную дату установки!");
-                return false;
-            }
-
-            return true;
-        }
-
-        // ================== ДОБАВЛЕНИЕ ==================
-        private void button1_Click(object sender, EventArgs e)
-        {
-            if (!ValidateInput()) return;
-
             try
             {
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
 
                     string sql = @"
-                        INSERT INTO oborudovanie
-                        (nazvanie, tip, model, seriinomer, mesto, moshnost, davlenie, proizvoditel, data_ustanovki, status_id)
-                        VALUES
-                        (@nazvanie, @tip, @model, @seria, @mesto, @moshnost, @davlenie, @proizvoditel, @data, @status_id)
-                    ";
-
-                    using (var cmd = new NpgsqlCommand(sql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@nazvanie", txtNazvanie.Text);
-                        cmd.Parameters.AddWithValue("@tip", txtTip.Text);
-                        cmd.Parameters.AddWithValue("@model", txtModel.Text);
-                        cmd.Parameters.AddWithValue("@seria", txtSeria.Text);
-                        cmd.Parameters.AddWithValue("@mesto", txtMesto.Text);
-                        cmd.Parameters.AddWithValue("@moshnost", decimal.Parse(txtMoshnost.Text));
-                        cmd.Parameters.AddWithValue("@davlenie", decimal.Parse(txtDavlenie.Text));
-                        cmd.Parameters.AddWithValue("@proizvoditel", txtProizvoditel.Text);
-                        cmd.Parameters.AddWithValue("@data", DateTime.Parse(txtDataUstanov.Text));
-                        cmd.Parameters.AddWithValue("@status_id", (int)cmbStatus.SelectedValue);
-
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-
-                LoadData();
-                ClearFields();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Ошибка добавления: " + ex.Message);
-            }
-        }
-
-        // ================== ОБНОВЛЕНИЕ ==================
-        private void button2_Click(object sender, EventArgs e)
-        {
-            if (selectedId == -1)
-            {
-                MessageBox.Show("Выберите запись!");
-                return;
-            }
-
-            if (!ValidateInput()) return;
-
-            try
-            {
-                using (var conn = new NpgsqlConnection(connectionString))
-                {
-                    conn.Open();
-
-                    string sql = @"
-                        UPDATE oborudovanie SET
-                        nazvanie=@nazvanie,
-                        tip=@tip,
-                        model=@model,
-                        seriinomer=@seria,
-                        mesto=@mesto,
-                        moshnost=@moshnost,
-                        davlenie=@davlenie,
-                        proizvoditel=@proizvoditel,
-                        data_ustanovki=@data,
-                        status_id=@status_id
-                        WHERE id=@id
-                    ";
-
-                    using (var cmd = new NpgsqlCommand(sql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@id", selectedId);
-                        cmd.Parameters.AddWithValue("@nazvanie", txtNazvanie.Text);
-                        cmd.Parameters.AddWithValue("@tip", txtTip.Text);
-                        cmd.Parameters.AddWithValue("@model", txtModel.Text);
-                        cmd.Parameters.AddWithValue("@seria", txtSeria.Text);
-                        cmd.Parameters.AddWithValue("@mesto", txtMesto.Text);
-                        cmd.Parameters.AddWithValue("@moshnost", decimal.Parse(txtMoshnost.Text));
-                        cmd.Parameters.AddWithValue("@davlenie", decimal.Parse(txtDavlenie.Text));
-                        cmd.Parameters.AddWithValue("@proizvoditel", txtProizvoditel.Text);
-                        cmd.Parameters.AddWithValue("@data", DateTime.Parse(txtDataUstanov.Text));
-                        cmd.Parameters.AddWithValue("@status_id", (int)cmbStatus.SelectedValue);
-
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-
-                LoadData();
-                ClearFields();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Ошибка обновления: " + ex.Message);
-            }
-        }
-
-        // ================== УДАЛЕНИЕ ==================
-        private void button3_Click(object sender, EventArgs e)
-        {
-            if (selectedId == -1)
-            {
-                MessageBox.Show("Выберите запись!");
-                return;
-            }
-
-            if (MessageBox.Show("Удалить запись?", "Подтверждение",
-                MessageBoxButtons.YesNo) != DialogResult.Yes)
-                return;
-
-            try
-            {
-                using (var conn = new NpgsqlConnection(connectionString))
-                {
-                    conn.Open();
-
-                    string sql = "DELETE FROM oborudovanie WHERE id=@id";
-
-                    using (var cmd = new NpgsqlCommand(sql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@id", selectedId);
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-
-                LoadData();
-                ClearFields();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Ошибка удаления: " + ex.Message);
-            }
-        }
-
-        // ================== ПОИСК ==================
-        private void txtSearch_TextChanged(object sender, EventArgs e)
-        {
-            LoadData(txtSearch.Text);
-        }
-
-        // ================== ОБНОВЛЕНИЕ ТАБЛИЦЫ ==================
-        private void button5_Click(object sender, EventArgs e)
-        {
-            LoadData();
-        }
-
-        // ================== ОЧИСТКА ПОЛЕЙ ==================
-        private void ClearFields()
-        {
-            selectedId = -1;
-            txtSelectedId.Clear();
-
-            txtNazvanie.Clear();
-            txtTip.Clear();
-            txtModel.Clear();
-            txtSeria.Clear();
-            txtMesto.Clear();
-            txtMoshnost.Clear();
-            txtDavlenie.Clear();
-            txtProizvoditel.Clear();
-            txtDataUstanov.Clear();
-
-            if (cmbStatus.Items.Count > 0)
-                cmbStatus.SelectedIndex = 0;
-        }
-
-        private void Form1_Load(object sender, EventArgs e) { }
-        private void label14_Click(object sender, EventArgs e) { }
-        private void button4_Click(object sender, EventArgs e) 
-        {
-            // Проверяем: введён ли ID
-            if (string.IsNullOrWhiteSpace(txtSearch.Text))
-            {
-                MessageBox.Show("Введите ID записи!");
-                return;
-            }
-
-            // Проверяем: число ли это
-            if (!int.TryParse(txtSearch.Text, out int id))
-            {
-                MessageBox.Show("ID должен быть числом!");
-                return;
-            }
-
-            try
-            {
-                using (var conn = new NpgsqlConnection(connectionString))
-                {
-                    conn.Open();
-
-                    // SQL-запрос: ищем запись по ID
-                    string sql = @"SELECT id, nazvanie, tip, model, seriinomer, mesto, 
-                                  moshnost, davlenie, proizvoditel, data_ustanovki, status_id
-                           FROM oborudovanie
-                           WHERE id = @id";
+                        SELECT 
+                            o.id, 
+                            o.nazvanie, 
+                            o.tip, 
+                            o.model, 
+                            o.seriinomer,
+                            o.mesto, 
+                            o.moshnost, 
+                            o.davlenie, 
+                            o.proizvoditel, 
+                            o.data_ustanovki,
+                            o.status_id
+                        FROM oborudovanie o
+                        WHERE o.id = @id";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
 
-                        using (var adapter = new NpgsqlDataAdapter(cmd))
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            DataTable table = new DataTable();
-                            adapter.Fill(table);
+                            if (await reader.ReadAsync())
+                            {
+                                var eq = new
+                                {
+                                    id = Convert.ToInt32(reader["id"]),
+                                    nazvanie = reader["nazvanie"]?.ToString() ?? "",
+                                    tip = reader["tip"]?.ToString() ?? "",
+                                    model = reader["model"]?.ToString() ?? "",
+                                    seriinomer = reader["seriinomer"]?.ToString() ?? "",
+                                    mesto = reader["mesto"]?.ToString() ?? "",
+                                    moshnost = reader["moshnost"] != DBNull.Value ? Convert.ToDecimal(reader["moshnost"]) : 0,
+                                    davlenie = reader["davlenie"] != DBNull.Value ? Convert.ToDecimal(reader["davlenie"]) : 0,
+                                    proizvoditel = reader["proizvoditel"]?.ToString() ?? "",
+                                    data_ustanovki = reader["data_ustanovki"]?.ToString() ?? "",
+                                    status_id = reader["status_id"] != DBNull.Value ? Convert.ToInt32(reader["status_id"]) : 1
+                                };
 
-                            // Если запись найдена — показываем её
-                            if (table.Rows.Count > 0)
-                            {
-                                dataGridView1.DataSource = table;
-                            }
-                            else
-                            {
-                                // Если запись не найдена — очищаем таблицу
-                                dataGridView1.DataSource = null;
-                                MessageBox.Show("Запись с таким ID не найдена!");
+                                SendToJavaScript(new
+                                {
+                                    action = "equipmentLoaded",
+                                    data = new[] { eq }
+                                });
                             }
                         }
                     }
@@ -434,9 +354,188 @@ namespace WindowsFormsApp1
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Ошибка поиска: " + ex.Message);
+                SendToJavaScript(new
+                {
+                    action = "error",
+                    message = "Ошибка получения данных: " + ex.Message
+                });
             }
         }
-        private void label10_Click(object sender, EventArgs e) { }
+
+        // ================== ДОБАВЛЕНИЕ ОБОРУДОВАНИЯ ==================
+        private async Task AddEquipment(EquipmentData equipment)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string sql = @"
+                        INSERT INTO oborudovanie
+                        (nazvanie, tip, model, seriinomer, mesto, moshnost, davlenie, proizvoditel, data_ustanovki, status_id)
+                        VALUES
+                        (@nazvanie, @tip, @model, @seriinomer, @mesto, @moshnost, @davlenie, @proizvoditel, @data_ustanovki, @status_id)";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@nazvanie", equipment.Nazvanie);
+                        cmd.Parameters.AddWithValue("@tip", equipment.Tip);
+                        cmd.Parameters.AddWithValue("@model", equipment.Model);
+                        cmd.Parameters.AddWithValue("@seriinomer", equipment.Seriinomer ?? "");
+                        cmd.Parameters.AddWithValue("@mesto", equipment.Mesto ?? "");
+                        cmd.Parameters.AddWithValue("@moshnost", equipment.Moshnost);
+                        cmd.Parameters.AddWithValue("@davlenie", equipment.Davlenie);
+                        cmd.Parameters.AddWithValue("@proizvoditel", equipment.Proizvoditel ?? "");
+
+                        if (string.IsNullOrEmpty(equipment.DataUstanovki))
+                            cmd.Parameters.AddWithValue("@data_ustanovki", DBNull.Value);
+                        else
+                            cmd.Parameters.AddWithValue("@data_ustanovki", DateTime.Parse(equipment.DataUstanovki));
+
+                        cmd.Parameters.AddWithValue("@status_id", equipment.StatusId);
+
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                SendToJavaScript(new
+                {
+                    action = "success",
+                    message = "Оборудование успешно добавлено!"
+                });
+
+                await LoadEquipment();
+            }
+            catch (Exception ex)
+            {
+                SendToJavaScript(new
+                {
+                    action = "error",
+                    message = "Ошибка добавления: " + ex.Message
+                });
+            }
+        }
+
+        // ================== ОБНОВЛЕНИЕ ОБОРУДОВАНИЯ ==================
+        private async Task UpdateEquipment(EquipmentData equipment)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string sql = @"
+                        UPDATE oborudovanie SET
+                            nazvanie = @nazvanie,
+                            tip = @tip,
+                            model = @model,
+                            seriinomer = @seriinomer,
+                            mesto = @mesto,
+                            moshnost = @moshnost,
+                            davlenie = @davlenie,
+                            proizvoditel = @proizvoditel,
+                            data_ustanovki = @data_ustanovki,
+                            status_id = @status_id
+                        WHERE id = @id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", equipment.Id);
+                        cmd.Parameters.AddWithValue("@nazvanie", equipment.Nazvanie);
+                        cmd.Parameters.AddWithValue("@tip", equipment.Tip);
+                        cmd.Parameters.AddWithValue("@model", equipment.Model);
+                        cmd.Parameters.AddWithValue("@seriinomer", equipment.Seriinomer ?? "");
+                        cmd.Parameters.AddWithValue("@mesto", equipment.Mesto ?? "");
+                        cmd.Parameters.AddWithValue("@moshnost", equipment.Moshnost);
+                        cmd.Parameters.AddWithValue("@davlenie", equipment.Davlenie);
+                        cmd.Parameters.AddWithValue("@proizvoditel", equipment.Proizvoditel ?? "");
+
+                        if (string.IsNullOrEmpty(equipment.DataUstanovki))
+                            cmd.Parameters.AddWithValue("@data_ustanovki", DBNull.Value);
+                        else
+                            cmd.Parameters.AddWithValue("@data_ustanovki", DateTime.Parse(equipment.DataUstanovki));
+
+                        cmd.Parameters.AddWithValue("@status_id", equipment.StatusId);
+
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                SendToJavaScript(new
+                {
+                    action = "success",
+                    message = "Оборудование успешно обновлено!"
+                });
+
+                await LoadEquipment();
+            }
+            catch (Exception ex)
+            {
+                SendToJavaScript(new
+                {
+                    action = "error",
+                    message = "Ошибка обновления: " + ex.Message
+                });
+            }
+        }
+
+        // ================== УДАЛЕНИЕ ОБОРУДОВАНИЯ ==================
+        private async Task DeleteEquipment(int id)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string sql = "DELETE FROM oborudovanie WHERE id = @id";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", id);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                SendToJavaScript(new
+                {
+                    action = "success",
+                    message = "Оборудование успешно удалено!"
+                });
+
+                await LoadEquipment();
+            }
+            catch (Exception ex)
+            {
+                SendToJavaScript(new
+                {
+                    action = "error",
+                    message = "Ошибка удаления: " + ex.Message
+                });
+            }
+        }
+
+        // ================== КЛАСС ДЛЯ ДАННЫХ ОБОРУДОВАНИЯ ==================
+        public class EquipmentData
+        {
+            public int Id { get; set; }
+            public string Nazvanie { get; set; }
+            public string Tip { get; set; }
+            public string Model { get; set; }
+            public string Seriinomer { get; set; }
+            public string Mesto { get; set; }
+            public decimal Moshnost { get; set; }
+            public decimal Davlenie { get; set; }
+            public string Proizvoditel { get; set; }
+            public string DataUstanovki { get; set; }
+            public int StatusId { get; set; }
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            webView?.Dispose();
+            base.OnFormClosing(e);
+        }
     }
 }
