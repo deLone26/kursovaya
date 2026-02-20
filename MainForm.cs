@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
+﻿using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Web.WebView2.Core;
+using System;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
 using System.Windows.Forms;
 
 namespace WindowsFormsApp1
@@ -13,413 +10,337 @@ namespace WindowsFormsApp1
     public partial class MainForm : Form
     {
         private Panel sidePanel;
-        private Panel contentPanel; // Панель для отображения контента
-        private bool isPanelExpanded = false;
-        private int collapsedWidth = 30;
-        private int expandedWidth = 200;
+        private Panel contentPanel;
+        private WebView2 webView;
+        private Form activeForm = null;
 
-        private string userLogin; // новое поле для хранения логина
+        private bool isCollapsed = false;
+        private int expandedWidth = 250;
+        private int collapsedWidth = 70;
 
-        // Ссылки на ваши формы
-        private Form1 form1;
-        private Form2 form2;
+        private string connectionString;
+        private int employeeId;
 
-        // Новый конструктор с логином
-        public MainForm(string login)
+        public MainForm(string connString, int userId)
         {
+            this.connectionString = connString;
+            this.employeeId = userId;
+
             InitializeComponent();
-            userLogin = login;
-
-            // Показываем логин в заголовке формы
-            this.Text = $"Добро пожаловать, {userLogin}";
-
-            CreateContentPanel();
-            CreateSidePanel();
-            AdjustMainContent();
-
-            // Показываем главный контент по умолчанию
-            ShowMainContent();
+            InitializeLayout();
+            this.Load += async (s, e) => await InitializeWebView();
+            ShowHome();
         }
 
-        // Оставляем старый конструктор без параметров (если нужно)
-        public MainForm()
+        private void InitializeLayout()
         {
-            InitializeComponent();
-            CreateContentPanel();
-            CreateSidePanel();
-            AdjustMainContent();
+            this.WindowState = FormWindowState.Maximized;
+            this.BackColor = Color.FromArgb(240, 242, 245);
+            this.Text = "Информационная система для автоматизации, планирования и учета технического обслуживания котельного оборудования";
 
-            ShowMainContent();
-        }
-
-        // Создаем панель для отображения контента
-        private void CreateContentPanel()
-        {
-            contentPanel = new Panel();
-            contentPanel.Dock = DockStyle.Fill;
-            contentPanel.BackColor = Color.White;
-            this.Controls.Add(contentPanel);
-
-            // Перемещаем существующие кнопки на contentPanel
-            contentPanel.Controls.Add(button1);
-            contentPanel.Controls.Add(button2);
-            if (panel1 != null)
-                contentPanel.Controls.Add(panel1);
-        }
-
-        private void CreateSidePanel()
-        {
             sidePanel = new Panel();
             sidePanel.Dock = DockStyle.Left;
-            sidePanel.Width = collapsedWidth;
-            sidePanel.BackColor = Color.SteelBlue;
+            sidePanel.Width = expandedWidth;
 
-            Button toggleBtn = new Button();
-            toggleBtn.Text = "☰";
-            toggleBtn.Dock = DockStyle.Top;
-            toggleBtn.Height = 30;
-            toggleBtn.BackColor = Color.DarkBlue;
-            toggleBtn.ForeColor = Color.White;
-            toggleBtn.FlatStyle = FlatStyle.Flat;
-            toggleBtn.Click += ToggleBtn_Click;
+            contentPanel = new Panel();
+            contentPanel.Dock = DockStyle.Fill;
+            contentPanel.BackColor = Color.FromArgb(245, 247, 250);
+            contentPanel.Padding = new Padding(20);
 
-            Panel sideContentPanel = new Panel();
-            sideContentPanel.Dock = DockStyle.Fill;
-            sideContentPanel.BackColor = Color.LightSteelBlue;
-            sideContentPanel.Padding = new Padding(5);
-
-            AddSidePanelContent(sideContentPanel);
-
-            sidePanel.Controls.Add(sideContentPanel);
-            sidePanel.Controls.Add(toggleBtn);
-
+            this.Controls.Add(contentPanel);
             this.Controls.Add(sidePanel);
-            sidePanel.BringToFront();
         }
 
-        private void AddSidePanelContent(Panel container)
+        private async System.Threading.Tasks.Task InitializeWebView()
         {
-            Label title = new Label()
+            try
             {
-                Text = "Навигация",
-                Location = new Point(10, 10),
-                AutoSize = true,
-                ForeColor = Color.DarkBlue,
-                Font = new Font("Arial", 9, FontStyle.Bold)
-            };
+                webView = new WebView2();
+                webView.Dock = DockStyle.Fill;
+                sidePanel.Controls.Add(webView);
 
-            string[] buttonTexts = { "Главная", "Оборудование", "Записи осмотра", "Настройки", "Справка" };
-            EventHandler[] buttonHandlers = {
-            ShowMainContent,
-            ShowForm1,
-            ShowForm2,
-            ShowSettings,
-            ShowHelp
-        };
+                await webView.EnsureCoreWebView2Async(null);
 
-            for (int i = 0; i < buttonTexts.Length; i++)
-            {
-                Button btn = new Button()
+                string htmlPath = Path.Combine(Application.StartupPath, "WebUI", "menu.html");
+
+                if (File.Exists(htmlPath))
                 {
-                    Text = buttonTexts[i],
-                    Location = new Point(10, 40 + i * 35),
-                    Size = new Size(120, 30),
-                    Visible = false,
-                    BackColor = Color.White,
-                    FlatStyle = FlatStyle.Flat
+                    webView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
+                }
+
+                webView.CoreWebView2.WebMessageReceived += (s, e) =>
+                {
+                    string page = e.TryGetWebMessageAsString();
+                    HandleMenuClick(page);
                 };
 
-                btn.Click += buttonHandlers[i];
-                container.Controls.Add(btn);
-            }
-
-            container.Controls.Add(title);
-        }
-
-        // Методы для отображения контента
-        private void ShowMainContent(object sender, EventArgs e)
-        {
-            ShowMainContent();
-            CollapsePanel();
-        }
-
-        private void ShowMainContent()
-        {
-            ClearContentPanel();
-
-            // Показываем стандартные элементы
-            button1.Visible = true;
-            button2.Visible = true;
-            if (panel1 != null)
-                panel1.Visible = true;
-
-            // Добавляем заголовок
-            Label title = new Label()
-            {
-                Text = "Главная страница",
-                Font = new Font("Arial", 16, FontStyle.Bold),
-                ForeColor = Color.DarkBlue,
-                AutoSize = true,
-                Location = new Point(20, 20)
-            };
-            contentPanel.Controls.Add(title);
-        }
-
-        private void ShowForm1(object sender, EventArgs e)
-        {
-            ClearContentPanel();
-
-            if (form1 == null)
-            {
-                form1 = new Form1();
-                PrepareFormForEmbedding(form1);
-            }
-
-            form1.TopLevel = false;
-            form1.FormBorderStyle = FormBorderStyle.None;
-            form1.Dock = DockStyle.Fill;
-            form1.Visible = true;
-
-            contentPanel.Controls.Add(form1);
-            CollapsePanel();
-        }
-
-        private void ShowForm2(object sender, EventArgs e)
-        {
-            ClearContentPanel();
-
-            if (form2 == null)
-            {
-                form2 = new Form2();
-                PrepareFormForEmbedding(form2);
-            }
-
-            form2.TopLevel = false;
-            form2.FormBorderStyle = FormBorderStyle.None;
-            form2.Dock = DockStyle.Fill;
-            form2.Visible = true;
-
-            contentPanel.Controls.Add(form2);
-            CollapsePanel();
-        }
-
-        private void PrepareFormForEmbedding(Form form)
-        {
-            form.TopLevel = false;
-            form.FormBorderStyle = FormBorderStyle.None;
-            form.Dock = DockStyle.Fill;
-            form.Visible = false;
-        }
-
-        private void ShowSettings(object sender, EventArgs e)
-        {
-            ClearContentPanel();
-
-            Label title = new Label()
-            {
-                Text = "Настройки приложения",
-                Font = new Font("Arial", 16, FontStyle.Bold),
-                ForeColor = Color.DarkOrange,
-                AutoSize = true,
-                Location = new Point(20, 20)
-            };
-
-            CheckBox checkBox1 = new CheckBox()
-            {
-                Text = "Включить уведомления",
-                Location = new Point(20, 60),
-                AutoSize = true,
-                Checked = true
-            };
-
-            Button saveButton = new Button()
-            {
-                Text = "Сохранить настройки",
-                Location = new Point(20, 100),
-                Size = new Size(140, 30),
-                BackColor = Color.LightBlue
-            };
-            saveButton.Click += (s, args) => MessageBox.Show("Настройки сохранены!");
-
-            contentPanel.Controls.AddRange(new Control[] { title, checkBox1, saveButton });
-            CollapsePanel();
-        }
-
-        private void ShowHelp(object sender, EventArgs e)
-        {
-            ClearContentPanel();
-
-            Label title = new Label()
-            {
-                Text = "Справка по приложению",
-                Font = new Font("Arial", 16, FontStyle.Bold),
-                ForeColor = Color.DarkRed,
-                AutoSize = true,
-                Location = new Point(20, 20)
-            };
-
-            TextBox helpText = new TextBox()
-            {
-                Location = new Point(20, 60),
-                Size = new Size(400, 200),
-                Multiline = true,
-                ScrollBars = ScrollBars.Vertical,
-                ReadOnly = true,
-                Text = "Добро пожаловать в систему управления ГБО!\n\n" +
-                       "Разделы:\n" +
-                       "- Оборудование: Управление оборудованием ГБО\n" +
-                       "- Записи осмотра: Просмотр и редактирование записей осмотра\n\n" +
-                       "Используйте боковую панель для навигации."
-            };
-
-            contentPanel.Controls.AddRange(new Control[] { title, helpText });
-            CollapsePanel();
-        }
-
-        private void ClearContentPanel()
-        {
-            button1.Visible = false;
-            button2.Visible = false;
-            if (panel1 != null)
-                panel1.Visible = false;
-
-            if (form1 != null)
-                form1.Visible = false;
-            if (form2 != null)
-                form2.Visible = false;
-
-            for (int i = contentPanel.Controls.Count - 1; i >= 0; i--)
-            {
-                Control control = contentPanel.Controls[i];
-                if (control != button1 && control != button2 && control != panel1 &&
-                    control != form1 && control != form2)
+                webView.CoreWebView2.NavigationCompleted += (s, e) =>
                 {
-                    contentPanel.Controls.RemoveAt(i);
-                    control.Dispose();
-                }
+                    string role = CurrentUser.Role?.ToLower() ?? "user";
+                    webView.CoreWebView2.ExecuteScriptAsync($"setUserRole('{role}')");
+
+                    var data = new { accidentsCount = 3, notificationsCount = 5 };
+                    string json = System.Text.Json.JsonSerializer.Serialize(data);
+                    webView.CoreWebView2.ExecuteScriptAsync($"updateBadges({json})");
+                };
             }
-
-            if (form1 != null && contentPanel.Controls.Contains(form1))
-                contentPanel.Controls.Remove(form1);
-            if (form2 != null && contentPanel.Controls.Contains(form2))
-                contentPanel.Controls.Remove(form2);
-        }
-
-        private void AdjustMainContent()
-        {
-            int panelMargin = collapsedWidth + 10;
-            button1.Location = new Point(panelMargin, button1.Location.Y);
-            button2.Location = new Point(panelMargin, button2.Location.Y);
-
-            if (panel1 != null)
+            catch (Exception ex)
             {
-                panel1.Location = new Point(panelMargin, panel1.Location.Y);
-                panel1.Width = this.ClientSize.Width - panelMargin - 10;
+                MessageBox.Show($"Ошибка WebView2: {ex.Message}\n\nПроверьте установку WebView2 Runtime");
+                CreateBackupMenu();
             }
         }
 
-        protected override void OnResize(EventArgs e)
+        private void CreateBackupMenu()
         {
-            base.OnResize(e);
-            AdjustMainContent();
+            Button btnHome = new Button();
+            btnHome.Text = "Главная";
+            btnHome.Dock = DockStyle.Top;
+            btnHome.Height = 40;
+            btnHome.FlatStyle = FlatStyle.Flat;
+            btnHome.ForeColor = Color.White;
+            btnHome.BackColor = Color.FromArgb(24, 28, 40);
+            btnHome.Click += (s, e) => ShowHome();
+            sidePanel.Controls.Add(btnHome);
         }
 
-        private async void ToggleBtn_Click(object sender, EventArgs e)
+        private void HandleMenuClick(string page)
         {
-            if (isPanelExpanded)
+            if (this.InvokeRequired)
             {
-                await SlidePanel(collapsedWidth);
-                HidePanelContent();
+                this.Invoke(new Action<string>(HandleMenuClick), page);
+                return;
             }
-            else
+
+            switch (page)
             {
-                await SlidePanel(expandedWidth);
-                ShowPanelContent();
+                case "home":
+                    ShowHome();
+                    break;
+                case "dashboard":
+                    ShowDashboard();
+                    break;
+                case "equipment":
+                case "passports":
+                    OpenChildForm(new Form1());
+                    break;
+                case "accidents":
+                    ShowPlaceholder("Журнал аварий");
+                    break;
+                case "repairs":
+                    ShowPlaceholder("Учет ремонтов");
+                    break;
+                case "plans":
+                    ShowPlaceholder("Планы технического обслуживания");
+                    break;
+                case "schedules":
+                    ShowPlaceholder("Графики работ");
+                    break;
+                case "boss":
+                    OpenChildForm(new FormBoss(connectionString, employeeId));
+                    break;
+                case "employees":
+                    OpenChildForm(new Form2());
+                    break;
+                case "budget":
+                    ShowPlaceholder("Бюджет и затраты");
+                    break;
+                case "exit":
+                    Application.Exit();
+                    break;
             }
-            isPanelExpanded = !isPanelExpanded;
         }
 
-        private async Task SlidePanel(int targetWidth)
+        private void OpenChildForm(Form childForm)
         {
-            int step = 10;
-            int currentWidth = sidePanel.Width;
+            if (activeForm != null)
+                activeForm.Close();
 
-            if (targetWidth > currentWidth)
+            activeForm = childForm;
+            childForm.TopLevel = false;
+            childForm.FormBorderStyle = FormBorderStyle.None;
+            childForm.Dock = DockStyle.Fill;
+
+            contentPanel.Controls.Clear();
+            contentPanel.Controls.Add(childForm);
+            childForm.Show();
+        }
+
+        private void ShowPlaceholder(string title)
+        {
+            if (activeForm != null)
+                activeForm.Close();
+
+            contentPanel.Controls.Clear();
+
+            Panel placeholder = new Panel();
+            placeholder.Dock = DockStyle.Fill;
+            placeholder.BackColor = Color.White;
+            placeholder.Padding = new Padding(30);
+
+            Label lblTitle = new Label();
+            lblTitle.Text = title;
+            lblTitle.Font = new Font("Segoe UI", 24, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(33, 37, 41);
+            lblTitle.Location = new Point(30, 30);
+            lblTitle.AutoSize = true;
+
+            Label lblDesc = new Label();
+            lblDesc.Text = "Раздел находится в разработке";
+            lblDesc.Font = new Font("Segoe UI", 12);
+            lblDesc.ForeColor = Color.Gray;
+            lblDesc.Location = new Point(30, 80);
+            lblDesc.AutoSize = true;
+
+            placeholder.Controls.Add(lblTitle);
+            placeholder.Controls.Add(lblDesc);
+            contentPanel.Controls.Add(placeholder);
+        }
+
+        private void ShowHome()
+        {
+            if (activeForm != null)
+                activeForm.Close();
+
+            contentPanel.Controls.Clear();
+
+            Panel homePanel = new Panel();
+            homePanel.Dock = DockStyle.Fill;
+            homePanel.BackColor = Color.FromArgb(245, 247, 250);
+            homePanel.Padding = new Padding(30);
+            homePanel.AutoScroll = true;
+
+            // Заголовок
+            Label lblMainTitle = new Label();
+            lblMainTitle.Text = "Информационная система для автоматизации,\nпланирования и учета технического обслуживания\nкотельного оборудования";
+            lblMainTitle.Font = new Font("Segoe UI", 28, FontStyle.Bold);
+            lblMainTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblMainTitle.Location = new Point(30, 30);
+            lblMainTitle.AutoSize = true;
+
+            // Подзаголовок
+            Label lblSub = new Label();
+            lblSub.Text = "Организация пищевого производства • ООО «Промконсервы»";
+            lblSub.Font = new Font("Segoe UI", 14);
+            lblSub.ForeColor = Color.FromArgb(71, 85, 105);
+            lblSub.Location = new Point(30, 150);
+            lblSub.AutoSize = true;
+
+            // Статистика
+            FlowLayoutPanel statsPanel = new FlowLayoutPanel();
+            statsPanel.Location = new Point(30, 200);
+            statsPanel.Size = new Size(1100, 150);
+            statsPanel.FlowDirection = FlowDirection.LeftToRight;
+
+            string[,] stats = {
+                { "🔧", "24", "Единиц оборудования" },
+                { "⚠️", "3", "Аварии за месяц" },
+                { "📅", "12", "Планов ТО" },
+                { "✅", "8", "Выполнено" },
+                { "👥", "15", "Сотрудников" },
+                { "💰", "1.2M", "Бюджет" }
+            };
+
+            for (int i = 0; i < 6; i++)
             {
-                for (int w = currentWidth; w <= targetWidth; w += step)
+                Panel card = CreateStatCard(stats[i, 0], stats[i, 1], stats[i, 2]);
+                statsPanel.Controls.Add(card);
+            }
+
+            // Последние события
+            Label lblEvents = new Label();
+            lblEvents.Text = "📋 Последние события";
+            lblEvents.Font = new Font("Segoe UI", 18, FontStyle.Bold);
+            lblEvents.Location = new Point(30, 370);
+            lblEvents.AutoSize = true;
+
+            // Таблица последних событий
+            DataGridView eventsGrid = new DataGridView();
+            eventsGrid.Location = new Point(30, 410);
+            eventsGrid.Size = new Size(1100, 200);
+            eventsGrid.BackgroundColor = Color.White;
+            eventsGrid.BorderStyle = BorderStyle.None;
+            eventsGrid.ColumnHeadersHeight = 40;
+            eventsGrid.RowTemplate.Height = 35;
+            eventsGrid.AllowUserToAddRows = false;
+            eventsGrid.ReadOnly = true;
+            eventsGrid.EnableHeadersVisualStyles = false;
+            eventsGrid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(15, 23, 42);
+            eventsGrid.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            eventsGrid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+
+            eventsGrid.Columns.Add("date", "Дата");
+            eventsGrid.Columns.Add("event", "Событие");
+            eventsGrid.Columns.Add("equipment", "Оборудование");
+            eventsGrid.Columns.Add("status", "Статус");
+
+            eventsGrid.Rows.Add("20.02.2026", "Плановое ТО", "Котел ДКВР 10-13", "Выполнено");
+            eventsGrid.Rows.Add("19.02.2026", "Аварийный ремонт", "Насос ПЭ 580-185", "В работе");
+            eventsGrid.Rows.Add("18.02.2026", "Диагностика", "Горелка Weishaupt", "Завершено");
+            eventsGrid.Rows.Add("17.02.2026", "Замена фильтров", "Водоподготовка", "Запланировано");
+
+            eventsGrid.Columns[0].Width = 100;
+            eventsGrid.Columns[1].Width = 200;
+            eventsGrid.Columns[2].Width = 250;
+            eventsGrid.Columns[3].Width = 150;
+
+            homePanel.Controls.Add(lblMainTitle);
+            homePanel.Controls.Add(lblSub);
+            homePanel.Controls.Add(statsPanel);
+            homePanel.Controls.Add(lblEvents);
+            homePanel.Controls.Add(eventsGrid);
+
+            contentPanel.Controls.Add(homePanel);
+        }
+
+        private void ShowDashboard()
+        {
+            ShowHome(); // Пока просто показываем главную
+        }
+
+        private Panel CreateStatCard(string icon, string number, string text)
+        {
+            Panel card = new Panel();
+            card.Size = new Size(170, 100);
+            card.BackColor = Color.White;
+            card.Margin = new Padding(10);
+            card.Padding = new Padding(15);
+
+            // Тень
+            card.Paint += (s, e) =>
+            {
+                Control c = (Control)s;
+                using (Pen pen = new Pen(Color.FromArgb(20, 0, 0, 0), 1))
                 {
-                    sidePanel.Width = w;
-                    await Task.Delay(5);
+                    e.Graphics.DrawRectangle(pen, 0, 0, c.Width - 1, c.Height - 1);
                 }
-            }
-            else
-            {
-                for (int w = currentWidth; w >= targetWidth; w -= step)
-                {
-                    sidePanel.Width = w;
-                    await Task.Delay(5);
-                }
-            }
-            sidePanel.Width = targetWidth;
-        }
+            };
 
-        private void ShowPanelContent()
-        {
-            foreach (Control control in GetContentControls())
-            {
-                control.Visible = true;
-            }
-        }
+            Label lblIcon = new Label();
+            lblIcon.Text = icon;
+            lblIcon.Font = new Font("Segoe UI", 24);
+            lblIcon.Location = new Point(10, 10);
+            lblIcon.AutoSize = true;
 
-        private void HidePanelContent()
-        {
-            foreach (Control control in GetContentControls())
-            {
-                control.Visible = false;
-            }
-        }
+            Label lblNumber = new Label();
+            lblNumber.Text = number;
+            lblNumber.Font = new Font("Segoe UI", 20, FontStyle.Bold);
+            lblNumber.ForeColor = Color.FromArgb(59, 130, 246);
+            lblNumber.Location = new Point(10, 45);
+            lblNumber.AutoSize = true;
 
-        private IEnumerable<Control> GetContentControls()
-        {
-            if (sidePanel.Controls.Count > 0)
-            {
-                var contentPanel = sidePanel.Controls[0];
-                foreach (Control control in contentPanel.Controls)
-                {
-                    if (!(control is Button && control.Dock == DockStyle.Top))
-                        yield return control;
-                }
-            }
-        }
+            Label lblText = new Label();
+            lblText.Text = text;
+            lblText.Font = new Font("Segoe UI", 9);
+            lblText.ForeColor = Color.Gray;
+            lblText.Location = new Point(10, 75);
+            lblText.AutoSize = true;
 
-        private void CollapsePanel()
-        {
-            if (isPanelExpanded)
-            {
-                ToggleBtn_Click(null, null);
-            }
-        }
+            card.Controls.Add(lblIcon);
+            card.Controls.Add(lblNumber);
+            card.Controls.Add(lblText);
 
-        private void button1_Click(object sender, EventArgs e)
-        {
-            ShowForm1(sender, e);
-        }
-
-        private void button2_Click(object sender, EventArgs e)
-        {
-            ShowForm2(sender, e);
-        }
-
-        private void panel1_Paint(object sender, PaintEventArgs e)
-        {
-            // Ваш существующий код
-        }
-
-        protected override void OnFormClosed(FormClosedEventArgs e)
-        {
-            base.OnFormClosed(e);
-            form1?.Dispose();
-            form2?.Dispose();
+            return card;
         }
     }
 }

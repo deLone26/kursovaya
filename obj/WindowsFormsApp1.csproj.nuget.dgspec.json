@@ -58,6 +58,10 @@
               "target": "Package",
               "version": "[4.7.0, )"
             },
+            "Microsoft.Web.WebView2": {
+              "target": "Package",
+              "version": "[1.0.3800.47, )"
+            },
             "Npgsql": {
               "target": "Package",
               "version": "[9.0.3, )"

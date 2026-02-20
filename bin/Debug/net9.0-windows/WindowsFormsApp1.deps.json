@@ -9,8 +9,12 @@
       "WindowsFormsApp1/1.0.0": {
         "dependencies": {
           "Jenga.NET": "4.0.0",
+          "Microsoft.Web.WebView2": "1.0.3800.47",
           "Npgsql": "9.0.3",
-          "Oracle.ManagedDataAccess.Core": "2.19.200"
+          "Oracle.ManagedDataAccess.Core": "2.19.200",
+          "Microsoft.Web.WebView2.Core": "1.0.3800.47",
+          "Microsoft.Web.WebView2.WinForms": "1.0.3800.47",
+          "Microsoft.Web.WebView2.Wpf": "1.0.3800.47"
         },
         "runtime": {
           "WindowsFormsApp1.dll": {}
@@ -330,6 +334,25 @@
           }
         }
       },
+      "Microsoft.Web.WebView2/1.0.3800.47": {
+        "runtimeTargets": {
+          "runtimes/win-arm64/native/WebView2Loader.dll": {
+            "rid": "win-arm64",
+            "assetType": "native",
+            "fileVersion": "1.0.3800.47"
+          },
+          "runtimes/win-x64/native/WebView2Loader.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "1.0.3800.47"
+          },
+          "runtimes/win-x86/native/WebView2Loader.dll": {
+            "rid": "win-x86",
+            "assetType": "native",
+            "fileVersion": "1.0.3800.47"
+          }
+        }
+      },
       "MySql.Data/8.0.26": {
         "dependencies": {
           "BouncyCastle.NetCore": "1.8.5",
@@ -560,6 +583,30 @@
             "fileVersion": "6.0.222.6406"
           }
         }
+      },
+      "Microsoft.Web.WebView2.Core/1.0.3800.47": {
+        "runtime": {
+          "Microsoft.Web.WebView2.Core.dll": {
+            "assemblyVersion": "1.0.3800.47",
+            "fileVersion": "1.0.3800.47"
+          }
+        }
+      },
+      "Microsoft.Web.WebView2.WinForms/1.0.3800.47": {
+        "runtime": {
+          "Microsoft.Web.WebView2.WinForms.dll": {
+            "assemblyVersion": "1.0.3800.47",
+            "fileVersion": "1.0.3800.47"
+          }
+        }
+      },
+      "Microsoft.Web.WebView2.Wpf/1.0.3800.47": {
+        "runtime": {
+          "Microsoft.Web.WebView2.Wpf.dll": {
+            "assemblyVersion": "1.0.3800.47",
+            "fileVersion": "1.0.3800.47"
+          }
+        }
       }
     }
   },
@@ -688,6 +735,13 @@
       "path": "microsoft.extensions.logging.abstractions/8.0.2",
       "hashPath": "microsoft.extensions.logging.abstractions.8.0.2.nupkg.sha512"
     },
+    "Microsoft.Web.WebView2/1.0.3800.47": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-vluoF9sqb72AB02yYs1UXW/2/VsxOMl2idiFJNvG993sOw3bHJvjHXmd3tqevTd9s3Md/9FgEzkOXoUl2Nb/ww==",
+      "path": "microsoft.web.webview2/1.0.3800.47",
+      "hashPath": "microsoft.web.webview2.1.0.3800.47.nupkg.sha512"
+    },
     "MySql.Data/8.0.26": {
       "type": "package",
       "serviceable": true,
@@ -813,6 +867,21 @@
       "sha512": "sha512-ndUZlEkAMc1XzM0xGN++SsJrNhRkIHaKI8+te325vrUgoLT1ufWNI6KB8FFrL7NpRMHPrdxP99aF3fHbAPxW0A==",
       "path": "system.directoryservices.protocols/6.0.1",
       "hashPath": "system.directoryservices.protocols.6.0.1.nupkg.sha512"
+    },
+    "Microsoft.Web.WebView2.Core/1.0.3800.47": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Web.WebView2.WinForms/1.0.3800.47": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Web.WebView2.Wpf/1.0.3800.47": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
     }
   }
 }

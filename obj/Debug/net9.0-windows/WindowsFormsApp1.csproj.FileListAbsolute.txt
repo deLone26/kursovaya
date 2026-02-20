@@ -480,3 +480,15 @@ C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\obj\Debug\net9.0-windows\WindowsF
 C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\obj\Debug\net9.0-windows\WindowsFormsApp1.genruntimeconfig.cache
 C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\obj\Debug\net9.0-windows\ref\WindowsFormsApp1.dll
 C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\obj\Debug\net9.0-windows\WindowsFormsApp1.FormBoss.resources
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\runtimes\win-x86\native\WebView2Loader.dll
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\runtimes\win-x64\native\WebView2Loader.dll
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\runtimes\win-arm64\native\WebView2Loader.dll
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\Microsoft.Web.WebView2.Core.dll
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\Microsoft.Web.WebView2.WinForms.dll
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\Microsoft.Web.WebView2.Wpf.dll
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\Microsoft.Web.WebView2.Core.xml
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\Microsoft.Web.WebView2.WinForms.xml
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\Microsoft.Web.WebView2.Wpf.xml
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\WebUI\boss.html
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\WebUI\css\boss.css
+C:\Users\Daniil\Desktop\4\kursovaya2\kursovaya\bin\Debug\net9.0-windows\WebUI\js\boss.js

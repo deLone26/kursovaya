@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель начальника</title>
+    <link rel="stylesheet" href="css/boss.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="boss-container">
+        <!-- Верхняя панель статистики -->
+        <div class="stats-header">
+            <div class="stat-card">
+                <div class="stat-icon">🔧</div>
+                <div class="stat-content">
+                    <span class="stat-value" id="totalEquipment">0</span>
+                    <span class="stat-label">Оборудования</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-content">
+                    <span class="stat-value" id="totalAvariya">0</span>
+                    <span class="stat-label">Аварии</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📅</div>
+                <div class="stat-content">
+                    <span class="stat-value" id="totalPlans">0</span>
+                    <span class="stat-label">Планы ТО</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-content">
+                    <span class="stat-value" id="completedPlans">0</span>
+                    <span class="stat-label">Выполнено</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Табы -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="plans">📋 Планы ремонтов</button>
+            <button class="tab-btn" data-tab="avariya">⚠️ Аварии</button>
+            <button class="tab-btn" data-tab="reports">📊 Отчеты</button>
+        </div>
+
+        <!-- Вкладка Планы -->
+        <div class="tab-content active" id="tab-plans">
+            <!-- Фильтры -->
+            <div class="filters-section">
+                <div class="filter-group">
+                    <label>Период:</label>
+                    <div class="date-range">
+                        <input type="date" id="planStartDate" class="date-input">
+                        <span class="date-separator">—</span>
+                        <input type="date" id="planEndDate" class="date-input">
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label class="checkbox">
+                        <input type="checkbox" id="showAllPlans">
+                        <span class="checkmark"></span>
+                        Все записи
+                    </label>
+                </div>
+                <button class="btn-primary" id="applyPlanFilter">
+                    <span class="btn-icon">🔍</span>
+                    Применить фильтр
+                </button>
+            </div>
+
+            <!-- Таблица планов -->
+            <div class="table-container">
+                <table class="data-table" id="plansTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Оборудование</th>
+                            <th>Тип ТО</th>
+                            <th>Дата начала</th>
+                            <th>Дата окончания</th>
+                            <th>Ответственный</th>
+                            <th>Статус</th>
+                            <th>Связь</th>
+                        </tr>
+                    </thead>
+                    <tbody id="plansTableBody">
+                        <tr><td colspan="8" class="loading">Загрузка данных из базы...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Форма редактирования -->
+            <div class="edit-form">
+                <h3 class="form-title">
+                    <span class="form-icon">✏️</span>
+                    Планирование нового ремонта
+                </h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Оборудование:</label>
+                        <select id="equipmentSelect" class="form-select">
+                            <option value="">Загрузка...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Тип ТО:</label>
+                        <select id="tipSelect" class="form-select">
+                            <option value="">Загрузка...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Дата начала:</label>
+                        <input type="date" id="startDate" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Дата окончания:</label>
+                        <input type="date" id="endDate" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Ответственный:</label>
+                        <select id="responsibleSelect" class="form-select">
+                            <option value="">Загрузка...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Статус ТО:</label>
+                        <select id="statusSelect" class="form-select">
+                            <option value="Запланирован">Запланирован</option>
+                            <option value="В работе">В работе</option>
+                            <option value="Завершен">Завершен</option>
+                            <option value="Отменен">Отменен</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-success" id="addPlanBtn">
+                        <span class="btn-icon">➕</span>
+                        Добавить
+                    </button>
+                    <button class="btn-warning" id="updatePlanBtn">
+                        <span class="btn-icon">🔄</span>
+                        Обновить
+                    </button>
+                    <button class="btn-danger" id="deletePlanBtn">
+                        <span class="btn-icon">🗑️</span>
+                        Удалить
+                    </button>
+                    <button class="btn-secondary" id="clearFormBtn">
+                        <span class="btn-icon">🧹</span>
+                        Очистить
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка Аварии -->
+        <div class="tab-content" id="tab-avariya">
+            <div class="filters-section">
+                <div class="filter-group">
+                    <label>Период:</label>
+                    <div class="date-range">
+                        <input type="date" id="avariyaStartDate" class="date-input">
+                        <span class="date-separator">—</span>
+                        <input type="date" id="avariyaEndDate" class="date-input">
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label class="checkbox">
+                        <input type="checkbox" id="showAllAvariya">
+                        <span class="checkmark"></span>
+                        Все записи
+                    </label>
+                </div>
+                <button class="btn-primary" id="applyAvariyaFilter">
+                    <span class="btn-icon">🔍</span>
+                    Применить фильтр
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table" id="avariyaTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Оборудование</th>
+                            <th>Дата</th>
+                            <th>Описание</th>
+                            <th>Последствия</th>
+                            <th>Статус</th>
+                            <th>План</th>
+                        </tr>
+                    </thead>
+                    <tbody id="avariyaTableBody">
+                        <tr><td colspan="7" class="loading">Загрузка данных из базы...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="action-bar">
+                <button class="btn-orange" id="createPlanFromAvariya">
+                    <span class="btn-icon">📋</span>
+                    Создать план из аварии
+                </button>
+            </div>
+        </div>
+
+        <!-- Вкладка Отчеты -->
+<div class="tab-content" id="tab-reports">
+    <div class="reports-section">
+        <h3 class="form-title">Экспорт отчетов</h3>
+        <div class="form-group" style="margin-bottom: 20px; width: 300px;">
+            <label>Тип отчета:</label>
+            <select id="reportTypeSelect" class="form-select">
+                <option value="all">Все планы</option>
+                <option value="planned">Только запланированные</option>
+                <option value="inprogress">В работе</option>
+                <option value="completed">Завершенные</option>
+                <option value="avariya">Аварии</option>
+            </select>
+        </div>
+        <div class="report-actions">
+            <button class="btn-success" id="exportExcelBtn">
+                <span class="btn-icon">📊</span>
+                Экспорт в EXCEL
+            </button>
+            <button class="btn-primary" id="exportWordBtn">
+                <span class="btn-icon">📝</span>
+                Экспорт в WORD
+            </button>
+            <button class="btn-info" id="previewReportBtn">
+                <span class="btn-icon">👁️</span>
+                Предпросмотр
+            </button>
+        </div>
+    </div>
+</div>
+
+    <!-- Тестовая кнопка для проверки связи -->
+    <button id="testBtn" style="position: fixed; bottom: 10px; right: 10px; padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer; z-index: 9999;" onclick="testConnection()">
+        🔍 Тест связи с БД
+    </button>
+
+    <script src="js/boss.js"></script>
+</body>
+</html>

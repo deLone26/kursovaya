@@ -196,7 +196,7 @@ namespace WindowsFormsApp1
 
                 case "app_boss":
                     // ВАЖНО: передаем оба параметра!
-                    form = new FormBoss(connString, employeeId);
+                    form = new MainForm(connString, employeeId);
                     break;
 
                 case "app_operator":
