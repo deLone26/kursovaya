@@ -17,6 +17,9 @@
     <Compile Update="Form2.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="FormAccidents.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="FormBoss.cs">
       <SubType>Form</SubType>
     </Compile>

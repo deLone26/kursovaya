@@ -602,3 +602,4 @@ C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\obj\Debug\net9.0-windows\refint\W
 C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\obj\Debug\net9.0-windows\WindowsFormsApp1.pdb
 C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\obj\Debug\net9.0-windows\WindowsFormsApp1.genruntimeconfig.cache
 C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\obj\Debug\net9.0-windows\ref\WindowsFormsApp1.dll
+C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\obj\Debug\net9.0-windows\WindowsFormsApp1.FormAccidents.resources

@@ -44,7 +44,8 @@ namespace WindowsFormsApp1
                 webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
                 webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = true;
 
-                string htmlPath = Path.Combine(Application.StartupPath, "WebUI", "boss.html");
+                string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
+                string htmlPath = Path.Combine(webUIPath, "boss.html");
 
                 if (File.Exists(htmlPath))
                 {
@@ -66,10 +67,13 @@ namespace WindowsFormsApp1
                 {
                     System.Threading.Tasks.Task.Delay(500).ContinueWith(_ =>
                     {
-                        this.Invoke(new Action(() =>
+                        if (this.IsHandleCreated)
                         {
-                            LoadInitialData();
-                        }));
+                            this.Invoke(new Action(() =>
+                            {
+                                LoadInitialData();
+                            }));
+                        }
                     });
                 };
             }
@@ -239,10 +243,10 @@ namespace WindowsFormsApp1
                 {
                     conn.Open();
                     string sql = @"
-                SELECT id, familiya || ' ' || imya || ' ' || otchestvo AS fio 
-                FROM sotrudniki 
-                WHERE dolzhnost ILIKE '%слесар%' OR dolzhnost ILIKE '%Слесар%' OR dolzhnost ILIKE '%механик%'
-                ORDER BY familiya";
+                        SELECT id, familiya || ' ' || imya || ' ' || otchestvo AS fio 
+                        FROM sotrudniki 
+                        WHERE dolzhnost ILIKE '%слесар%' OR dolzhnost ILIKE '%Слесар%' OR dolzhnost ILIKE '%механик%'
+                        ORDER BY familiya";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -613,22 +617,21 @@ namespace WindowsFormsApp1
                     {
                         conn.Open();
 
-                        // Получаем данные для отчета
                         string sql = @"
-                    SELECT 
-                        p.id,
-                        o.nazvanie AS equipment,
-                        COALESCE(t.nazvanie, 'Не указан') AS tip,
-                        p.data_nachala AS start_date,
-                        p.data_okonchaniya AS end_date,
-                        COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
-                        p.status,
-                        CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya
-                    FROM plan_to p
-                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
-                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
-                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
-                    ORDER BY p.data_nachala DESC";
+                            SELECT 
+                                p.id,
+                                o.nazvanie AS equipment,
+                                COALESCE(t.nazvanie, 'Не указан') AS tip,
+                                p.data_nachala AS start_date,
+                                p.data_okonchaniya AS end_date,
+                                COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
+                                p.status,
+                                CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya
+                            FROM plan_to p
+                            JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                            LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                            LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                            ORDER BY p.data_nachala DESC";
 
                         using (var cmd = new NpgsqlCommand(sql, conn))
                         {
@@ -636,15 +639,12 @@ namespace WindowsFormsApp1
                             {
                                 using (StreamWriter sw = new StreamWriter(save.FileName, false, Encoding.UTF8))
                                 {
-                                    // Заголовок
                                     sw.WriteLine("Отчет о планах ремонтов");
                                     sw.WriteLine($"Дата формирования: {DateTime.Now:dd.MM.yyyy HH:mm}");
                                     sw.WriteLine();
 
-                                    // Заголовки колонок
                                     sw.WriteLine("ID;Оборудование;Тип ТО;Дата начала;Дата окончания;Ответственный;Статус;Связь с аварией");
 
-                                    // Данные
                                     int count = 0;
                                     while (reader.Read())
                                     {
@@ -667,8 +667,7 @@ namespace WindowsFormsApp1
                         }
                     }
 
-                    MessageBox.Show($"Отчет сохранен: {save.FileName}\n\nВсего записей: {GetPlanCount()}",
-                        "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show($"Отчет сохранен", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
@@ -692,20 +691,20 @@ namespace WindowsFormsApp1
                         conn.Open();
 
                         string sql = @"
-                    SELECT 
-                        p.id,
-                        o.nazvanie AS equipment,
-                        COALESCE(t.nazvanie, 'Не указан') AS tip,
-                        p.data_nachala AS start_date,
-                        p.data_okonchaniya AS end_date,
-                        COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
-                        p.status,
-                        CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya
-                    FROM plan_to p
-                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
-                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
-                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
-                    ORDER BY p.data_nachala DESC";
+                            SELECT 
+                                p.id,
+                                o.nazvanie AS equipment,
+                                COALESCE(t.nazvanie, 'Не указан') AS tip,
+                                p.data_nachala AS start_date,
+                                p.data_okonchaniya AS end_date,
+                                COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
+                                p.status,
+                                CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya
+                            FROM plan_to p
+                            JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                            LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                            LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                            ORDER BY p.data_nachala DESC";
 
                         using (var cmd = new NpgsqlCommand(sql, conn))
                         {
@@ -721,7 +720,6 @@ namespace WindowsFormsApp1
                                     sw.WriteLine(@"\pard\qc\fs20 Дата формирования: " + DateTime.Now.ToString("dd.MM.yyyy HH:mm") + @"\par");
                                     sw.WriteLine(@"\par");
 
-                                    // Заголовки таблицы
                                     sw.WriteLine(@"\trowd");
                                     for (int i = 0; i < 8; i++)
                                         sw.WriteLine(@"\cellx" + ((i + 1) * 2000));
@@ -735,7 +733,6 @@ namespace WindowsFormsApp1
                                     sw.Write(@"ID \cell Оборудование \cell Тип ТО \cell Дата начала \cell Дата окончания \cell Ответственный \cell Статус \cell Связь \cell ");
                                     sw.WriteLine(@"\row\b0");
 
-                                    // Данные
                                     int count = 0;
                                     while (reader.Read())
                                     {
@@ -774,33 +771,12 @@ namespace WindowsFormsApp1
                         }
                     }
 
-                    MessageBox.Show($"Отчет сохранен: {save.FileName}\n\nВсего записей: {GetPlanCount()}",
-                        "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show($"Отчет сохранен", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
             {
                 ShowError("Ошибка экспорта в Word: " + ex.Message);
-            }
-        }
-
-        private int GetPlanCount()
-        {
-            try
-            {
-                using (var conn = new NpgsqlConnection(connectionString))
-                {
-                    conn.Open();
-                    string sql = "SELECT COUNT(*) FROM plan_to";
-                    using (var cmd = new NpgsqlCommand(sql, conn))
-                    {
-                        return Convert.ToInt32(cmd.ExecuteScalar());
-                    }
-                }
-            }
-            catch
-            {
-                return 0;
             }
         }
 
@@ -812,14 +788,13 @@ namespace WindowsFormsApp1
                 {
                     conn.Open();
 
-                    // Статистика по планам
                     string planStats = @"
-                SELECT 
-                    COUNT(*) as total,
-                    COUNT(CASE WHEN status = 'Завершен' THEN 1 END) as completed,
-                    COUNT(CASE WHEN status = 'В работе' THEN 1 END) as in_progress,
-                    COUNT(CASE WHEN status = 'Запланирован' THEN 1 END) as planned
-                FROM plan_to";
+                        SELECT 
+                            COUNT(*) as total,
+                            COUNT(CASE WHEN status = 'Завершен' THEN 1 END) as completed,
+                            COUNT(CASE WHEN status = 'В работе' THEN 1 END) as in_progress,
+                            COUNT(CASE WHEN status = 'Запланирован' THEN 1 END) as planned
+                        FROM plan_to";
 
                     int totalPlans = 0, completed = 0, inProgress = 0, planned = 0;
 
@@ -837,13 +812,12 @@ namespace WindowsFormsApp1
                         }
                     }
 
-                    // Статистика по авариям
                     string avariyaStats = @"
-                SELECT 
-                    COUNT(*) as total,
-                    COUNT(CASE WHEN p.id IS NOT NULL THEN 1 END) as with_plan
-                FROM avariya a
-                LEFT JOIN plan_to p ON a.id = p.avariya_id";
+                        SELECT 
+                            COUNT(*) as total,
+                            COUNT(CASE WHEN p.id IS NOT NULL THEN 1 END) as with_plan
+                        FROM avariya a
+                        LEFT JOIN plan_to p ON a.id = p.avariya_id";
 
                     int totalAvariya = 0, withPlan = 0;
 
@@ -881,8 +855,7 @@ namespace WindowsFormsApp1
                                     $"║ Без плана: {withoutPlan,-41} ║\n" +
                                     $"╚══════════════════════════════════════════════════════════╝";
 
-                    MessageBox.Show(message, "Предпросмотр отчета",
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(message, "Предпросмотр отчета", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)

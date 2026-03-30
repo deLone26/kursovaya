@@ -1,0 +1,423 @@
+﻿// Глобальные переменные
+let selectedAccidentId = -1;
+let equipmentList = [];
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Accidents.js загружен');
+
+    setDefaultDates();
+    setupEventListeners();
+
+    // Запрашиваем данные у C#
+    if (window.chrome && window.chrome.webview) {
+        console.log('Отправляем запрос на загрузку оборудования');
+        window.chrome.webview.postMessage(JSON.stringify({
+            action: 'loadEquipment'
+        }));
+
+        console.log('Отправляем запрос на загрузку аварий');
+        window.chrome.webview.postMessage(JSON.stringify({
+            action: 'loadAccidents',
+            startDate: document.getElementById('startDate')?.value || '',
+            endDate: document.getElementById('endDate')?.value || '',
+            showAll: document.getElementById('showAll')?.checked || false
+        }));
+    } else {
+        console.error('WebView не доступен');
+    }
+});
+
+// Получение сообщений от C#
+window.receiveFromCSharp = function(command, data) {
+    console.log('Получено от C#:', command, data);
+
+    try {
+        switch(command) {
+            case 'fillEquipment':
+                fillEquipment(data);
+                break;
+            case 'displayAccidents':
+                displayAccidents(data);
+                break;
+            case 'updateAccidentStatistics':
+                updateStatistics(data);
+                break;
+            case 'showSuccess':
+                showToast('✅ ' + data, 'success');
+                break;
+            case 'showError':
+                showToast('❌ ' + data, 'error');
+                break;
+            case 'showWarning':
+                showToast('⚠️ ' + data, 'warning');
+                break;
+            default:
+                console.log('Неизвестная команда:', command);
+        }
+    } catch (error) {
+        console.error('Ошибка обработки:', error);
+    }
+};
+
+function setDefaultDates() {
+    const today = new Date();
+    const monthAgo = new Date();
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+    const formatDate = (date) => date.toISOString().split('T')[0];
+
+    const startDate = document.getElementById('startDate');
+    const endDate = document.getElementById('endDate');
+    const accidentDate = document.getElementById('accidentDate');
+    const accidentTime = document.getElementById('accidentTime');
+
+    if (startDate) startDate.value = formatDate(monthAgo);
+    if (endDate) endDate.value = formatDate(today);
+    if (accidentDate) accidentDate.value = formatDate(today);
+    if (accidentTime) {
+        const now = new Date();
+        accidentTime.value = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    }
+}
+
+function setupEventListeners() {
+    // Применить фильтр
+    const applyFilter = document.getElementById('applyFilterBtn');
+    if (applyFilter) {
+        applyFilter.addEventListener('click', () => {
+            const startDate = document.getElementById('startDate')?.value || '';
+            const endDate = document.getElementById('endDate')?.value || '';
+            const showAll = document.getElementById('showAll')?.checked || false;
+
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage(JSON.stringify({
+                    action: 'loadAccidents',
+                    startDate: startDate,
+                    endDate: endDate,
+                    showAll: showAll
+                }));
+            }
+        });
+    }
+
+    // Чекбокс "Показать все"
+    const showAll = document.getElementById('showAll');
+    if (showAll) {
+        showAll.addEventListener('change', function(e) {
+            const start = document.getElementById('startDate');
+            const end = document.getElementById('endDate');
+            if (start) start.disabled = e.target.checked;
+            if (end) end.disabled = e.target.checked;
+
+            // Автоматически применяем фильтр
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage(JSON.stringify({
+                    action: 'loadAccidents',
+                    startDate: start?.value || '',
+                    endDate: end?.value || '',
+                    showAll: e.target.checked
+                }));
+            }
+        });
+    }
+
+    // Кнопки CRUD
+    const addBtn = document.getElementById('addBtn');
+    if (addBtn) {
+        addBtn.addEventListener('click', addAccident);
+        console.log('Кнопка Добавить привязана');
+    }
+
+    const updateBtn = document.getElementById('updateBtn');
+    if (updateBtn) {
+        updateBtn.addEventListener('click', updateAccident);
+        console.log('Кнопка Обновить привязана');
+    }
+
+    const deleteBtn = document.getElementById('deleteBtn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', deleteAccident);
+        console.log('Кнопка Удалить привязана');
+    }
+
+    const clearBtn = document.getElementById('clearBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearForm);
+        console.log('Кнопка Очистить привязана');
+    }
+}
+
+function fillEquipment(data) {
+    console.log('Заполнение оборудования:', data);
+    const select = document.getElementById('equipmentSelect');
+    if (!select) return;
+
+    try {
+        equipmentList = typeof data === 'string' ? JSON.parse(data) : data;
+        let html = '<option value="">Выберите оборудование</option>';
+
+        if (Array.isArray(equipmentList)) {
+            equipmentList.forEach(item => {
+                html += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
+            });
+        }
+
+        select.innerHTML = html;
+        console.log('Оборудование загружено, количество:', equipmentList.length);
+    } catch (e) {
+        console.error('Ошибка парсинга оборудования:', e);
+    }
+}
+
+function displayAccidents(data) {
+    console.log('Отображение аварий:', data);
+    const tbody = document.getElementById('accidentsTableBody');
+    if (!tbody) return;
+
+    try {
+        let items = typeof data === 'string' ? JSON.parse(data) : data;
+
+        if (!items || items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="loading">Нет данных</td></tr>';
+            return;
+        }
+
+        let html = '';
+        items.forEach(row => {
+            const isSelected = selectedAccidentId == row.id;
+            const statusClass = getStatusClass(row.status);
+            const planSymbol = row.has_plan === '✅' ? '✅' : '❌';
+            const planClass = row.has_plan === '✅' ? 'plan-badge yes' : 'plan-badge no';
+
+            html += `<tr data-id="${row.id}" class="${isSelected ? 'selected' : ''}" onclick="selectAccident(${row.id})">`;
+            html += `<td>${row.id || ''}</td>`;
+            html += `<td>${escapeHtml(row.equipment || '')}</td>`;
+            html += `<td>${row.date || ''}</td>`;
+            html += `<td>${escapeHtml(row.description || '')}</td>`;
+            html += `<td>${escapeHtml(row.consequences || '')}</td>`;
+            html += `<td><span class="status-badge ${statusClass}">${row.status || ''}</span></td>`;
+            html += `<td class="${planClass}">${planSymbol}</td>`;
+            html += `</tr>`;
+        });
+        tbody.innerHTML = html;
+        console.log('Аварии отображены, количество:', items.length);
+    } catch (e) {
+        console.error('Ошибка отображения аварий:', e);
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">Ошибка загрузки данных</td></tr>';
+    }
+}
+
+function getStatusClass(status) {
+    switch(status) {
+        case 'Зарегистрирована': return 'status-registered';
+        case 'В работе': return 'status-work';
+        case 'Завершена': return 'status-completed';
+        case 'Требует ремонта': return 'status-need-repair';
+        default: return '';
+    }
+}
+
+function updateStatistics(data) {
+    console.log('Обновление статистики:', data);
+    try {
+        let stats = typeof data === 'string' ? JSON.parse(data) : data;
+
+        const total = document.getElementById('totalAccidents');
+        const inProgress = document.getElementById('inProgressAccidents');
+        const completed = document.getElementById('completedAccidents');
+        const needPlan = document.getElementById('needPlanAccidents');
+
+        if (total) total.textContent = stats.total || 0;
+        if (inProgress) inProgress.textContent = stats.inProgress || 0;
+        if (completed) completed.textContent = stats.completed || 0;
+        if (needPlan) needPlan.textContent = stats.needPlan || 0;
+    } catch (e) {
+        console.error('Ошибка обновления статистики:', e);
+    }
+}
+
+function selectAccident(id) {
+    selectedAccidentId = parseInt(id);
+    console.log('Выбрана авария ID:', selectedAccidentId);
+
+    // Снимаем выделение со всех строк
+    document.querySelectorAll('#accidentsTableBody tr').forEach(tr => {
+        tr.classList.remove('selected');
+        if (tr.getAttribute('data-id') == id) {
+            tr.classList.add('selected');
+
+            // Заполняем форму данными из выбранной строки
+            const cells = tr.cells;
+            if (cells.length >= 6) {
+                // Оборудование
+                const equipmentName = cells[1].textContent;
+                const equipmentSelect = document.getElementById('equipmentSelect');
+                for (let i = 0; i < equipmentSelect.options.length; i++) {
+                    if (equipmentSelect.options[i].text === equipmentName) {
+                        equipmentSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+
+                // Дата и время
+                const dateTime = cells[2].textContent;
+                if (dateTime) {
+                    const parts = dateTime.split(' ');
+                    if (parts.length >= 2) {
+                        const dateInput = document.getElementById('accidentDate');
+                        const timeInput = document.getElementById('accidentTime');
+                        if (dateInput) dateInput.value = parts[0];
+                        if (timeInput) timeInput.value = parts[1];
+                    }
+                }
+
+                // Описание и последствия
+                const description = document.getElementById('description');
+                const consequences = document.getElementById('consequences');
+                if (description) description.value = cells[3].textContent;
+                if (consequences) consequences.value = cells[4].textContent;
+
+                // Статус
+                const status = cells[5].textContent.trim();
+                const statusSelect = document.getElementById('statusSelect');
+                for (let i = 0; i < statusSelect.options.length; i++) {
+                    if (statusSelect.options[i].text === status) {
+                        statusSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+    });
+}
+
+function addAccident() {
+    console.log('addAccident вызван');
+
+    const equipment = document.getElementById('equipmentSelect')?.value;
+    const date = document.getElementById('accidentDate')?.value;
+    const time = document.getElementById('accidentTime')?.value;
+    const description = document.getElementById('description')?.value.trim();
+    const consequences = document.getElementById('consequences')?.value.trim();
+    const status = document.getElementById('statusSelect')?.value;
+
+    console.log('Данные формы:', { equipment, date, time, description, consequences, status });
+
+    if (!equipment) {
+        showToast('Выберите оборудование!', 'warning');
+        return;
+    }
+
+    if (!description) {
+        showToast('Введите описание аварии!', 'warning');
+        return;
+    }
+
+    const dateTime = date && time ? `${date} ${time}` : (date || new Date().toISOString().split('T')[0]);
+
+    if (window.chrome?.webview) {
+        const message = {
+            action: 'addAccident',
+            equipment: parseInt(equipment),
+            dateTime: dateTime,
+            description: description,
+            consequences: consequences || '',
+            status: status || 'Зарегистрирована'
+        };
+        console.log('Отправляем в C#:', message);
+        window.chrome.webview.postMessage(JSON.stringify(message));
+    } else {
+        console.error('WebView не доступен');
+        showToast('Ошибка связи с приложением', 'error');
+    }
+}
+
+function updateAccident() {
+    if (selectedAccidentId === -1) {
+        showToast('Выберите запись для обновления!', 'warning');
+        return;
+    }
+
+    if (!confirm('Обновить выбранную запись?')) return;
+
+    const equipment = document.getElementById('equipmentSelect')?.value;
+    const date = document.getElementById('accidentDate')?.value;
+    const time = document.getElementById('accidentTime')?.value;
+    const description = document.getElementById('description')?.value.trim();
+    const consequences = document.getElementById('consequences')?.value.trim();
+    const status = document.getElementById('statusSelect')?.value;
+
+    const dateTime = date && time ? `${date} ${time}` : date;
+
+    if (window.chrome?.webview) {
+        window.chrome.webview.postMessage(JSON.stringify({
+            action: 'updateAccident',
+            id: selectedAccidentId,
+            equipment: parseInt(equipment),
+            dateTime: dateTime,
+            description: description,
+            consequences: consequences,
+            status: status
+        }));
+    }
+}
+
+function deleteAccident() {
+    if (selectedAccidentId === -1) {
+        showToast('Выберите запись для удаления!', 'warning');
+        return;
+    }
+
+    if (!confirm('Удалить выбранную запись?')) return;
+
+    if (window.chrome?.webview) {
+        window.chrome.webview.postMessage(JSON.stringify({
+            action: 'deleteAccident',
+            id: selectedAccidentId
+        }));
+    }
+}
+
+function clearForm() {
+    selectedAccidentId = -1;
+
+    const equipment = document.getElementById('equipmentSelect');
+    const description = document.getElementById('description');
+    const consequences = document.getElementById('consequences');
+    const status = document.getElementById('statusSelect');
+
+    if (equipment) equipment.selectedIndex = 0;
+    if (description) description.value = '';
+    if (consequences) consequences.value = '';
+    if (status) status.selectedIndex = 0;
+
+    setDefaultDates();
+
+    // Снимаем выделение со всех строк
+    document.querySelectorAll('#accidentsTableBody tr').forEach(tr => {
+        tr.classList.remove('selected');
+    });
+
+    console.log('Форма очищена');
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toastMessage');
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.className = `toast ${type}`;
+    toast.style.display = 'block';
+
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, 3000);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}

@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Журнал аварий</title>
+    <link rel="stylesheet" href="css/accidents.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="accidents-container">
+        <!-- Шапка -->
+        <div class="header">
+            <h1 class="title">
+                <span class="title-icon">⚠️</span>
+                Журнал аварий
+            </h1>
+            <p class="subtitle">Регистрация и контроль аварийных ситуаций на оборудовании</p>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalAccidents">0</div>
+                    <div class="stat-label">Всего аварий</div>
+                </div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-icon">⏳</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="inProgressAccidents">0</div>
+                    <div class="stat-label">В работе</div>
+                </div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-icon">✅</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="completedAccidents">0</div>
+                    <div class="stat-label">Завершено</div>
+                </div>
+            </div>
+            <div class="stat-card danger">
+                <div class="stat-icon">🔧</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="needPlanAccidents">0</div>
+                    <div class="stat-label">Требуют ремонта</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="filters-panel">
+            <div class="filter-group">
+                <label>Период</label>
+                <div class="date-range">
+                    <input type="date" id="startDate" class="date-input">
+                    <span class="date-separator">—</span>
+                    <input type="date" id="endDate" class="date-input">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="showAll">
+                    <span class="checkmark"></span>
+                    Показать все записи
+                </label>
+            </div>
+            <button id="applyFilterBtn" class="btn-primary">
+                <span class="btn-icon">🔍</span>
+                Применить фильтр
+            </button>
+        </div>
+
+        <!-- Таблица аварий -->
+        <div class="table-container">
+            <table class="data-table" id="accidentsTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Оборудование</th>
+                        <th>Дата/Время</th>
+                        <th>Описание</th>
+                        <th>Последствия</th>
+                        <th>Статус</th>
+                        <th>План</th>
+                    </tr>
+                </thead>
+                <tbody id="accidentsTableBody">
+                    <tr>
+                        <td colspan="7" class="loading">Загрузка данных...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Форма регистрации аварии -->
+        <div class="form-panel">
+            <div class="form-header">
+                <span class="form-icon">📝</span>
+                <h3>Регистрация новой аварии</h3>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Оборудование <span class="required">*</span></label>
+                    <select id="equipmentSelect" class="form-select">
+                        <option value="">Выберите оборудование</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Дата и время <span class="required">*</span></label>
+                    <div class="datetime-group">
+                        <input type="date" id="accidentDate" class="form-input">
+                        <input type="time" id="accidentTime" class="form-input">
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Описание аварии <span class="required">*</span></label>
+                    <textarea id="description" rows="3" class="form-textarea" placeholder="Подробное описание аварийной ситуации..."></textarea>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Последствия</label>
+                    <textarea id="consequences" rows="2" class="form-textarea" placeholder="Какие последствия вызвала авария..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Статус</label>
+                    <select id="statusSelect" class="form-select">
+                        <option value="Зарегистрирована">📋 Зарегистрирована</option>
+                        <option value="В работе">⚙️ В работе</option>
+                        <option value="Завершена">✅ Завершена</option>
+                        <option value="Требует ремонта">🔧 Требует ремонта</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button id="addBtn" class="btn-success">
+                    <span class="btn-icon">➕</span>
+                    Добавить
+                </button>
+                <button id="updateBtn" class="btn-warning">
+                    <span class="btn-icon">✏️</span>
+                    Обновить
+                </button>
+                <button id="deleteBtn" class="btn-danger">
+                    <span class="btn-icon">🗑️</span>
+                    Удалить
+                </button>
+                <button id="clearBtn" class="btn-secondary">
+                    <span class="btn-icon">🧹</span>
+                    Очистить
+                </button>
+            </div>
+        </div>
+
+        <!-- Toast сообщение -->
+        <div id="toastMessage" class="toast" style="display: none;"></div>
+    </div>
+
+    <script src="js/accidents.js"></script>
+</body>
+</html>

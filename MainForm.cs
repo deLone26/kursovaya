@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using Npgsql;
 
 namespace WindowsFormsApp1
 {
@@ -14,6 +15,7 @@ namespace WindowsFormsApp1
         private Panel contentPanel;
         private WebView2 webView;
         private Form activeForm = null;
+        private WebView2 activeWebView = null;
 
         private bool isCollapsed = false;
         private int expandedWidth = 250;
@@ -21,17 +23,80 @@ namespace WindowsFormsApp1
 
         private string connectionString;
         private int employeeId;
+        private string userLogin;
+        private string userRole;
 
         public MainForm(string connString, int userId)
         {
             this.connectionString = connString;
             this.employeeId = userId;
+            this.userLogin = GetLoginByEmployeeId(userId);
+            this.userRole = GetUserRole();
 
             InitializeComponent();
             InitializeLayout();
             CreateMenuButtons();
             this.Load += async (s, e) => await InitializeWebView();
             ShowHome();
+        }
+
+        private string GetLoginByEmployeeId(int empId)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string sql = "SELECT login FROM users WHERE sotrudnik_id = @id";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", empId);
+                        return cmd.ExecuteScalar()?.ToString() ?? "user";
+                    }
+                }
+            }
+            catch { return "user"; }
+        }
+
+        private string GetUserRole()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string sql = @"
+                        SELECT g.rolname
+                        FROM pg_roles u
+                        JOIN pg_auth_members m ON u.oid = m.member
+                        JOIN pg_roles g ON m.roleid = g.oid
+                        WHERE u.rolname = @login AND g.rolname LIKE 'app_%'";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@login", userLogin);
+                        var result = cmd.ExecuteScalar();
+                        if (result?.ToString() == "app_admin") return "admin";
+                        if (result?.ToString() == "app_boss") return "boss";
+                        if (result?.ToString() == "app_slesar") return "slesar";
+                        return "operator";
+                    }
+                }
+            }
+            catch { return "operator"; }
+        }
+
+        private bool IsSectionAllowed(string page)
+        {
+            // Оператор: только Главная, Дашборд, Аварии
+            if (userRole == "operator")
+                return page == "home" || page == "dashboard" || page == "accidents";
+
+            // Слесарь: Главная, Дашборд, Ремонты (пока заглушка)
+            if (userRole == "slesar")
+                return page == "home" || page == "dashboard" || page == "repairs";
+
+            // Начальник и Администратор: всё меню
+            return true;
         }
 
         private void InitializeLayout()
@@ -76,15 +141,8 @@ namespace WindowsFormsApp1
             tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
             row++;
 
-            tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateMenuButton("🏠", "Главная", "home"), 0, row);
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            row++;
-
-            tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateMenuButton("📊", "Дашборд", "dashboard"), 0, row);
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            row++;
+            AddMenuButtonIfAllowed(tlp, "🏠", "Главная", "home", ref row);
+            AddMenuButtonIfAllowed(tlp, "📊", "Дашборд", "dashboard", ref row);
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
 
@@ -94,25 +152,10 @@ namespace WindowsFormsApp1
             tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
             row++;
 
-            tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateMenuButton("🔧", "Всё оборудование", "equipment"), 0, row);
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            row++;
-
-            tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateMenuButton("⚠️", "Аварии", "accidents"), 0, row);
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            row++;
-
-            tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateMenuButton("🔨", "Ремонты", "repairs"), 0, row);
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            row++;
-
-            tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateMenuButton("📋", "Паспорта", "passports"), 0, row);
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            row++;
+            AddMenuButtonIfAllowed(tlp, "🔧", "Всё оборудование", "equipment", ref row);
+            AddMenuButtonIfAllowed(tlp, "⚠️", "Аварии", "accidents", ref row);
+            AddMenuButtonIfAllowed(tlp, "🔨", "Ремонты", "repairs", ref row);
+            AddMenuButtonIfAllowed(tlp, "📋", "Паспорта", "passports", ref row);
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
 
@@ -122,38 +165,20 @@ namespace WindowsFormsApp1
             tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
             row++;
 
-            tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateMenuButton("📅", "Планы ТО", "plans"), 0, row);
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            row++;
-
-            tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateMenuButton("📈", "Графики", "schedules"), 0, row);
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            row++;
+            AddMenuButtonIfAllowed(tlp, "📅", "Планы ТО", "plans", ref row);
+            AddMenuButtonIfAllowed(tlp, "📈", "Графики", "schedules", ref row);
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
 
-            // РУКОВОДСТВО (показываем всем, но в menu.html будет скрыто для обычных пользователей)
+            // РУКОВОДСТВО
             tlp.RowCount = row + 1;
             tlp.Controls.Add(CreateHeaderLabel("РУКОВОДСТВО"), 0, row);
             tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
             row++;
 
-            tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateMenuButton("👑", "Панель начальника", "boss"), 0, row);
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            row++;
-
-            tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateMenuButton("👥", "Сотрудники", "employees"), 0, row);
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            row++;
-
-            tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateMenuButton("💰", "Бюджет", "budget"), 0, row);
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            row++;
+            AddMenuButtonIfAllowed(tlp, "👑", "Панель начальника", "boss", ref row);
+            AddMenuButtonIfAllowed(tlp, "👥", "Сотрудники", "employees", ref row);
+            AddMenuButtonIfAllowed(tlp, "💰", "Бюджет", "budget", ref row);
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
 
@@ -165,6 +190,17 @@ namespace WindowsFormsApp1
             tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
 
             sidePanel.Controls.Add(tlp);
+        }
+
+        private void AddMenuButtonIfAllowed(TableLayoutPanel tlp, string icon, string text, string tag, ref int row)
+        {
+            if (IsSectionAllowed(tag))
+            {
+                tlp.RowCount = row + 1;
+                tlp.Controls.Add(CreateMenuButton(icon, text, tag), 0, row);
+                tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+                row++;
+            }
         }
 
         private Button CreateMenuButton(string icon, string text, string tag)
@@ -252,26 +288,28 @@ namespace WindowsFormsApp1
         {
             try
             {
-                webView = new WebView2();
-                webView.Dock = DockStyle.Fill;
-
+                activeWebView = new WebView2();
+                activeWebView.Dock = DockStyle.Fill;
                 contentPanel.Controls.Clear();
-                contentPanel.Controls.Add(webView);
+                contentPanel.Controls.Add(activeWebView);
 
-                await webView.EnsureCoreWebView2Async(null);
+                await activeWebView.EnsureCoreWebView2Async(null);
 
                 string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
                 string htmlPath = Path.Combine(webUIPath, "menu.html");
 
                 if (File.Exists(htmlPath))
                 {
-                    webView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
+                    activeWebView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
                 }
 
-                webView.CoreWebView2.WebMessageReceived += (s, e) =>
+                activeWebView.CoreWebView2.WebMessageReceived += (s, e) =>
                 {
                     string page = e.TryGetWebMessageAsString();
-                    HandleMenuClick(page);
+                    if (this.IsHandleCreated)
+                    {
+                        this.BeginInvoke(new Action(() => HandleMenuClick(page)));
+                    }
                 };
             }
             catch (Exception ex)
@@ -288,6 +326,8 @@ namespace WindowsFormsApp1
                 return;
             }
 
+            if (this.IsDisposed) return;
+
             switch (page)
             {
                 case "home":
@@ -300,7 +340,8 @@ namespace WindowsFormsApp1
                     OpenChildForm(new Form1());
                     break;
                 case "accidents":
-                    ShowPlaceholder("Журнал аварий");
+                    // Все роли открывают отдельную форму для аварий
+                    OpenChildForm(new FormAccidents());
                     break;
                 case "repairs":
                     ShowPlaceholder("Учет ремонтов");
@@ -331,8 +372,12 @@ namespace WindowsFormsApp1
 
         private void OpenChildForm(Form childForm)
         {
+            // Закрываем предыдущую форму
             if (activeForm != null)
+            {
                 activeForm.Close();
+                activeForm = null;
+            }
 
             activeForm = childForm;
             childForm.TopLevel = false;
@@ -378,18 +423,21 @@ namespace WindowsFormsApp1
         private void ShowHome()
         {
             if (activeForm != null)
+            {
                 activeForm.Close();
+                activeForm = null;
+            }
 
             contentPanel.Controls.Clear();
 
-            if (webView != null && webView.CoreWebView2 != null)
+            if (activeWebView != null && activeWebView.CoreWebView2 != null)
             {
-                contentPanel.Controls.Add(webView);
+                contentPanel.Controls.Add(activeWebView);
                 string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
                 string htmlPath = Path.Combine(webUIPath, "menu.html");
                 if (File.Exists(htmlPath))
                 {
-                    webView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
+                    activeWebView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
                 }
             }
         }
