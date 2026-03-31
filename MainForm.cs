@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Npgsql;
 
@@ -58,6 +60,25 @@ namespace WindowsFormsApp1
             catch { return "user"; }
         }
 
+        private int GetEmployeeIdByLogin(string login)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string sql = "SELECT sotrudnik_id FROM users WHERE login = @login";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@login", login);
+                        var result = cmd.ExecuteScalar();
+                        return result != null ? Convert.ToInt32(result) : -1;
+                    }
+                }
+            }
+            catch { return -1; }
+        }
+
         private string GetUserRole()
         {
             try
@@ -87,15 +108,10 @@ namespace WindowsFormsApp1
 
         private bool IsSectionAllowed(string page)
         {
-            // Оператор: только Главная, Дашборд, Аварии
             if (userRole == "operator")
                 return page == "home" || page == "dashboard" || page == "accidents";
-
-            // Слесарь: Главная, Дашборд, Ремонты (пока заглушка)
             if (userRole == "slesar")
                 return page == "home" || page == "dashboard" || page == "repairs";
-
-            // Начальник и Администратор: всё меню
             return true;
         }
 
@@ -284,7 +300,7 @@ namespace WindowsFormsApp1
             HandleMenuClick(page);
         }
 
-        private async System.Threading.Tasks.Task InitializeWebView()
+        private async Task InitializeWebView()
         {
             try
             {
@@ -294,6 +310,9 @@ namespace WindowsFormsApp1
                 contentPanel.Controls.Add(activeWebView);
 
                 await activeWebView.EnsureCoreWebView2Async(null);
+
+                activeWebView.CoreWebView2.Settings.IsScriptEnabled = true;
+                activeWebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
 
                 string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
                 string htmlPath = Path.Combine(webUIPath, "menu.html");
@@ -311,10 +330,25 @@ namespace WindowsFormsApp1
                         this.BeginInvoke(new Action(() => HandleMenuClick(page)));
                     }
                 };
+
+                activeWebView.CoreWebView2.NavigationCompleted += async (s, e) =>
+                {
+                    await Task.Delay(500);
+                    await SetUserRoleInWebView();
+                };
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка WebView2: {ex.Message}");
+            }
+        }
+
+        private async Task SetUserRoleInWebView()
+        {
+            if (activeWebView?.CoreWebView2 != null)
+            {
+                string script = $"setUserRole('{userRole}');";
+                await activeWebView.CoreWebView2.ExecuteScriptAsync(script);
             }
         }
 
@@ -340,11 +374,10 @@ namespace WindowsFormsApp1
                     OpenChildForm(new Form1());
                     break;
                 case "accidents":
-                    // Все роли открывают отдельную форму для аварий
                     OpenChildForm(new FormAccidents());
                     break;
                 case "repairs":
-                    ShowPlaceholder("Учет ремонтов");
+                    OpenChildForm(new FormRepairs(connectionString, employeeId, userLogin, userRole, GetEmployeeIdByLogin(userLogin)));
                     break;
                 case "passports":
                     ShowPlaceholder("Паспорта оборудования");
@@ -372,7 +405,6 @@ namespace WindowsFormsApp1
 
         private void OpenChildForm(Form childForm)
         {
-            // Закрываем предыдущую форму
             if (activeForm != null)
             {
                 activeForm.Close();

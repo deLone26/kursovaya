@@ -39,6 +39,27 @@
                     <span class="stat-label">Выполнено</span>
                 </div>
             </div>
+            <div class="stat-card overdue-card">
+                <div class="stat-icon">⏰</div>
+                <div class="stat-content">
+                    <span class="stat-value" id="overduePlans">0</span>
+                    <span class="stat-label">Просрочено</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-content">
+                    <span class="stat-value" id="totalCost">0</span>
+                    <span class="stat-label">Общая стоимость</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-content">
+                    <span class="stat-value" id="monthlyCost">0</span>
+                    <span class="stat-label">Стоимость за месяц</span>
+                </div>
+            </div>
         </div>
 
         <!-- Табы -->
@@ -85,11 +106,11 @@
                             <th>Дата окончания</th>
                             <th>Ответственный</th>
                             <th>Статус</th>
-                            <th>Связь</th>
-                        </tr>
-                    </thead>
+                            <th>ID Аварии</th>
+                            <th>Стоимость (руб)</th>
+                        </thead>
                     <tbody id="plansTableBody">
-                        <tr><td colspan="8" class="loading">Загрузка данных из базы...</td></tr>
+                        <tr><td colspan="9" class="loading">Загрузка данных из базы...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -130,11 +151,15 @@
                     <div class="form-group">
                         <label>Статус ТО:</label>
                         <select id="statusSelect" class="form-select">
-                            <option value="Запланирован">Запланирован</option>
-                            <option value="В работе">В работе</option>
-                            <option value="Завершен">Завершен</option>
-                            <option value="Отменен">Отменен</option>
+                            <option value="Запланирован">📋 Запланирован</option>
+                            <option value="В работе">⚙️ В работе</option>
+                            <option value="Завершен">✅ Завершен</option>
+                            <option value="Отменен">❌ Отменен</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Стоимость (руб):</label>
+                        <input type="number" id="cost" step="0.01" class="form-input" placeholder="0.00">
                     </div>
                 </div>
                 <div class="form-actions">
@@ -193,8 +218,7 @@
                             <th>Последствия</th>
                             <th>Статус</th>
                             <th>План</th>
-                        </tr>
-                    </thead>
+                        </thead>
                     <tbody id="avariyaTableBody">
                         <tr><td colspan="7" class="loading">Загрузка данных из базы...</td></tr>
                     </tbody>
@@ -210,40 +234,37 @@
         </div>
 
         <!-- Вкладка Отчеты -->
-<div class="tab-content" id="tab-reports">
-    <div class="reports-section">
-        <h3 class="form-title">Экспорт отчетов</h3>
-        <div class="form-group" style="margin-bottom: 20px; width: 300px;">
-            <label>Тип отчета:</label>
-            <select id="reportTypeSelect" class="form-select">
-                <option value="all">Все планы</option>
-                <option value="planned">Только запланированные</option>
-                <option value="inprogress">В работе</option>
-                <option value="completed">Завершенные</option>
-                <option value="avariya">Аварии</option>
-            </select>
-        </div>
-        <div class="report-actions">
-            <button class="btn-success" id="exportExcelBtn">
-                <span class="btn-icon">📊</span>
-                Экспорт в EXCEL
-            </button>
-            <button class="btn-primary" id="exportWordBtn">
-                <span class="btn-icon">📝</span>
-                Экспорт в WORD
-            </button>
-            <button class="btn-info" id="previewReportBtn">
-                <span class="btn-icon">👁️</span>
-                Предпросмотр
-            </button>
+        <div class="tab-content" id="tab-reports">
+            <div class="reports-section">
+                <h3 class="form-title">Экспорт отчетов</h3>
+                <div class="form-group" style="margin-bottom: 20px; width: 300px;">
+                    <label>Тип отчета:</label>
+                    <select id="reportTypeSelect" class="form-select">
+                        <option value="all">Все планы</option>
+                        <option value="planned">Только запланированные</option>
+                        <option value="inprogress">В работе</option>
+                        <option value="completed">Завершенные</option>
+                        <option value="overdue">Просроченные</option>
+                        <option value="avariya">Аварии</option>
+                    </select>
+                </div>
+                <div class="report-actions">
+                    <button class="btn-success" id="exportExcelBtn">
+                        <span class="btn-icon">📊</span>
+                        Экспорт в EXCEL
+                    </button>
+                    <button class="btn-primary" id="exportWordBtn">
+                        <span class="btn-icon">📝</span>
+                        Экспорт в WORD
+                    </button>
+                    <button class="btn-info" id="previewReportBtn">
+                        <span class="btn-icon">👁️</span>
+                        Предпросмотр
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
-</div>
-
-    <!-- Тестовая кнопка для проверки связи -->
-    <button id="testBtn" style="position: fixed; bottom: 10px; right: 10px; padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer; z-index: 9999;" onclick="testConnection()">
-        🔍 Тест связи с БД
-    </button>
 
     <script src="js/boss.js"></script>
 </body>

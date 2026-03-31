@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои задания</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/repairs.css">
+</head>
+<body>
+    <div class="repairs-container">
+        <div class="header">
+            <h1 class="title">
+                <span class="title-icon">🔨</span>
+                Мои задания
+            </h1>
+            <div class="user-info">
+                <i class="fas fa-user-circle"></i>
+                <span id="userName">Слесарь</span>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📋</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalTasks">0</div>
+                    <div class="stat-label">Всего заданий</div>
+                </div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-icon">⚙️</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="inProgressTasks">0</div>
+                    <div class="stat-label">В работе</div>
+                </div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-icon">✅</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="completedTasks">0</div>
+                    <div class="stat-label">Выполнено</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filters-panel">
+            <div class="filter-group">
+                <label>Период</label>
+                <div class="date-range">
+                    <input type="date" id="startDate" class="date-input">
+                    <span class="date-separator">—</span>
+                    <input type="date" id="endDate" class="date-input">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="showAll">
+                    <span class="checkmark"></span>
+                    Показать все записи
+                </label>
+            </div>
+            <button id="applyFilterBtn" class="btn-primary">
+                <i class="fas fa-search"></i> Применить фильтр
+            </button>
+        </div>
+
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Оборудование</th>
+                        <th>Тип ТО</th>
+                        <th>Плановая дата</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </thead>
+                <tbody id="tasksTableBody">
+                    <tr><td colspan="6" class="loading">Загрузка данных...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Модальное окно -->
+        <div id="completeModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Выполнение задания</h3>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="taskId">
+                    
+                    <div class="form-group">
+                        <label>Фактическая дата начала</label>
+                        <input type="date" id="actualStartDate" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Фактическая дата окончания</label>
+                        <input type="date" id="actualEndDate" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Описание выполненных работ</label>
+                        <textarea id="completionDescription" rows="4" class="form-textarea" placeholder="Подробное описание выполненных работ..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="completeTaskBtn" class="btn-success">Выполнить</button>
+                    <button id="cancelModalBtn" class="btn-secondary">Отмена</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="toastMessage" class="toast" style="display: none;"></div>
+    </div>
+
+    <script src="js/repairs.js"></script>
+</body>
+</html>

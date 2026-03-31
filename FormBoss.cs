@@ -1,6 +1,7 @@
 ﻿using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
 using System.IO;
@@ -165,6 +166,45 @@ namespace WindowsFormsApp1
             }
         }
 
+        private void CheckOverduePlans()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string sql = @"
+                        UPDATE plan_to 
+                        SET is_overdue = CASE 
+                            WHEN data_okonchaniya < CURRENT_DATE 
+                                 AND status NOT IN ('Завершен', 'Отменен') 
+                            THEN TRUE 
+                            ELSE FALSE 
+                        END,
+                        status = CASE 
+                            WHEN data_okonchaniya < CURRENT_DATE 
+                                 AND status = 'Запланирован' 
+                            THEN 'Просрочен'
+                            WHEN data_okonchaniya < CURRENT_DATE 
+                                 AND status = 'В работе' 
+                            THEN 'Просрочен'
+                            ELSE status 
+                        END
+                        WHERE data_okonchaniya IS NOT NULL";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка проверки просрочек: {ex.Message}");
+            }
+        }
+
         private void LoadEquipment()
         {
             try
@@ -177,7 +217,7 @@ namespace WindowsFormsApp1
                     {
                         using (var reader = cmd.ExecuteReader())
                         {
-                            var list = new System.Collections.Generic.List<object>();
+                            var list = new List<object>();
 
                             while (reader.Read())
                             {
@@ -212,7 +252,7 @@ namespace WindowsFormsApp1
                     {
                         using (var reader = cmd.ExecuteReader())
                         {
-                            var list = new System.Collections.Generic.List<object>();
+                            var list = new List<object>();
 
                             while (reader.Read())
                             {
@@ -245,14 +285,14 @@ namespace WindowsFormsApp1
                     string sql = @"
                         SELECT id, familiya || ' ' || imya || ' ' || otchestvo AS fio 
                         FROM sotrudniki 
-                        WHERE dolzhnost ILIKE '%слесар%' OR dolzhnost ILIKE '%Слесар%' OR dolzhnost ILIKE '%механик%'
+                        WHERE dolzhnost ILIKE '%слесар%' OR dolzhnost ILIKE '%Слесар%'
                         ORDER BY familiya";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         using (var reader = cmd.ExecuteReader())
                         {
-                            var list = new System.Collections.Generic.List<object>();
+                            var list = new List<object>();
 
                             while (reader.Read())
                             {
@@ -279,6 +319,8 @@ namespace WindowsFormsApp1
         {
             try
             {
+                CheckOverduePlans();
+
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     conn.Open();
@@ -291,8 +333,17 @@ namespace WindowsFormsApp1
                             p.data_nachala AS start_date,
                             p.data_okonchaniya AS end_date,
                             COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
-                            COALESCE(p.status, 'Не указан') AS status,
-                            CASE WHEN p.avariya_id IS NOT NULL THEN '✅' ELSE '❌' END AS has_avariya
+                            CASE 
+                                WHEN p.status = 'Просрочен' THEN '🔴 Просрочен'
+                                WHEN p.status = 'Завершен' THEN '✅ Завершен'
+                                WHEN p.status = 'В работе' THEN '⚙️ В работе'
+                                WHEN p.status = 'Запланирован' THEN '📋 Запланирован'
+                                ELSE COALESCE(p.status, 'Не указан')
+                            END AS status,
+                            CASE WHEN p.avariya_id IS NOT NULL THEN '✅' ELSE '❌' END AS has_avariya,
+                            COALESCE(p.avariya_id, 0) AS avariya_id,
+                            COALESCE(p.stoimost, 0) AS cost,
+                            p.is_overdue
                         FROM plan_to p
                         JOIN oborudovanie o ON p.oborudovanie_id = o.id
                         LEFT JOIN tip_to t ON p.tip_to_id = t.id
@@ -309,17 +360,17 @@ namespace WindowsFormsApp1
                         }
                     }
 
-                    sql.Append(" ORDER BY p.data_nachala DESC");
+                    sql.Append(" ORDER BY p.is_overdue DESC, p.data_nachala DESC");
 
                     using (var cmd = new NpgsqlCommand(sql.ToString(), conn))
                     {
                         using (var reader = cmd.ExecuteReader())
                         {
-                            var list = new System.Collections.Generic.List<object>();
+                            var list = new List<object>();
 
                             while (reader.Read())
                             {
-                                var plan = new
+                                list.Add(new
                                 {
                                     id = reader.GetInt32(0),
                                     equipment = reader.GetString(1),
@@ -328,9 +379,11 @@ namespace WindowsFormsApp1
                                     end_date = reader.IsDBNull(4) ? "" : reader.GetDateTime(4).ToString("yyyy-MM-dd"),
                                     responsible = reader.GetString(5),
                                     status = reader.GetString(6),
-                                    has_avariya = reader.GetString(7)
-                                };
-                                list.Add(plan);
+                                    has_avariya = reader.GetString(7),
+                                    avariya_id = reader.GetInt32(8),
+                                    cost = reader.GetDecimal(9).ToString("N2"),
+                                    is_overdue = reader.GetBoolean(10)
+                                });
                             }
 
                             string jsonData = JsonSerializer.Serialize(list);
@@ -383,11 +436,11 @@ namespace WindowsFormsApp1
                     {
                         using (var reader = cmd.ExecuteReader())
                         {
-                            var list = new System.Collections.Generic.List<object>();
+                            var list = new List<object>();
 
                             while (reader.Read())
                             {
-                                var avariya = new
+                                list.Add(new
                                 {
                                     id = reader.GetInt32(0),
                                     equipment = reader.GetString(1),
@@ -396,8 +449,7 @@ namespace WindowsFormsApp1
                                     consequences = reader.GetString(4),
                                     status = reader.GetString(5),
                                     has_plan = reader.GetString(6)
-                                };
-                                list.Add(avariya);
+                                });
                             }
 
                             string jsonData = JsonSerializer.Serialize(list);
@@ -419,13 +471,23 @@ namespace WindowsFormsApp1
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     conn.Open();
+
+                    CheckOverduePlans();
+
+                    DateTime currentMonth = DateTime.Now;
+                    string firstDayOfMonth = new DateTime(currentMonth.Year, currentMonth.Month, 1).ToString("yyyy-MM-dd");
+                    string lastDayOfMonth = new DateTime(currentMonth.Year, currentMonth.Month, DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month)).ToString("yyyy-MM-dd");
+
                     string sql = @"
                         SELECT 
                             (SELECT COUNT(*) FROM oborudovanie) as total_equipment,
                             (SELECT COUNT(*) FROM avariya) as total_avariya,
                             (SELECT COUNT(*) FROM plan_to) as total_plans,
-                            (SELECT COUNT(*) FROM plan_to WHERE status = 'Завершен') as completed_plans
-                    ";
+                            (SELECT COUNT(*) FROM plan_to WHERE status = 'Завершен') as completed_plans,
+                            (SELECT COUNT(*) FROM plan_to WHERE status = 'Просрочен') as overdue_plans,
+                            (SELECT COUNT(*) FROM plan_to WHERE status = 'В работе') as in_progress_plans,
+                            (SELECT COALESCE(SUM(stoimost), 0) FROM plan_to) as total_cost,
+                            (SELECT COALESCE(SUM(stoimost), 0) FROM plan_to WHERE DATE(data_nachala) BETWEEN '" + firstDayOfMonth + "' AND '" + lastDayOfMonth + "') as monthly_cost";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -438,7 +500,11 @@ namespace WindowsFormsApp1
                                     totalEquipment = reader.GetInt32(0),
                                     totalAvariya = reader.GetInt32(1),
                                     totalPlans = reader.GetInt32(2),
-                                    completedPlans = reader.GetInt32(3)
+                                    completedPlans = reader.GetInt32(3),
+                                    overduePlans = reader.GetInt32(4),
+                                    inProgressPlans = reader.GetInt32(5),
+                                    totalCost = reader.GetDecimal(6).ToString("N2"),
+                                    monthlyCost = reader.GetDecimal(7).ToString("N2")
                                 };
                                 string json = JsonSerializer.Serialize(stats);
                                 SendToWebView("updateStatistics", json);
@@ -463,15 +529,17 @@ namespace WindowsFormsApp1
                 string endDate = json.GetProperty("endDate").GetString();
                 int responsibleId = json.GetProperty("responsible").GetInt32();
                 string status = json.GetProperty("status").GetString();
+                decimal cost = json.GetProperty("cost").GetDecimal();
 
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     conn.Open();
+
                     string sql = @"
                         INSERT INTO plan_to 
-                        (oborudovanie_id, tip_to_id, data_nachala, data_okonchaniya, otvetstvenniy_id, status)
+                        (oborudovanie_id, tip_to_id, data_nachala, data_okonchaniya, otvetstvenniy_id, status, stoimost, avariya_id)
                         VALUES 
-                        (@oborudovanie_id, @tip_to_id, @data_nachala, @data_okonchaniya, @otvetstvenniy_id, @status)";
+                        (@oborudovanie_id, @tip_to_id, @data_nachala, @data_okonchaniya, @otvetstvenniy_id, @status, @stoimost, @avariya_id)";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -481,6 +549,12 @@ namespace WindowsFormsApp1
                         cmd.Parameters.AddWithValue("@data_okonchaniya", DateTime.Parse(endDate));
                         cmd.Parameters.AddWithValue("@otvetstvenniy_id", responsibleId);
                         cmd.Parameters.AddWithValue("@status", status);
+                        cmd.Parameters.AddWithValue("@stoimost", cost);
+
+                        if (selectedAvariyaId != -1)
+                            cmd.Parameters.AddWithValue("@avariya_id", selectedAvariyaId);
+                        else
+                            cmd.Parameters.AddWithValue("@avariya_id", DBNull.Value);
 
                         cmd.ExecuteNonQuery();
                     }
@@ -489,6 +563,11 @@ namespace WindowsFormsApp1
                 SendToWebView("showSuccess", "План успешно добавлен!");
                 LoadPlans();
                 LoadStatistics();
+                selectedAvariyaId = -1;
+            }
+            catch (PostgresException pgEx)
+            {
+                ShowError($"Ошибка БД: {pgEx.Message}");
             }
             catch (Exception ex)
             {
@@ -507,6 +586,7 @@ namespace WindowsFormsApp1
                 string endDate = json.GetProperty("endDate").GetString();
                 int responsibleId = json.GetProperty("responsible").GetInt32();
                 string status = json.GetProperty("status").GetString();
+                decimal cost = json.GetProperty("cost").GetDecimal();
 
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
@@ -518,7 +598,8 @@ namespace WindowsFormsApp1
                             data_nachala = @data_nachala,
                             data_okonchaniya = @data_okonchaniya,
                             otvetstvenniy_id = @otvetstvenniy_id,
-                            status = @status
+                            status = @status,
+                            stoimost = @stoimost
                         WHERE id = @id";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
@@ -530,6 +611,7 @@ namespace WindowsFormsApp1
                         cmd.Parameters.AddWithValue("@data_okonchaniya", DateTime.Parse(endDate));
                         cmd.Parameters.AddWithValue("@otvetstvenniy_id", responsibleId);
                         cmd.Parameters.AddWithValue("@status", status);
+                        cmd.Parameters.AddWithValue("@stoimost", cost);
 
                         cmd.ExecuteNonQuery();
                     }
@@ -590,6 +672,7 @@ namespace WindowsFormsApp1
                         if (result != null)
                         {
                             int oborudovanieId = Convert.ToInt32(result);
+                            selectedAvariyaId = avariyaId;
 
                             string js = $"selectEquipmentById({oborudovanieId}); switchToPlansTab();";
                             webView.CoreWebView2.ExecuteScriptAsync(js);
@@ -626,7 +709,8 @@ namespace WindowsFormsApp1
                                 p.data_okonchaniya AS end_date,
                                 COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
                                 p.status,
-                                CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya
+                                CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
+                                p.stoimost AS cost
                             FROM plan_to p
                             JOIN oborudovanie o ON p.oborudovanie_id = o.id
                             LEFT JOIN tip_to t ON p.tip_to_id = t.id
@@ -643,7 +727,7 @@ namespace WindowsFormsApp1
                                     sw.WriteLine($"Дата формирования: {DateTime.Now:dd.MM.yyyy HH:mm}");
                                     sw.WriteLine();
 
-                                    sw.WriteLine("ID;Оборудование;Тип ТО;Дата начала;Дата окончания;Ответственный;Статус;Связь с аварией");
+                                    sw.WriteLine("ID;Оборудование;Тип ТО;Дата начала;Дата окончания;Ответственный;Статус;Связь с аварией;Стоимость");
 
                                     int count = 0;
                                     while (reader.Read())
@@ -655,7 +739,8 @@ namespace WindowsFormsApp1
                                                      $"{(reader.IsDBNull(4) ? "" : reader.GetDateTime(4).ToString("dd.MM.yyyy"))};" +
                                                      $"{reader.GetString(5)};" +
                                                      $"{reader.GetString(6)};" +
-                                                     $"{reader.GetString(7)}";
+                                                     $"{reader.GetString(7)};" +
+                                                     $"{reader.GetDecimal(8):N2}";
                                         sw.WriteLine(line);
                                         count++;
                                     }
@@ -699,7 +784,8 @@ namespace WindowsFormsApp1
                                 p.data_okonchaniya AS end_date,
                                 COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
                                 p.status,
-                                CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya
+                                CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
+                                p.stoimost AS cost
                             FROM plan_to p
                             JOIN oborudovanie o ON p.oborudovanie_id = o.id
                             LEFT JOIN tip_to t ON p.tip_to_id = t.id
@@ -721,7 +807,7 @@ namespace WindowsFormsApp1
                                     sw.WriteLine(@"\par");
 
                                     sw.WriteLine(@"\trowd");
-                                    for (int i = 0; i < 8; i++)
+                                    for (int i = 0; i < 9; i++)
                                         sw.WriteLine(@"\cellx" + ((i + 1) * 2000));
 
                                     sw.WriteLine(@"\clbrdrt\brdrw10\brdrs");
@@ -730,14 +816,14 @@ namespace WindowsFormsApp1
                                     sw.WriteLine(@"\clbrdrr\brdrw10\brdrs");
                                     sw.WriteLine(@"\clcbpat8\cell");
                                     sw.WriteLine(@"\intbl\b\fs20 ");
-                                    sw.Write(@"ID \cell Оборудование \cell Тип ТО \cell Дата начала \cell Дата окончания \cell Ответственный \cell Статус \cell Связь \cell ");
+                                    sw.Write(@"ID \cell Оборудование \cell Тип ТО \cell Дата начала \cell Дата окончания \cell Ответственный \cell Статус \cell Связь \cell Стоимость \cell ");
                                     sw.WriteLine(@"\row\b0");
 
                                     int count = 0;
                                     while (reader.Read())
                                     {
                                         sw.WriteLine(@"\trowd");
-                                        for (int i = 0; i < 8; i++)
+                                        for (int i = 0; i < 9; i++)
                                             sw.WriteLine(@"\cellx" + ((i + 1) * 2000));
 
                                         sw.WriteLine(@"\clbrdrt\brdrw10\brdrs");
@@ -759,6 +845,7 @@ namespace WindowsFormsApp1
                                         sw.Write($"{reader.GetString(5)} \\cell ");
                                         sw.Write($"{reader.GetString(6)} \\cell ");
                                         sw.Write($"{reader.GetString(7)} \\cell ");
+                                        sw.Write($"{reader.GetDecimal(8):N2} \\cell ");
 
                                         sw.WriteLine(@"\row");
                                         count++;
@@ -793,10 +880,13 @@ namespace WindowsFormsApp1
                             COUNT(*) as total,
                             COUNT(CASE WHEN status = 'Завершен' THEN 1 END) as completed,
                             COUNT(CASE WHEN status = 'В работе' THEN 1 END) as in_progress,
-                            COUNT(CASE WHEN status = 'Запланирован' THEN 1 END) as planned
+                            COUNT(CASE WHEN status = 'Запланирован' THEN 1 END) as planned,
+                            COUNT(CASE WHEN status = 'Просрочен' THEN 1 END) as overdue,
+                            COALESCE(SUM(stoimost), 0) as total_cost
                         FROM plan_to";
 
-                    int totalPlans = 0, completed = 0, inProgress = 0, planned = 0;
+                    int totalPlans = 0, completed = 0, inProgress = 0, planned = 0, overdue = 0;
+                    decimal totalCost = 0;
 
                     using (var cmd = new NpgsqlCommand(planStats, conn))
                     {
@@ -808,6 +898,8 @@ namespace WindowsFormsApp1
                                 completed = reader.GetInt32(1);
                                 inProgress = reader.GetInt32(2);
                                 planned = reader.GetInt32(3);
+                                overdue = reader.GetInt32(4);
+                                totalCost = reader.GetDecimal(5);
                             }
                         }
                     }
@@ -836,6 +928,9 @@ namespace WindowsFormsApp1
                     int withoutPlan = totalAvariya - withPlan;
                     int percent = totalPlans > 0 ? (completed * 100 / totalPlans) : 0;
 
+                    DateTime currentMonth = DateTime.Now;
+                    string monthName = currentMonth.ToString("MMMM yyyy");
+
                     string message = $"╔══════════════════════════════════════════════════════════╗\n" +
                                     $"║           ПРЕДПРОСМОТР ОТЧЕТА                           ║\n" +
                                     $"╠══════════════════════════════════════════════════════════╣\n" +
@@ -846,8 +941,11 @@ namespace WindowsFormsApp1
                                     $"║ Всего планов: {totalPlans,-38} ║\n" +
                                     $"║ ├─ Завершено: {completed,-37} ║\n" +
                                     $"║ ├─ В работе: {inProgress,-38} ║\n" +
-                                    $"║ └─ Запланировано: {planned,-34} ║\n" +
+                                    $"║ ├─ Запланировано: {planned,-34} ║\n" +
+                                    $"║ └─ Просрочено: {overdue,-38} ║\n" +
                                     $"║ Процент выполнения: {percent,-3}%                                     ║\n" +
+                                    $"║ Общая стоимость: {totalCost:N2} руб.                     ║\n" +
+                                    $"║ Стоимость за {monthName}: {GetMonthlyCost():N2} руб.              ║\n" +
                                     $"╟──────────────────────────────────────────────────────────╢\n" +
                                     $"║ АВАРИИ:                                                  ║\n" +
                                     $"║ Всего аварий: {totalAvariya,-39} ║\n" +
@@ -861,6 +959,30 @@ namespace WindowsFormsApp1
             catch (Exception ex)
             {
                 ShowError("Ошибка предпросмотра: " + ex.Message);
+            }
+        }
+
+        private decimal GetMonthlyCost()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+                    DateTime currentMonth = DateTime.Now;
+                    string firstDay = new DateTime(currentMonth.Year, currentMonth.Month, 1).ToString("yyyy-MM-dd");
+                    string lastDay = new DateTime(currentMonth.Year, currentMonth.Month, DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month)).ToString("yyyy-MM-dd");
+
+                    string sql = $"SELECT COALESCE(SUM(stoimost), 0) FROM plan_to WHERE DATE(data_nachala) BETWEEN '{firstDay}' AND '{lastDay}'";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        return Convert.ToDecimal(cmd.ExecuteScalar());
+                    }
+                }
+            }
+            catch
+            {
+                return 0;
             }
         }
 

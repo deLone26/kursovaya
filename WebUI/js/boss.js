@@ -13,10 +13,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Проверяем связь с C#
     if (window.chrome && window.chrome.webview) {
         console.log('WebView доступен');
-        // Запрашиваем данные
         window.chrome.webview.postMessage('loadEquipment');
         window.chrome.webview.postMessage('loadTipTypes');
         window.chrome.webview.postMessage('loadResponsible');
+        window.chrome.webview.postMessage('loadStatistics');
     }
 });
 
@@ -46,6 +46,9 @@ window.receiveFromCSharp = function(command, data) {
                 break;
             case 'showSuccess':
                 alert('✅ ' + data);
+                break;
+            case 'showError':
+                alert('❌ ' + data);
                 break;
             default:
                 console.log('Неизвестная команда:', command);
@@ -93,7 +96,6 @@ function setupEventListeners() {
             const tabElement = document.getElementById(`tab-${tabId}`);
             if (tabElement) tabElement.classList.add('active');
             
-            // Загружаем данные при переключении табов
             if (tabId === 'plans') {
                 if (window.chrome?.webview) {
                     window.chrome.webview.postMessage(JSON.stringify({
@@ -306,7 +308,7 @@ function displayPlans(data) {
         let items = typeof data === 'string' ? JSON.parse(data) : data;
         
         if (!items || items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="loading">Нет данных в базе</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="loading">Нет данных</td></tr>';
             return;
         }
         
@@ -320,13 +322,14 @@ function displayPlans(data) {
             html += `<td>${row.end_date || ''}</td>`;
             html += `<td>${row.responsible || ''}</td>`;
             html += `<td>${row.status || ''}</td>`;
-            html += `<td>${row.has_avariya || ''}</td>`;
+            html += `<td>${row.avariya_id > 0 ? row.avariya_id : '-'}</td>`;
+            html += `<td>${row.cost || '0.00'}</td>`;
             html += '</tr>';
         });
         tbody.innerHTML = html;
     } catch (e) {
         console.error('Ошибка отображения планов:', e);
-        tbody.innerHTML = '<tr><td colspan="8" class="loading">Ошибка загрузки данных</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="loading">Ошибка загрузки данных</td></tr>';
     }
 }
 
@@ -339,7 +342,7 @@ function displayAvariya(data) {
         let items = typeof data === 'string' ? JSON.parse(data) : data;
         
         if (!items || items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="loading">Нет данных в базе</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="loading">Нет данных</td></tr>';
             return;
         }
         
@@ -372,11 +375,15 @@ function updateStatistics(data) {
         const totalAvariya = document.getElementById('totalAvariya');
         const totalPlans = document.getElementById('totalPlans');
         const completedPlans = document.getElementById('completedPlans');
+        const totalCost = document.getElementById('totalCost');
+        const monthlyCost = document.getElementById('monthlyCost');
         
         if (totalEquipment) totalEquipment.textContent = stats.totalEquipment || 0;
         if (totalAvariya) totalAvariya.textContent = stats.totalAvariya || 0;
         if (totalPlans) totalPlans.textContent = stats.totalPlans || 0;
         if (completedPlans) completedPlans.textContent = stats.completedPlans || 0;
+        if (totalCost) totalCost.textContent = stats.totalCost || '0.00';
+        if (monthlyCost) monthlyCost.textContent = stats.monthlyCost || '0.00';
     } catch (e) {
         console.error('Ошибка обновления статистики:', e);
     }
@@ -414,6 +421,13 @@ function selectEquipmentById(id) {
     }
 }
 
+function switchToPlansTab() {
+    const plansTab = document.querySelector('[data-tab="plans"]');
+    if (plansTab) {
+        plansTab.click();
+    }
+}
+
 function addPlan() {
     const equipment = document.getElementById('equipmentSelect')?.value;
     const tip = document.getElementById('tipSelect')?.value;
@@ -421,14 +435,20 @@ function addPlan() {
     const endDate = document.getElementById('endDate')?.value;
     const responsible = document.getElementById('responsibleSelect')?.value;
     const status = document.getElementById('statusSelect')?.value;
+    const cost = document.getElementById('cost')?.value;
     
-    if (!equipment || !tip || !responsible || !startDate || !endDate) {
+    if (!equipment || !tip || !responsible || !startDate || !endDate || !cost) {
         alert('Заполните все поля!');
         return;
     }
     
     if (new Date(startDate) > new Date(endDate)) {
         alert('Дата начала не может быть позже даты окончания!');
+        return;
+    }
+    
+    if (isNaN(parseFloat(cost)) || parseFloat(cost) <= 0) {
+        alert('Введите корректную стоимость!');
         return;
     }
     
@@ -440,7 +460,8 @@ function addPlan() {
             startDate: startDate,
             endDate: endDate,
             responsible: parseInt(responsible),
-            status: status
+            status: status,
+            cost: parseFloat(cost)
         }));
     }
 }
@@ -459,6 +480,7 @@ function updatePlan() {
     const endDate = document.getElementById('endDate')?.value;
     const responsible = document.getElementById('responsibleSelect')?.value;
     const status = document.getElementById('statusSelect')?.value;
+    const cost = document.getElementById('cost')?.value;
     
     if (window.chrome?.webview) {
         window.chrome.webview.postMessage(JSON.stringify({
@@ -469,8 +491,40 @@ function updatePlan() {
             startDate: startDate,
             endDate: endDate,
             responsible: parseInt(responsible),
-            status: status
+            status: status,
+            cost: parseFloat(cost)
         }));
+    }
+}
+
+function updateStatistics(data) {
+    console.log('Обновление статистики:', data);
+    try {
+        let stats = typeof data === 'string' ? JSON.parse(data) : data;
+        
+        const totalEquipment = document.getElementById('totalEquipment');
+        const totalAvariya = document.getElementById('totalAvariya');
+        const totalPlans = document.getElementById('totalPlans');
+        const completedPlans = document.getElementById('completedPlans');
+        const overduePlans = document.getElementById('overduePlans');
+        const totalCost = document.getElementById('totalCost');
+        const monthlyCost = document.getElementById('monthlyCost');
+        
+        if (totalEquipment) totalEquipment.textContent = stats.totalEquipment || 0;
+        if (totalAvariya) totalAvariya.textContent = stats.totalAvariya || 0;
+        if (totalPlans) totalPlans.textContent = stats.totalPlans || 0;
+        if (completedPlans) completedPlans.textContent = stats.completedPlans || 0;
+        if (overduePlans) overduePlans.textContent = stats.overduePlans || 0;
+        if (totalCost) totalCost.textContent = stats.totalCost || '0.00';
+        if (monthlyCost) monthlyCost.textContent = stats.monthlyCost || '0.00';
+        
+        // Подсветка карточки просрочки, если есть просроченные планы
+        const overdueCard = document.querySelector('.stat-card[style*="background: #ef4444"]');
+        if (overdueCard && stats.overduePlans > 0) {
+            overdueCard.style.animation = 'pulse 1s infinite';
+        }
+    } catch (e) {
+        console.error('Ошибка обновления статистики:', e);
     }
 }
 
@@ -497,22 +551,17 @@ function clearForm() {
     const tip = document.getElementById('tipSelect');
     const responsible = document.getElementById('responsibleSelect');
     const status = document.getElementById('statusSelect');
+    const cost = document.getElementById('cost');
     
     if (equipment) equipment.selectedIndex = 0;
     if (tip) tip.selectedIndex = 0;
     if (responsible) responsible.selectedIndex = 0;
     if (status) status.selectedIndex = 0;
+    if (cost) cost.value = '';
     
     setDefaultDates();
     
     document.querySelectorAll('#plansTable tbody tr').forEach(tr => {
         tr.classList.remove('selected');
     });
-}
-
-function switchToPlansTab() {
-    const plansTab = document.querySelector('[data-tab="plans"]');
-    if (plansTab) {
-        plansTab.click();
-    }
 }
