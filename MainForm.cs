@@ -27,6 +27,7 @@ namespace WindowsFormsApp1
         private int employeeId;
         private string userLogin;
         private string userRole;
+        private string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
 
         public MainForm(string connString, int userId)
         {
@@ -111,7 +112,7 @@ namespace WindowsFormsApp1
             if (userRole == "operator")
                 return page == "home" || page == "dashboard" || page == "accidents";
             if (userRole == "slesar")
-                return page == "home" || page == "dashboard" || page == "repairs";
+                return page == "home" || page == "dashboard" || page == "repairs" || page == "plans";
             return true;
         }
 
@@ -314,20 +315,23 @@ namespace WindowsFormsApp1
                 activeWebView.CoreWebView2.Settings.IsScriptEnabled = true;
                 activeWebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
 
-                string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
                 string htmlPath = Path.Combine(webUIPath, "menu.html");
 
                 if (File.Exists(htmlPath))
                 {
                     activeWebView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
                 }
+                else
+                {
+                    MessageBox.Show($"Файл меню не найден: {htmlPath}");
+                }
 
                 activeWebView.CoreWebView2.WebMessageReceived += (s, e) =>
                 {
-                    string page = e.TryGetWebMessageAsString();
+                    string message = e.TryGetWebMessageAsString();
                     if (this.IsHandleCreated)
                     {
-                        this.BeginInvoke(new Action(() => HandleMenuClick(page)));
+                        this.BeginInvoke(new Action(() => HandleWebViewMessage(message)));
                     }
                 };
 
@@ -343,11 +347,93 @@ namespace WindowsFormsApp1
             }
         }
 
+        private void HandleWebViewMessage(string message)
+        {
+            try
+            {
+                if (message.StartsWith("{"))
+                {
+                    using (JsonDocument doc = JsonDocument.Parse(message))
+                    {
+                        JsonElement root = doc.RootElement;
+                        string action = root.GetProperty("action").GetString();
+
+                        switch (action)
+                        {
+                            case "openPlansTO":
+                                OpenPlansTOForm();
+                                break;
+                            case "openEmployees":
+                                OpenChildForm(new Form2());
+                                break;
+                            case "openEquipment":
+                                OpenChildForm(new Form1());
+                                break;
+                            case "openAccidents":
+                                OpenChildForm(new FormAccidents());
+                                break;
+                            case "openRepairs":
+                                OpenChildForm(new FormRepairs(connectionString, employeeId, userLogin, userRole, GetEmployeeIdByLogin(userLogin)));
+                                break;
+                            case "openReports":
+                                ShowPlaceholder("Отчеты");
+                                break;
+                            case "openUsers":
+                                ShowPlaceholder("Управление пользователями");
+                                break;
+                            default:
+                                HandleMenuClick(message);
+                                break;
+                        }
+                    }
+                }
+                else
+                {
+                    HandleMenuClick(message);
+                }
+            }
+            catch (JsonException)
+            {
+                HandleMenuClick(message);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка обработки сообщения: {ex.Message}");
+            }
+        }
+
+        private void OpenPlansTOForm()
+        {
+            try
+            {
+                FormPlansTO plansForm = new FormPlansTO(connectionString, employeeId);
+
+                if (activeForm != null)
+                {
+                    activeForm.Close();
+                    activeForm = null;
+                }
+
+                contentPanel.Controls.Clear();
+                plansForm.TopLevel = false;
+                plansForm.FormBorderStyle = FormBorderStyle.None;
+                plansForm.Dock = DockStyle.Fill;
+                contentPanel.Controls.Add(plansForm);
+                plansForm.Show();
+                activeForm = plansForm;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка открытия формы Планов ТО: {ex.Message}", "Ошибка",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         private async Task SetUserRoleInWebView()
         {
             if (activeWebView?.CoreWebView2 != null)
             {
-                string script = $"setUserRole('{userRole}');";
+                string script = $"if(typeof setUserRole === 'function') setUserRole('{userRole}');";
                 await activeWebView.CoreWebView2.ExecuteScriptAsync(script);
             }
         }
@@ -383,7 +469,7 @@ namespace WindowsFormsApp1
                     ShowPlaceholder("Паспорта оборудования");
                     break;
                 case "plans":
-                    ShowPlaceholder("Планы технического обслуживания");
+                    OpenPlansTOForm();
                     break;
                 case "schedules":
                     ShowPlaceholder("Графики работ");
@@ -465,7 +551,6 @@ namespace WindowsFormsApp1
             if (activeWebView != null && activeWebView.CoreWebView2 != null)
             {
                 contentPanel.Controls.Add(activeWebView);
-                string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
                 string htmlPath = Path.Combine(webUIPath, "menu.html");
                 if (File.Exists(htmlPath))
                 {

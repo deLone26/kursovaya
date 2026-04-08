@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Планы ТО - Графики ремонтов</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; height: 100vh; overflow: hidden; }
+        .app-container { height: 100vh; display: flex; flex-direction: column; background: #f8fafc; }
+        
+        .top-bar { background: white; padding: 8px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 8px; }
+        .date-range { display: flex; align-items: center; gap: 8px; }
+        .nav-btn { background: #f1f5f9; border: none; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        #currentDateRange { font-weight: 600; color: #1e293b; min-width: 160px; text-align: center; font-size: 13px; }
+        .view-controls { display: flex; gap: 4px; background: #f1f5f9; padding: 3px; border-radius: 10px; }
+        .view-btn { padding: 4px 12px; border: none; background: transparent; border-radius: 7px; cursor: pointer; font-size: 11px; font-weight: 500; }
+        .view-btn.active { background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1); color: #3b82f6; }
+        .action-buttons { display: flex; gap: 8px; align-items: center; }
+        .btn-export { background: #10b981; color: white; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .search-box { display: flex; gap: 5px; }
+        .search-box input { padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; width: 180px; font-size: 12px; }
+        .btn-search { background: #64748b; color: white; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        
+        .main-layout { display: flex; flex: 1; overflow: hidden; gap: 1px; background: #e2e8f0; }
+        
+        .left-panel { width: 300px; background: white; display: flex; flex-direction: column; overflow-y: auto; }
+        .filter-header { padding: 12px 15px; border-bottom: 1px solid #e2e8f0; }
+        .filter-header h3 { font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 8px; }
+        .filter-buttons { display: flex; gap: 6px; }
+        .filter-all, .filter-btn { padding: 3px 10px; border: 1px solid #cbd5e1; background: white; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .filter-all.active, .filter-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+        
+        .employees-list { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; max-height: 250px; overflow-y: auto; }
+        .employee-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 4px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .employee-item:hover { background: #f1f5f9; }
+        .employee-item.active { background: #eff6ff; border-left: 2px solid #3b82f6; }
+        .employee-name { font-weight: 500; }
+        .employee-count { background: #e2e8f0; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        
+        .urgent-section { padding: 12px; background: #fefce8; border-bottom: 1px solid #e2e8f0; }
+        .urgent-section h3 { font-size: 12px; font-weight: 600; color: #854d0e; margin-bottom: 8px; }
+        .urgent-list { max-height: 250px; overflow-y: auto; }
+        .urgent-item { background: white; border-left: 2px solid #eab308; padding: 8px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+        .urgent-item.critical { border-left-color: #ef4444; background: #fef2f2; }
+        .urgent-item.warning { border-left-color: #f59e0b; background: #fffbeb; }
+        .urgent-date { font-size: 10px; color: #6b7280; }
+        .urgent-title { font-weight: 600; font-size: 11px; margin: 3px 0; }
+        .urgent-days { font-size: 10px; margin-top: 3px; }
+        .days-critical { color: #dc2626; font-weight: 600; }
+        .days-warning { color: #d97706; }
+        
+        .stats-footer { padding: 10px 12px; margin-top: auto; background: #f8fafc; border-top: 1px solid #e2e8f0; }
+        .stat-item { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; }
+        .stat-label { color: #64748b; }
+        .stat-value { font-weight: 700; font-size: 14px; color: #1e293b; }
+        .stat-value.critical { color: #dc2626; }
+        
+        .right-panel { flex: 1; background: white; display: flex; flex-direction: column; overflow: auto; }
+        
+        .timeline-container { flex: 1; padding: 15px; overflow-x: auto; overflow-y: auto; }
+        .timeline-header { margin-bottom: 15px; }
+        .timeline-title { font-weight: 600; font-size: 14px; margin-bottom: 10px; }
+        
+        /* Горизонтальная временная линия */
+        .timeline-hours { display: flex; border-bottom: 1px solid #e2e8f0; background: #f8fafc; position: sticky; top: 0; z-index: 10; }
+        .hour-marker { width: 60px; text-align: center; padding: 8px 0; font-size: 11px; color: #64748b; border-right: 1px solid #e2e8f0; flex-shrink: 0; }
+        
+        .timeline-events { position: relative; }
+        .event-row { display: flex; border-bottom: 1px solid #f1f5f9; min-height: 60px; }
+        .event-label { width: 180px; padding: 8px; font-size: 12px; font-weight: 500; background: #f8fafc; border-right: 1px solid #e2e8f0; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; }
+        .event-label .employee-name { font-weight: 600; }
+        .event-label .task-count { font-size: 10px; color: #64748b; margin-top: 4px; }
+        
+        .event-timeline { flex: 1; position: relative; background: #fafbfc; min-height: 60px; }
+        
+        .event-item { position: absolute; top: 5px; height: 50px; background: #eff6ff; border-left: 3px solid #3b82f6; border-radius: 6px; padding: 4px 8px; cursor: pointer; overflow: hidden; font-size: 10px; white-space: nowrap; text-overflow: ellipsis; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .event-item:hover { background: #dbeafe; z-index: 10; height: auto; white-space: normal; }
+        .event-item.critical { background: #fee2e2; border-left-color: #ef4444; }
+        .event-item.warning { background: #fed7aa; border-left-color: #f59e0b; }
+        .event-title { font-weight: 600; }
+        .event-date { font-size: 9px; color: #64748b; margin-top: 2px; }
+        
+        .current-time-line { position: absolute; top: 0; bottom: 0; width: 2px; background: #ef4444; z-index: 20; pointer-events: none; }
+        .current-time-line::before { content: '●'; position: absolute; top: -6px; left: -5px; color: #ef4444; font-size: 12px; }
+        
+        .loading { text-align: center; padding: 15px; color: #94a3b8; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="top-bar">
+            <div class="date-range">
+                <button class="nav-btn" id="prevBtn">←</button>
+                <span id="currentDateRange"></span>
+                <button class="nav-btn" id="nextBtn">→</button>
+            </div>
+            <div class="view-controls">
+                <button class="view-btn active" data-view="day">День</button>
+                <button class="view-btn" data-view="week">Неделя</button>
+                <button class="view-btn" data-view="month">Месяц</button>
+            </div>
+            <div class="action-buttons">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Поиск...">
+                    <button class="btn-search" id="searchBtn">🔍</button>
+                </div>
+                <button class="btn-export" id="exportBtn">📥 Экспорт</button>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <div class="left-panel">
+                <div class="filter-header">
+                    <h3>👥 Слесари</h3>
+                    <div class="filter-buttons">
+                        <button class="filter-all active" data-filter="all">Все</button>
+                        <button class="filter-btn" data-filter="without">Без отв.</button>
+                    </div>
+                </div>
+                <div class="employees-list" id="employeesList"><div class="loading">Загрузка...</div></div>
+                <div class="urgent-section">
+                    <h3>⏰ Напоминания о сроках</h3>
+                    <div class="urgent-list" id="urgentList"><div class="loading">Загрузка...</div></div>
+                </div>
+                <div class="stats-footer">
+                    <div class="stat-item"><span class="stat-label">📋 Всего планов</span><span class="stat-value" id="totalPlans">0</span></div>
+                    <div class="stat-item"><span class="stat-label">⚠️ Просрочено</span><span class="stat-value critical" id="overdueCount">0</span></div>
+                    <div class="stat-item"><span class="stat-label">🔥 Критических</span><span class="stat-value warning" id="criticalCount">0</span></div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="timeline-container" id="timelineContainer">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let employees = [];
+        let allPlans = [];
+        let currentView = 'day';
+        let currentDate = new Date();
+        let selectedDate = new Date();
+        let selectedEmployeeId = null;
+        
+        function sendToCSharp(action, data = {}) {
+            const msg = JSON.stringify({ action: action, ...data });
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage(msg);
+            }
+        }
+        
+        window.receiveFromCSharp = function(command, data) {
+            if (command === 'initialData') {
+                if (data.employees) renderEmployees(data.employees);
+                if (data.plans) {
+                    allPlans = data.plans;
+                    applyFilters();
+                }
+                if (data.urgent) renderUrgentReminders(data.urgent);
+            }
+            else if (command === 'plansData') {
+                allPlans = data;
+                applyFilters();
+            }
+            else if (command === 'showError') console.error('Error:', data);
+        };
+        
+        function renderEmployees(data) {
+            const container = document.getElementById('employeesList');
+            if (!data || !data.length) { container.innerHTML = '<div class="loading">Нет сотрудников</div>'; return; }
+            employees = data;
+            container.innerHTML = employees.map(emp => `
+                <div class="employee-item ${selectedEmployeeId === emp.id ? 'active' : ''}" data-id="${emp.id}">
+                    <span class="employee-name">${emp.fio}</span>
+                    <span class="employee-count">${emp.tasks_count || 0}</span>
+                </div>
+            `).join('');
+            
+            document.querySelectorAll('.employee-item').forEach(item => {
+                item.onclick = () => {
+                    const id = parseInt(item.getAttribute('data-id'));
+                    selectedEmployeeId = selectedEmployeeId === id ? null : id;
+                    renderEmployees(employees);
+                    applyFilters();
+                };
+            });
+        }
+        
+        function renderUrgentReminders(data) {
+            const container = document.getElementById('urgentList');
+            if (!data || !data.length) { container.innerHTML = '<div class="loading">Нет напоминаний</div>'; return; }
+            container.innerHTML = data.map(item => {
+                let itemClass = '', daysClass = '';
+                if (item.days_left < 0 || item.days_left <= 2) { itemClass = 'critical'; daysClass = 'days-critical'; }
+                else if (item.days_left <= 5) { itemClass = 'warning'; daysClass = 'days-warning'; }
+                const daysText = item.days_left < 0 ? `Просрочен на ${Math.abs(item.days_left)} дн.` : `${item.days_left} дн.`;
+                return `<div class="urgent-item ${itemClass}"><div class="urgent-date">📅 ${item.end_date}</div><div class="urgent-title">${item.equipment}</div><div class="urgent-days ${daysClass}">⏰ ${daysText}</div></div>`;
+            }).join('');
+        }
+        
+        function applyFilters() {
+            let filtered = [...allPlans];
+            
+            // Фильтр по дате
+            filtered = filtered.filter(p => {
+                const startDate = new Date(p.start_date);
+                const endDate = new Date(p.end_date);
+                const selected = new Date(selectedDate);
+                startDate.setHours(0, 0, 0, 0);
+                endDate.setHours(0, 0, 0, 0);
+                selected.setHours(0, 0, 0, 0);
+                
+                if (currentView === 'day') {
+                    return selected >= startDate && selected <= endDate;
+                } else if (currentView === 'week') {
+                    const weekStart = new Date(selected);
+                    weekStart.setDate(selected.getDate() - selected.getDay() + 1);
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekStart.getDate() + 6);
+                    return (startDate <= weekEnd && endDate >= weekStart);
+                } else if (currentView === 'month') {
+                    return (startDate.getMonth() === selected.getMonth() && startDate.getFullYear() === selected.getFullYear()) ||
+                           (endDate.getMonth() === selected.getMonth() && endDate.getFullYear() === selected.getFullYear());
+                }
+                return true;
+            });
+            
+            // Фильтр по сотруднику
+            if (selectedEmployeeId !== null) {
+                if (selectedEmployeeId === -1) {
+                    filtered = filtered.filter(p => p.responsible_id === 0 || p.responsible_id === null);
+                } else {
+                    filtered = filtered.filter(p => p.responsible_id === selectedEmployeeId);
+                }
+            }
+            
+            renderTimeline(filtered);
+            updateStats(filtered);
+        }
+        
+        function updateStats(filteredPlans) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const allOverduePlans = allPlans.filter(p => {
+                const endDate = new Date(p.end_date);
+                endDate.setHours(0, 0, 0, 0);
+                return p.is_overdue === true || (endDate < today && p.status !== "Завершен" && p.status !== "Отменен");
+            });
+            
+            const allCriticalPlans = allPlans.filter(p => {
+                if (p.is_overdue === true) return false;
+                const endDate = new Date(p.end_date);
+                endDate.setHours(0, 0, 0, 0);
+                const daysLeft = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                return daysLeft >= 0 && daysLeft <= 2;
+            });
+            
+            document.getElementById('totalPlans').innerHTML = allPlans.length;
+            document.getElementById('overdueCount').innerHTML = allOverduePlans.length;
+            document.getElementById('criticalCount').innerHTML = allCriticalPlans.length;
+        }
+        
+        function renderTimeline(plansData) {
+            const container = document.getElementById('timelineContainer');
+            
+            // Группируем планы по ответственным
+            const plansByEmployee = new Map();
+            plansData.forEach(plan => {
+                const key = plan.responsible_id;
+                if (!plansByEmployee.has(key)) {
+                    plansByEmployee.set(key, {
+                        name: plan.responsible,
+                        id: key,
+                        plans: []
+                    });
+                }
+                plansByEmployee.get(key).plans.push(plan);
+            });
+            
+            // Добавляем планы без ответственного
+            const withoutResponsible = plansData.filter(p => p.responsible_id === 0 || p.responsible_id === null);
+            if (withoutResponsible.length > 0) {
+                plansByEmployee.set(-1, {
+                    name: "Без ответственного",
+                    id: -1,
+                    plans: withoutResponsible
+                });
+            }
+            
+            if (plansByEmployee.size === 0) {
+                container.innerHTML = '<div class="timeline-header"><div class="timeline-title">📊 Нет планов на выбранный период</div></div>';
+                return;
+            }
+            
+            // Сортируем планы по дате начала внутри каждого сотрудника
+            for (let [key, data] of plansByEmployee) {
+                data.plans.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+            }
+            
+            // Строим временную шкалу
+            let hoursHtml = '<div class="timeline-hours">';
+            const startDate = new Date(selectedDate);
+            let days = [];
+            
+            if (currentView === 'day') {
+                days = [new Date(selectedDate)];
+                for (let hour = 0; hour <= 24; hour++) {
+                    hoursHtml += `<div class="hour-marker">${hour.toString().padStart(2, '0')}:00</div>`;
+                }
+            } else if (currentView === 'week') {
+                const weekStart = new Date(selectedDate);
+                weekStart.setDate(selectedDate.getDate() - selectedDate.getDay() + 1);
+                for (let i = 0; i < 7; i++) {
+                    const day = new Date(weekStart);
+                    day.setDate(weekStart.getDate() + i);
+                    days.push(day);
+                    hoursHtml += `<div class="hour-marker">${day.getDate().toString().padStart(2, '0')}.${(day.getMonth()+1).toString().padStart(2, '0')}</div>`;
+                }
+            } else if (currentView === 'month') {
+                const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
+                for (let i = 1; i <= daysInMonth; i++) {
+                    const day = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), i);
+                    days.push(day);
+                    hoursHtml += `<div class="hour-marker">${i.toString().padStart(2, '0')}</div>`;
+                }
+            }
+            
+            hoursHtml += '</div>';
+            
+            let eventsHtml = '<div class="timeline-events">';
+            
+            for (let [key, employeeData] of plansByEmployee) {
+                eventsHtml += `<div class="event-row"><div class="event-label"><span class="employee-name">👤 ${employeeData.name}</span><span class="task-count">${employeeData.plans.length} задач</span></div><div class="event-timeline" style="position: relative; height: 60px;">`;
+                
+                const totalDuration = days.length;
+                
+                employeeData.plans.forEach(plan => {
+                    const planStart = new Date(plan.start_date);
+                    const planEnd = new Date(plan.end_date);
+                    
+                    let startIndex = -1;
+                    let endIndex = -1;
+                    
+                    for (let i = 0; i < days.length; i++) {
+                        const dayStart = new Date(days[i]);
+                        dayStart.setHours(0, 0, 0, 0);
+                        const dayEnd = new Date(days[i]);
+                        dayEnd.setHours(23, 59, 59, 999);
+                        
+                        if (startIndex === -1 && planStart <= dayEnd && planEnd >= dayStart) {
+                            startIndex = i;
+                        }
+                        if (planEnd >= dayStart && planStart <= dayEnd) {
+                            endIndex = i;
+                        }
+                    }
+                    
+                    if (startIndex !== -1 && endIndex !== -1) {
+                        const leftPercent = (startIndex / totalDuration) * 100;
+                        const widthPercent = ((endIndex - startIndex + 1) / totalDuration) * 100;
+                        
+                        let priorityClass = plan.is_overdue ? 'critical' : (plan.days_left <= 3 ? 'warning' : '');
+                        let dateRange = plan.start_date;
+                        if (plan.end_date && plan.end_date !== plan.start_date) {
+                            dateRange = `${plan.start_date} - ${plan.end_date}`;
+                        }
+                        
+                        eventsHtml += `<div class="event-item ${priorityClass}" style="left: ${leftPercent}%; width: ${widthPercent}%;" title="${plan.equipment} - ${plan.tip}">
+                            <div class="event-title">${plan.equipment}</div>
+                            <div class="event-date">${dateRange}</div>
+                        </div>`;
+                    }
+                });
+                
+                eventsHtml += `</div></div>`;
+            }
+            
+            eventsHtml += '</div>';
+            
+            let title = '';
+            if (currentView === 'day') {
+                title = `График работ на ${selectedDate.toLocaleDateString('ru-RU')}`;
+            } else if (currentView === 'week') {
+                const weekStart = new Date(selectedDate);
+                weekStart.setDate(selectedDate.getDate() - selectedDate.getDay() + 1);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 6);
+                title = `График работ за неделю ${weekStart.toLocaleDateString('ru-RU')} - ${weekEnd.toLocaleDateString('ru-RU')}`;
+            } else if (currentView === 'month') {
+                const monthNames = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+                title = `График работ за ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+            }
+            
+            container.innerHTML = `<div class="timeline-header"><div class="timeline-title">📊 ${title}</div></div>${hoursHtml}${eventsHtml}`;
+            
+            document.getElementById('currentDateRange').innerHTML = title;
+        }
+        
+        function navigateDate(delta) {
+            if (currentView === 'day') {
+                currentDate.setDate(currentDate.getDate() + delta);
+            } else if (currentView === 'week') {
+                currentDate.setDate(currentDate.getDate() + delta * 7);
+            } else if (currentView === 'month') {
+                currentDate.setMonth(currentDate.getMonth() + delta);
+            }
+            selectedDate = new Date(currentDate);
+            applyFilters();
+        }
+        
+        function loadInitialData() { sendToCSharp('getInitialData'); }
+        function exportToExcel() { sendToCSharp('exportToExcel'); }
+        
+        function searchPlans() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            if (!term) { applyFilters(); return; }
+            const filtered = allPlans.filter(p => p.equipment?.toLowerCase().includes(term) || p.responsible?.toLowerCase().includes(term));
+            renderTimeline(filtered);
+        }
+        
+        function filterEmployees(filter) {
+            selectedEmployeeId = null;
+            if (filter === 'without') {
+                const withoutEmp = employees.find(e => e.fio === 'Без ответственного');
+                if (withoutEmp) selectedEmployeeId = withoutEmp.id;
+            }
+            document.querySelectorAll('.filter-all, .filter-btn').forEach(b => b.classList.remove('active'));
+            if (filter === 'all') document.querySelector('.filter-all').classList.add('active');
+            else document.querySelector('.filter-btn').classList.add('active');
+            renderEmployees(employees);
+            applyFilters();
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('prevBtn').onclick = () => navigateDate(-1);
+            document.getElementById('nextBtn').onclick = () => navigateDate(1);
+            document.getElementById('searchBtn').onclick = searchPlans;
+            document.getElementById('exportBtn').onclick = exportToExcel;
+            
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentView = btn.getAttribute('data-view');
+                    applyFilters();
+                };
+            });
+            
+            document.querySelectorAll('.filter-all, .filter-btn').forEach(btn => {
+                btn.onclick = () => {
+                    filterEmployees(btn.getAttribute('data-filter'));
+                };
+            });
+            
+            setTimeout(() => { loadInitialData(); }, 500);
+        });
+    </script>
+</body>
+</html>

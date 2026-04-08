@@ -191,7 +191,7 @@ namespace WindowsFormsApp1
             {
                 case "app_admin":
                     MessageBox.Show("Вы вошли как Администратор");
-                   //  form = new FormAdmin(connString, employeeId);
+                    //  form = new FormAdmin(connString, employeeId);
                     break;
 
                 case "app_boss":
@@ -201,12 +201,12 @@ namespace WindowsFormsApp1
 
                 case "app_operator":
                     MessageBox.Show("Вы вошли как Оператор");
-                   //  form = new FormOperator(connString, employeeId);
+                    //  form = new FormOperator(connString, employeeId);
                     break;
 
                 case "app_slesar":
                     MessageBox.Show("Вы вошли как Слесарь");
-                 //    form = new Form2(connString, employeeId);
+                    //    form = new Form2(connString, employeeId);
                     break;
 
                 default:
