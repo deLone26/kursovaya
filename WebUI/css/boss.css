@@ -406,6 +406,15 @@ body {
     border-left: 4px solid var(--primary-color);
 }
 
+/* Зелёный фон для выполненных заданий */
+.completed-row {
+    background-color: #e8f5e9 !important;
+}
+
+.data-table tbody tr.completed-row:hover {
+    background-color: #c8e6c9 !important;
+}
+
 .loading {
     text-align: center;
     padding: 40px;

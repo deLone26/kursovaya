@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setDefaultDates();
     setupEventListeners();
     
-    // Проверяем связь с C#
     if (window.chrome && window.chrome.webview) {
         console.log('WebView доступен');
         window.chrome.webview.postMessage('loadEquipment');
@@ -41,6 +40,9 @@ window.receiveFromCSharp = function(command, data) {
             case 'displayAvariya':
                 displayAvariya(data);
                 break;
+            case 'displayHistory':
+                displayHistory(data);
+                break;
             case 'updateStatistics':
                 updateStatistics(data);
                 break;
@@ -69,6 +71,8 @@ function setDefaultDates() {
     const planEnd = document.getElementById('planEndDate');
     const avariyaStart = document.getElementById('avariyaStartDate');
     const avariyaEnd = document.getElementById('avariyaEndDate');
+    const historyStart = document.getElementById('historyStartDate');
+    const historyEnd = document.getElementById('historyEndDate');
     const start = document.getElementById('startDate');
     const end = document.getElementById('endDate');
     
@@ -76,6 +80,8 @@ function setDefaultDates() {
     if (planEnd) planEnd.value = formatDate(today);
     if (avariyaStart) avariyaStart.value = formatDate(monthAgo);
     if (avariyaEnd) avariyaEnd.value = formatDate(today);
+    if (historyStart) historyStart.value = formatDate(monthAgo);
+    if (historyEnd) historyEnd.value = formatDate(today);
     
     if (start) start.value = formatDate(today);
     
@@ -97,23 +103,19 @@ function setupEventListeners() {
             if (tabElement) tabElement.classList.add('active');
             
             if (tabId === 'plans') {
-                if (window.chrome?.webview) {
-                    window.chrome.webview.postMessage(JSON.stringify({
-                        action: 'loadPlans',
-                        startDate: document.getElementById('planStartDate')?.value || '',
-                        endDate: document.getElementById('planEndDate')?.value || '',
-                        showAll: document.getElementById('showAllPlans')?.checked || false
-                    }));
-                }
+                const start = document.getElementById('planStartDate')?.value || '';
+                const end = document.getElementById('planEndDate')?.value || '';
+                const showAll = document.getElementById('showAllPlans')?.checked || false;
+                loadPlans(start, end, showAll);
             } else if (tabId === 'avariya') {
-                if (window.chrome?.webview) {
-                    window.chrome.webview.postMessage(JSON.stringify({
-                        action: 'loadAvariya',
-                        startDate: document.getElementById('avariyaStartDate')?.value || '',
-                        endDate: document.getElementById('avariyaEndDate')?.value || '',
-                        showAll: document.getElementById('showAllAvariya')?.checked || false
-                    }));
-                }
+                const start = document.getElementById('avariyaStartDate')?.value || '';
+                const end = document.getElementById('avariyaEndDate')?.value || '';
+                const showAll = document.getElementById('showAllAvariya')?.checked || false;
+                loadAvariya(start, end, showAll);
+            } else if (tabId === 'history') {
+                const start = document.getElementById('historyStartDate')?.value || '';
+                const end = document.getElementById('historyEndDate')?.value || '';
+                loadHistory(start, end);
             }
         });
     });
@@ -125,15 +127,7 @@ function setupEventListeners() {
             const startDate = document.getElementById('planStartDate')?.value || '';
             const endDate = document.getElementById('planEndDate')?.value || '';
             const showAll = document.getElementById('showAllPlans')?.checked || false;
-            
-            if (window.chrome?.webview) {
-                window.chrome.webview.postMessage(JSON.stringify({
-                    action: 'loadPlans',
-                    startDate: startDate,
-                    endDate: endDate,
-                    showAll: showAll
-                }));
-            }
+            loadPlans(startDate, endDate, showAll);
         });
     }
     
@@ -144,15 +138,17 @@ function setupEventListeners() {
             const startDate = document.getElementById('avariyaStartDate')?.value || '';
             const endDate = document.getElementById('avariyaEndDate')?.value || '';
             const showAll = document.getElementById('showAllAvariya')?.checked || false;
-            
-            if (window.chrome?.webview) {
-                window.chrome.webview.postMessage(JSON.stringify({
-                    action: 'loadAvariya',
-                    startDate: startDate,
-                    endDate: endDate,
-                    showAll: showAll
-                }));
-            }
+            loadAvariya(startDate, endDate, showAll);
+        });
+    }
+    
+    // Фильтры истории
+    const applyHistoryFilter = document.getElementById('applyHistoryFilter');
+    if (applyHistoryFilter) {
+        applyHistoryFilter.addEventListener('click', () => {
+            const startDate = document.getElementById('historyStartDate')?.value || '';
+            const endDate = document.getElementById('historyEndDate')?.value || '';
+            loadHistory(startDate, endDate);
         });
     }
     
@@ -235,6 +231,55 @@ function setupEventListeners() {
         });
     }
 }
+function getSelectedReportType() {
+    const select = document.getElementById('reportTypeSelect');
+    if (select) {
+        return select.value;
+    }
+    return 'all';
+}
+
+function getReportType() {
+    const select = document.getElementById('reportTypeSelect');
+    if (select) {
+        const value = select.value;
+        const text = select.options[select.selectedIndex]?.text || 'Все планы';
+        return text;
+    }
+    return 'Все планы';
+}
+
+function loadPlans(startDate, endDate, showAll) {
+    if (window.chrome?.webview) {
+        window.chrome.webview.postMessage(JSON.stringify({
+            action: 'loadPlans',
+            startDate: startDate,
+            endDate: endDate,
+            showAll: showAll
+        }));
+    }
+}
+
+function loadAvariya(startDate, endDate, showAll) {
+    if (window.chrome?.webview) {
+        window.chrome.webview.postMessage(JSON.stringify({
+            action: 'loadAvariya',
+            startDate: startDate,
+            endDate: endDate,
+            showAll: showAll
+        }));
+    }
+}
+
+function loadHistory(startDate, endDate) {
+    if (window.chrome?.webview) {
+        window.chrome.webview.postMessage(JSON.stringify({
+            action: 'loadHistory',
+            startDate: startDate || '',
+            endDate: endDate || ''
+        }));
+    }
+}
 
 function fillEquipment(data) {
     console.log('Заполнение оборудования:', data);
@@ -247,7 +292,7 @@ function fillEquipment(data) {
         
         if (Array.isArray(items)) {
             items.forEach(item => {
-                html += `<option value="${item.id}">${item.name}</option>`;
+                html += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
             });
         }
         
@@ -268,7 +313,7 @@ function fillTipTypes(data) {
         
         if (Array.isArray(items)) {
             items.forEach(item => {
-                html += `<option value="${item.id}">${item.name}</option>`;
+                html += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
             });
         }
         
@@ -289,7 +334,7 @@ function fillResponsible(data) {
         
         if (Array.isArray(items)) {
             items.forEach(item => {
-                html += `<option value="${item.id}">${item.name}</option>`;
+                html += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
             });
         }
         
@@ -314,17 +359,20 @@ function displayPlans(data) {
         
         let html = '';
         items.forEach(row => {
-            html += `<tr onclick="selectPlan(${row.id})" style="cursor: pointer;">`;
+            // Проверяем статус - если Завершен, добавляем зелёный класс
+            const isCompleted = (row.status === '✅ Завершен' || row.status === 'Завершен');
+            const rowClass = isCompleted ? 'completed-row' : '';
+            html += `<tr onclick="selectPlan(${row.id})" class="${rowClass}" style="cursor: pointer;">`;
             html += `<td>${row.id || ''}</td>`;
-            html += `<td>${row.equipment || ''}</td>`;
-            html += `<td>${row.tip || ''}</td>`;
+            html += `<td>${escapeHtml(row.equipment || '')}</td>`;
+            html += `<td>${escapeHtml(row.tip || '')}</td>`;
             html += `<td>${row.start_date || ''}</td>`;
             html += `<td>${row.end_date || ''}</td>`;
-            html += `<td>${row.responsible || ''}</td>`;
+            html += `<td>${escapeHtml(row.responsible || '')}</td>`;
             html += `<td>${row.status || ''}</td>`;
             html += `<td>${row.avariya_id > 0 ? row.avariya_id : '-'}</td>`;
             html += `<td>${row.cost || '0.00'}</td>`;
-            html += '</tr>';
+            html += `</tr>`;
         });
         tbody.innerHTML = html;
     } catch (e) {
@@ -351,17 +399,49 @@ function displayAvariya(data) {
             const bgColor = row.has_plan === '✅' ? '#e8f5e8' : '#ffebee';
             html += `<tr onclick="selectAvariya(${row.id})" style="cursor: pointer; background-color: ${bgColor}">`;
             html += `<td>${row.id || ''}</td>`;
-            html += `<td>${row.equipment || ''}</td>`;
+            html += `<td>${escapeHtml(row.equipment || '')}</td>`;
             html += `<td>${row.date || ''}</td>`;
-            html += `<td>${row.description || ''}</td>`;
-            html += `<td>${row.consequences || ''}</td>`;
+            html += `<td>${escapeHtml(row.description || '')}</td>`;
+            html += `<td>${escapeHtml(row.consequences || '')}</td>`;
             html += `<td>${row.status || ''}</td>`;
             html += `<td>${row.has_plan || ''}</td>`;
-            html += '</tr>';
+            html += `</tr>`;
         });
         tbody.innerHTML = html;
     } catch (e) {
         console.error('Ошибка отображения аварий:', e);
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">Ошибка загрузки данных</td></tr>';
+    }
+}
+
+function displayHistory(data) {
+    console.log('Отображение истории ремонтов:', data);
+    const tbody = document.getElementById('historyTableBody');
+    if (!tbody) return;
+    
+    try {
+        let items = typeof data === 'string' ? JSON.parse(data) : data;
+        
+        if (!items || items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="loading">Нет записей в истории</td></tr>';
+            return;
+        }
+        
+        let html = '';
+        items.forEach(row => {
+            html += `<tr>`;
+            html += `<td>${escapeHtml(row.equipment_name || '')}</td>`;
+            html += `<td>${escapeHtml(row.tip_name || '')}</td>`;
+            html += `<td>${row.plan_date || ''}</td>`;
+            html += `<td>${row.completed_date || ''}</td>`;
+            html += `<td>${escapeHtml(row.sotrudnik_name || '')}</td>`;
+            html += `<td>${escapeHtml(row.opisanie || '')}</td>`;
+            html += `<td>${row.cost || '0.00'} руб.</td>`;
+            html += `</tr>`;
+        });
+        tbody.innerHTML = html;
+    } catch (e) {
+        console.error('Ошибка отображения истории:', e);
         tbody.innerHTML = '<tr><td colspan="7" class="loading">Ошибка загрузки данных</td></tr>';
     }
 }
@@ -375,6 +455,7 @@ function updateStatistics(data) {
         const totalAvariya = document.getElementById('totalAvariya');
         const totalPlans = document.getElementById('totalPlans');
         const completedPlans = document.getElementById('completedPlans');
+        const overduePlans = document.getElementById('overduePlans');
         const totalCost = document.getElementById('totalCost');
         const monthlyCost = document.getElementById('monthlyCost');
         
@@ -382,6 +463,7 @@ function updateStatistics(data) {
         if (totalAvariya) totalAvariya.textContent = stats.totalAvariya || 0;
         if (totalPlans) totalPlans.textContent = stats.totalPlans || 0;
         if (completedPlans) completedPlans.textContent = stats.completedPlans || 0;
+        if (overduePlans) overduePlans.textContent = stats.overduePlans || 0;
         if (totalCost) totalCost.textContent = stats.totalCost || '0.00';
         if (monthlyCost) monthlyCost.textContent = stats.monthlyCost || '0.00';
     } catch (e) {
@@ -497,37 +579,6 @@ function updatePlan() {
     }
 }
 
-function updateStatistics(data) {
-    console.log('Обновление статистики:', data);
-    try {
-        let stats = typeof data === 'string' ? JSON.parse(data) : data;
-        
-        const totalEquipment = document.getElementById('totalEquipment');
-        const totalAvariya = document.getElementById('totalAvariya');
-        const totalPlans = document.getElementById('totalPlans');
-        const completedPlans = document.getElementById('completedPlans');
-        const overduePlans = document.getElementById('overduePlans');
-        const totalCost = document.getElementById('totalCost');
-        const monthlyCost = document.getElementById('monthlyCost');
-        
-        if (totalEquipment) totalEquipment.textContent = stats.totalEquipment || 0;
-        if (totalAvariya) totalAvariya.textContent = stats.totalAvariya || 0;
-        if (totalPlans) totalPlans.textContent = stats.totalPlans || 0;
-        if (completedPlans) completedPlans.textContent = stats.completedPlans || 0;
-        if (overduePlans) overduePlans.textContent = stats.overduePlans || 0;
-        if (totalCost) totalCost.textContent = stats.totalCost || '0.00';
-        if (monthlyCost) monthlyCost.textContent = stats.monthlyCost || '0.00';
-        
-        // Подсветка карточки просрочки, если есть просроченные планы
-        const overdueCard = document.querySelector('.stat-card[style*="background: #ef4444"]');
-        if (overdueCard && stats.overduePlans > 0) {
-            overdueCard.style.animation = 'pulse 1s infinite';
-        }
-    } catch (e) {
-        console.error('Ошибка обновления статистики:', e);
-    }
-}
-
 function deletePlan() {
     if (selectedPlanId === -1) {
         alert('Выберите план для удаления!');
@@ -564,4 +615,14 @@ function clearForm() {
     document.querySelectorAll('#plansTable tbody tr').forEach(tr => {
         tr.classList.remove('selected');
     });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }

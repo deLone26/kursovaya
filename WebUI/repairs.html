@@ -2,310 +2,50 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Мои задания</title>
+    <title>Мои задания - Слесарь</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .app {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
-        .header {
-            background: linear-gradient(135deg, #1e3c72, #2a5298);
-            padding: 15px 25px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: white;
-        }
-        .user {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .logout-btn {
-            background: #dc3545;
-            border: none;
-            color: white;
-            padding: 6px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .logout-btn:hover {
-            background: #c82333;
-        }
-        .hidden {
-            display: none;
-        }
-        .tab-bar {
-            display: flex;
-            background: #f0f2f5;
-            padding: 0 25px;
-            gap: 10px;
-        }
-        .tab {
-            padding: 12px 24px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            color: #666;
-            border-bottom: 3px solid transparent;
-        }
-        .tab.active {
-            color: #1e3c72;
-            border-bottom-color: #1e3c72;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        .stats {
-            display: flex;
-            gap: 20px;
-            margin: 25px;
-            flex-wrap: wrap;
-        }
-        .stat {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 15px 25px;
-            text-align: center;
-            flex: 1;
-            min-width: 120px;
-        }
-        .stat-value {
-            font-size: 32px;
-            font-weight: bold;
-            color: #1e3c72;
-        }
-        .stat-label {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        .filters {
-            display: flex;
-            gap: 15px;
-            margin: 0 25px 20px 25px;
-            flex-wrap: wrap;
-            align-items: flex-end;
-        }
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        .filter-group label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #666;
-        }
-        input {
-            padding: 8px 12px;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        button:hover {
-            background: #0069d9;
-        }
-        .check-label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-        .check-label input {
-            width: auto;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 25px;
-            width: calc(100% - 50px);
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #dee2e6;
-        }
-        th {
-            background: #f8f9fa;
-            font-weight: 600;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        .status-completed {
-            background: #d4edda;
-            color: #155724;
-        }
-        .status-progress {
-            background: #cce5ff;
-            color: #004085;
-        }
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-        .btn-complete {
-            background: #28a745;
-            padding: 5px 12px;
-            font-size: 12px;
-        }
-        .btn-complete:hover {
-            background: #218838;
-        }
-        .card-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 15px;
-            margin: 25px;
-        }
-        .card {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid #dee2e6;
-        }
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .card-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #1e3c72;
-            margin-bottom: 10px;
-        }
-        .card-text {
-            font-size: 13px;
-            color: #666;
-            margin: 5px 0;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-            margin: 25px;
-        }
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            width: 450px;
-            max-width: 90%;
-        }
-        .modal-header {
-            padding: 15px 20px;
-            border-bottom: 1px solid #dee2e6;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .modal-header h3 {
-            margin: 0;
-        }
-        .close {
-            font-size: 24px;
-            cursor: pointer;
-            color: #999;
-        }
-        .close:hover {
-            color: #333;
-        }
-        .modal-body {
-            padding: 20px;
-        }
-        .modal-footer {
-            padding: 15px 20px;
-            border-top: 1px solid #dee2e6;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-        textarea {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            resize: vertical;
-            font-family: inherit;
-        }
-        .btn-secondary {
-            background: #6c757d;
-        }
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #333;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            z-index: 1100;
-        }
-        .toast.success {
-            background: #28a745;
-        }
-        .toast.error {
-            background: #dc3545;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .app { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #1e3c72, #2a5298); padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; color: white; }
+        .user { display: flex; align-items: center; gap: 15px; }
+        .logout-btn { background: #dc3545; border: none; color: white; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; }
+        .hidden { display: none; }
+        .stats { display: flex; gap: 20px; margin: 25px; flex-wrap: wrap; }
+        .stat { background: #f8f9fa; border-radius: 12px; padding: 15px 25px; text-align: center; flex: 1; min-width: 120px; }
+        .stat-value { font-size: 32px; font-weight: bold; color: #1e3c72; }
+        .stat-label { font-size: 12px; color: #666; margin-top: 5px; }
+        .filters { display: flex; gap: 15px; margin: 0 25px 20px 25px; flex-wrap: wrap; align-items: flex-end; }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 12px; font-weight: 600; color: #666; }
+        input { padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; }
+        button { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #0069d9; }
+        .check-label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin: 25px; width: calc(100% - 50px); }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }
+        th { background: #f8f9fa; font-weight: 600; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-progress { background: #cce5ff; color: #004085; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .btn-complete { background: #28a745; padding: 5px 12px; font-size: 12px; }
+        .btn-complete:hover { background: #218838; }
+        .loading { text-align: center; padding: 40px; color: #999; margin: 25px; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; border-radius: 12px; width: 450px; max-width: 90%; }
+        .modal-header { padding: 15px 20px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
+        .close { font-size: 24px; cursor: pointer; color: #999; }
+        .close:hover { color: #333; }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 15px 20px; border-top: 1px solid #dee2e6; display: flex; justify-content: flex-end; gap: 10px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+        textarea { width: 100%; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; resize: vertical; font-family: inherit; }
+        .btn-secondary { background: #6c757d; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 12px 20px; border-radius: 8px; z-index: 1100; }
+        .toast.success { background: #28a745; }
+        .toast.error { background: #dc3545; }
     </style>
 </head>
 <body>
@@ -318,86 +58,28 @@
         </div>
     </div>
 
-    <div class="tab-bar">
-        <button class="tab active" data-tab="tasks">Задания</button>
-        <button class="tab" data-tab="passports">Паспорта оборудования</button>
+    <div class="stats" id="statsPanel"></div>
+
+    <div class="filters">
+        <div class="filter-group"><label>Дата от</label><input type="date" id="startDate"></div>
+        <div class="filter-group"><label>Дата до</label><input type="date" id="endDate"></div>
+        <div class="filter-group"><label class="check-label"><input type="checkbox" id="showAll"> <span>Показать все</span></label></div>
+        <button id="applyFilterBtn">Применить</button>
     </div>
 
-    <!-- Вкладка Задания -->
-    <div id="tasksTab" class="tab-content active">
-        <div class="stats" id="statsPanel"></div>
-        <div class="filters">
-            <div class="filter-group">
-                <label>Дата от</label>
-                <input type="date" id="startDate">
-            </div>
-            <div class="filter-group">
-                <label>Дата до</label>
-                <input type="date" id="endDate">
-            </div>
-            <div class="filter-group">
-                <label class="check-label">
-                    <input type="checkbox" id="showAll"> <span>Показать все</span>
-                </label>
-            </div>
-            <button id="applyFilterBtn">Применить</button>
-        </div>
-        <div id="tasksTable">Загрузка...</div>
-    </div>
-
-    <!-- Вкладка Паспорта оборудования -->
-    <div id="passportsTab" class="tab-content">
-        <div class="filters">
-            <div class="filter-group">
-                <label>Поиск</label>
-                <input type="text" id="searchInput" placeholder="По названию, типу..." style="width: 250px;">
-            </div>
-            <button id="searchBtn">Найти</button>
-        </div>
-        <div id="equipmentGrid" class="card-grid"></div>
-    </div>
+    <div id="tasksTable">Загрузка...</div>
 </div>
 
-<!-- Модальное окно выполнения задания -->
 <div id="completeModal" class="modal" style="display:none">
     <div class="modal-content">
-        <div class="modal-header">
-            <h3>Выполнение задания</h3>
-            <span class="close" onclick="closeModal('completeModal')">&times;</span>
-        </div>
+        <div class="modal-header"><h3>Выполнение задания</h3><span class="close" onclick="closeModal('completeModal')">&times;</span></div>
         <div class="modal-body">
             <input type="hidden" id="taskId">
-            <div class="form-group">
-                <label>Дата начала</label>
-                <input type="date" id="actualStartDate">
-            </div>
-            <div class="form-group">
-                <label>Дата окончания</label>
-                <input type="date" id="actualEndDate">
-            </div>
-            <div class="form-group">
-                <label>Описание выполненных работ</label>
-                <textarea id="completionDesc" rows="4" placeholder="Что было сделано..."></textarea>
-            </div>
+            <div class="form-group"><label>Дата начала</label><input type="date" id="actualStartDate"></div>
+            <div class="form-group"><label>Дата окончания</label><input type="date" id="actualEndDate"></div>
+            <div class="form-group"><label>Описание работ</label><textarea id="completionDesc" rows="4" placeholder="Что было сделано..."></textarea></div>
         </div>
-        <div class="modal-footer">
-            <button id="confirmCompleteBtn" class="btn-complete">Отметить завершённым</button>
-            <button class="btn-secondary" onclick="closeModal('completeModal')">Отмена</button>
-        </div>
-    </div>
-</div>
-
-<!-- Модальное окно паспорта -->
-<div id="passportModal" class="modal" style="display:none">
-    <div class="modal-content" style="width: 550px;">
-        <div class="modal-header">
-            <h3 id="passportTitle">Паспорт оборудования</h3>
-            <span class="close" onclick="closeModal('passportModal')">&times;</span>
-        </div>
-        <div class="modal-body" id="passportBody"></div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeModal('passportModal')">Закрыть</button>
-        </div>
+        <div class="modal-footer"><button id="confirmCompleteBtn" class="btn-complete">Отметить завершённым</button><button class="btn-secondary" onclick="closeModal('completeModal')">Отмена</button></div>
     </div>
 </div>
 
@@ -412,7 +94,6 @@
         currentUserRole = role;
         document.getElementById('userName').innerHTML = fullName;
         
-        // Показываем кнопку Выход только для роли слесаря
         const logoutBtn = document.getElementById('logoutBtn');
         if (role === 'app_slesar') {
             logoutBtn.classList.remove('hidden');
@@ -420,11 +101,10 @@
         } else {
             logoutBtn.classList.add('hidden');
         }
-        console.log('User set:', id, fullName, 'Role:', role);
     }
 
     function logout() {
-        if (window.chrome && window.chrome.webview) {
+        if (window.chrome?.webview) {
             window.chrome.webview.postMessage(JSON.stringify({ action: 'logout' }));
         }
     }
@@ -434,36 +114,44 @@
         toast.textContent = msg;
         toast.className = 'toast ' + (type || '');
         toast.style.display = 'block';
-        setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        setTimeout(() => toast.style.display = 'none', 3000);
     }
 
     function closeModal(id) {
         document.getElementById(id).style.display = 'none';
     }
 
-    // Переключение вкладок
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.onclick = function() {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            let tabName = this.getAttribute('data-tab');
-            document.getElementById('tasksTab').classList.toggle('active', tabName === 'tasks');
-            document.getElementById('passportsTab').classList.toggle('active', tabName === 'passports');
-            if (tabName === 'passports') {
-                loadEquipment();
-            }
-        };
-    });
+    window.receiveFromCSharp = function(command, data) {
+        if (command === 'displayTasks') displayTasks(data);
+        else if (command === 'updateStatistics') updateStatistics(data);
+        else if (command === 'showSuccess') showToast(data, 'success');
+        else if (command === 'showError') showToast(data, 'error');
+    };
 
-    // Функции из C#
-    window.displayTasks = function(data) {
+    function loadTasks(startDate, endDate, showAll) {
+        if (window.chrome?.webview) {
+            window.chrome.webview.postMessage(JSON.stringify({ action: 'loadTasks', startDate, endDate, showAll }));
+        }
+    }
+
+    function displayTasks(data) {
         let tasks = typeof data === 'string' ? JSON.parse(data) : data;
         if (!tasks || tasks.length === 0) {
             document.getElementById('tasksTable').innerHTML = '<div class="loading">Нет заданий</div>';
             return;
         }
+        
+        // Для слесаря показываем только незавершённые задания
+        let activeTasks = tasks.filter(t => t.status !== 'Завершен');
+        
+        if (activeTasks.length === 0) {
+            document.getElementById('tasksTable').innerHTML = '<div class="loading">Нет активных заданий</div>';
+            updateStatistics({ total: tasks.length, completed: tasks.filter(t => t.status === 'Завершен').length, inProgress: tasks.filter(t => t.status === 'В работе').length, overdue: tasks.filter(t => t.status === 'Просрочен').length });
+            return;
+        }
+        
         let html = '<table><thead><tr><th>ID</th><th>Оборудование</th><th>Тип ТО</th><th>Плановая дата</th><th>Статус</th><th></th></tr></thead><tbody>';
-        for (let t of tasks) {
+        for (let t of activeTasks) {
             let statusClass = (t.status === 'Завершен') ? 'status-completed' : ((t.status === 'В работе') ? 'status-progress' : 'status-pending');
             let statusText = (t.status === 'Завершен') ? 'Выполнено' : ((t.status === 'В работе') ? 'В работе' : 'Ожидает');
             html += '<tr>';
@@ -472,91 +160,30 @@
             html += '<td>' + escapeHtml(t.tip) + '</td>';
             html += '<td>' + (t.start_date || '—') + '</td>';
             html += '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>';
-            if (t.status !== 'Завершен') {
-                html += '<td><button class="btn-complete" onclick="openCompleteModal(' + t.id + ')">Отметить завершённым</button></td>';
-            } else {
-                html += '<td>—</td>';
-            }
+            html += '<td><button class="btn-complete" onclick="openCompleteModal(' + t.id + ')">Отметить завершённым</button></td>';
             html += '</tr>';
         }
         html += '</tbody></table>';
         document.getElementById('tasksTable').innerHTML = html;
-    };
+        
+        // Обновляем статистику по всем заданиям
+        updateStatistics({
+            total: tasks.length,
+            completed: tasks.filter(t => t.status === 'Завершен').length,
+            inProgress: tasks.filter(t => t.status === 'В работе').length,
+            overdue: tasks.filter(t => t.status === 'Просрочен').length
+        });
+    }
 
-    window.updateStatistics = function(data) {
+    function updateStatistics(data) {
         let s = typeof data === 'string' ? JSON.parse(data) : data;
         document.getElementById('statsPanel').innerHTML = 
             '<div class="stat"><div class="stat-value">' + (s.total || 0) + '</div><div class="stat-label">Всего заданий</div></div>' +
             '<div class="stat"><div class="stat-value">' + (s.completed || 0) + '</div><div class="stat-label">Выполнено</div></div>' +
             '<div class="stat"><div class="stat-value">' + (s.inProgress || 0) + '</div><div class="stat-label">В работе</div></div>' +
             '<div class="stat"><div class="stat-value">' + (s.overdue || 0) + '</div><div class="stat-label">Просрочено</div></div>';
-    };
-
-    window.displayEquipment = function(data) {
-        let items = typeof data === 'string' ? JSON.parse(data) : data;
-        let grid = document.getElementById('equipmentGrid');
-        if (!items || items.length === 0) {
-            grid.innerHTML = '<div class="loading">Оборудование не найдено</div>';
-            return;
-        }
-        let html = '';
-        for (let e of items) {
-            html += '<div class="card" onclick="loadPassport(' + e.id + ')">' +
-                '<div class="card-title">' + escapeHtml(e.nazvanie) + '</div>' +
-                '<div class="card-text">Тип: ' + escapeHtml(e.tip) + '</div>' +
-                '<div class="card-text">Модель: ' + escapeHtml(e.model) + '</div>' +
-                '<div class="card-text">Место: ' + escapeHtml(e.mesto) + '</div>' +
-                '</div>';
-        }
-        grid.innerHTML = html;
-    };
-
-    window.showPassport = function(data) {
-        let p = typeof data === 'string' ? JSON.parse(data) : data;
-        document.getElementById('passportTitle').innerHTML = 'Паспорт: ' + escapeHtml(p.nazvanie);
-        document.getElementById('passportBody').innerHTML = 
-            '<div class="form-group"><label>Тип:</label><div>' + escapeHtml(p.tip) + '</div></div>' +
-            '<div class="form-group"><label>Модель:</label><div>' + escapeHtml(p.model) + '</div></div>' +
-            '<div class="form-group"><label>Заводской номер:</label><div>' + escapeHtml(p.seriionmer) + '</div></div>' +
-            '<div class="form-group"><label>Место установки:</label><div>' + escapeHtml(p.mesto) + '</div></div>' +
-            '<div class="form-group"><label>Мощность:</label><div>' + (p.moshnost || 0) + ' МВт</div></div>' +
-            '<div class="form-group"><label>Давление:</label><div>' + (p.davlenie || 0) + ' МПа</div></div>' +
-            '<div class="form-group"><label>Производитель:</label><div>' + escapeHtml(p.proizvoditel) + '</div></div>' +
-            '<div class="form-group"><label>Дата установки:</label><div>' + (p.dataUstanovki || '—') + '</div></div>' +
-            '<div class="form-group"><label>Статус:</label><div>' + escapeHtml(p.statusName) + '</div></div>';
-        document.getElementById('passportModal').style.display = 'flex';
-    };
-
-    window.showSuccess = function(msg) { showToast(msg, 'success'); };
-    window.showError = function(msg) { showToast(msg, 'error'); };
-
-    // Загрузка заданий
-    function loadTasks(startDate, endDate, showAll) {
-        if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage(JSON.stringify({ 
-                action: 'loadTasks', 
-                startDate: startDate || '', 
-                endDate: endDate || '', 
-                showAll: showAll || false 
-            }));
-        }
     }
 
-    // Паспорта
-    function loadEquipment() {
-        let filter = document.getElementById('searchInput')?.value || '';
-        if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage(JSON.stringify({ action: 'loadEquipment', filter: filter }));
-        }
-    }
-
-    function loadPassport(id) {
-        if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage(JSON.stringify({ action: 'loadPassport', id: id }));
-        }
-    }
-
-    // Выполнение задания
     function openCompleteModal(taskId) {
         document.getElementById('taskId').value = taskId;
         document.getElementById('actualStartDate').value = new Date().toISOString().split('T')[0];
@@ -571,7 +198,7 @@
         let start = document.getElementById('actualStartDate').value;
         let end = document.getElementById('actualEndDate').value;
         if (!desc) { showToast('Введите описание!', 'error'); return; }
-        if (window.chrome && window.chrome.webview) {
+        if (window.chrome?.webview) {
             window.chrome.webview.postMessage(JSON.stringify({
                 action: 'completeTask',
                 id: parseInt(id),
@@ -593,7 +220,6 @@
         });
     }
 
-    // Инициализация
     let today = new Date();
     let monthAgo = new Date();
     monthAgo.setMonth(monthAgo.getMonth() - 1);
@@ -607,13 +233,7 @@
         loadTasks(start, end, all);
     };
 
-    document.getElementById('searchBtn').onclick = function() {
-        loadEquipment();
-    };
-
-    document.getElementById('confirmCompleteBtn').onclick = function() {
-        confirmComplete();
-    };
+    document.getElementById('confirmCompleteBtn').onclick = confirmComplete;
 
     loadTasks('', '', true);
 </script>

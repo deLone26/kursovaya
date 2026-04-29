@@ -66,12 +66,12 @@
         <div class="tabs">
             <button class="tab-btn active" data-tab="plans">📋 Планы ремонтов</button>
             <button class="tab-btn" data-tab="avariya">⚠️ Аварии</button>
+            <button class="tab-btn" data-tab="history">📜 История ремонтов</button>
             <button class="tab-btn" data-tab="reports">📊 Отчеты</button>
         </div>
 
         <!-- Вкладка Планы -->
         <div class="tab-content active" id="tab-plans">
-            <!-- Фильтры -->
             <div class="filters-section">
                 <div class="filter-group">
                     <label>Период:</label>
@@ -94,7 +94,6 @@
                 </button>
             </div>
 
-            <!-- Таблица планов -->
             <div class="table-container">
                 <table class="data-table" id="plansTable">
                     <thead>
@@ -115,7 +114,6 @@
                 </table>
             </div>
 
-            <!-- Форма редактирования -->
             <div class="edit-form">
                 <h3 class="form-title">
                     <span class="form-icon">✏️</span>
@@ -233,6 +231,42 @@
             </div>
         </div>
 
+        <!-- Вкладка История ремонтов -->
+        <div class="tab-content" id="tab-history">
+            <div class="filters-section">
+                <div class="filter-group">
+                    <label>Период:</label>
+                    <div class="date-range">
+                        <input type="date" id="historyStartDate" class="date-input">
+                        <span class="date-separator">—</span>
+                        <input type="date" id="historyEndDate" class="date-input">
+                    </div>
+                </div>
+                <button class="btn-primary" id="applyHistoryFilter">
+                    <span class="btn-icon">🔍</span>
+                    Применить фильтр
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table" id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Оборудование</th>
+                            <th>Тип ТО</th>
+                            <th>Плановая дата</th>
+                            <th>Дата выполнения</th>
+                            <th>Исполнитель</th>
+                            <th>Описание работ</th>
+                            <th>Стоимость</th>
+                        </thead>
+                    <tbody id="historyTableBody">
+                        <tr><td colspan="7" class="loading">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Вкладка Отчеты -->
         <div class="tab-content" id="tab-reports">
             <div class="reports-section">
@@ -246,6 +280,7 @@
                         <option value="completed">Завершенные</option>
                         <option value="overdue">Просроченные</option>
                         <option value="avariya">Аварии</option>
+                        <option value="history">История ремонтов</option>
                     </select>
                 </div>
                 <div class="report-actions">

@@ -38,23 +38,30 @@
         .employee-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .employee-count { background: #e2e8f0; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; flex-shrink: 0; }
         
+        /* Зелёный цвет для выполненных заданий в списке сотрудников */
+        .employee-item.completed .employee-count { background: #22c55e; color: white; }
+        
         .urgent-section { padding: 12px; background: #fefce8; border-bottom: 1px solid #e2e8f0; }
         .urgent-section h3 { font-size: 12px; font-weight: 600; color: #854d0e; margin-bottom: 8px; }
         .urgent-list { max-height: 250px; overflow-y: auto; }
         .urgent-item { background: white; border-left: 2px solid #eab308; padding: 8px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 11px; cursor: pointer; }
         .urgent-item.critical { border-left-color: #ef4444; background: #fef2f2; }
         .urgent-item.warning { border-left-color: #f59e0b; background: #fffbeb; }
+        /* Зелёный для выполненных в срочных напоминаниях */
+        .urgent-item.completed { border-left-color: #22c55e; background: #e8f5e9; opacity: 0.7; }
         .urgent-date { font-size: 10px; color: #6b7280; }
         .urgent-title { font-weight: 600; font-size: 11px; margin: 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .urgent-days { font-size: 10px; margin-top: 3px; }
         .days-critical { color: #dc2626; font-weight: 600; }
         .days-warning { color: #d97706; }
+        .days-completed { color: #16a34a; }
         
         .stats-footer { padding: 10px 12px; margin-top: auto; background: #f8fafc; border-top: 1px solid #e2e8f0; }
         .stat-item { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; }
         .stat-label { color: #64748b; }
         .stat-value { font-weight: 700; font-size: 14px; color: #1e293b; }
         .stat-value.critical { color: #dc2626; }
+        .stat-value.completed { color: #22c55e; }
         
         .right-panel { flex: 1; background: white; display: flex; flex-direction: column; overflow: auto; min-width: 0; }
         
@@ -70,9 +77,13 @@
         
         .employee-cell { text-align: left; font-weight: 500; background: #f8fafc; position: sticky; left: 0; z-index: 5; }
         
+        /* Зелёный цвет для выполненных заданий в таблице */
         .task-cell { background: #eff6ff; border-radius: 8px; margin: 2px; }
+        .task-cell.completed { background: #e8f5e9; }
         .task-cell.critical { background: #fee2e2; }
         .task-cell.warning { background: #fed7aa; }
+        .task-cell.completed.critical { background: #e8f5e9; }
+        .task-cell.completed.warning { background: #e8f5e9; }
         
         .weekend-day { background: #fef2f2; color: #ef4444; }
         
@@ -84,6 +95,7 @@
         
         .hour-cell { background: #eff6ff; border-radius: 8px; margin: 2px; cursor: pointer; transition: all 0.2s; }
         .hour-cell:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .hour-cell.completed { background: #e8f5e9; }
         .hour-cell.critical { background: #fee2e2; }
         .hour-cell.warning { background: #fed7aa; }
         .hour-content { padding: 4px 6px; }
@@ -131,6 +143,7 @@
                 </div>
                 <div class="stats-footer">
                     <div class="stat-item"><span class="stat-label">📋 Всего планов</span><span class="stat-value" id="totalPlans">0</span></div>
+                    <div class="stat-item"><span class="stat-label">✅ Выполнено</span><span class="stat-value completed" id="completedCount">0</span></div>
                     <div class="stat-item"><span class="stat-label">⚠️ Просрочено</span><span class="stat-value critical" id="overdueCount">0</span></div>
                     <div class="stat-item"><span class="stat-label">🔥 Критических</span><span class="stat-value warning" id="criticalCount">0</span></div>
                 </div>
@@ -183,12 +196,26 @@
             const container = document.getElementById('employeesList');
             if (!data || !data.length) { container.innerHTML = '<div class="loading">Нет сотрудников</div>'; return; }
             employees = data;
-            container.innerHTML = employees.map(emp => `
-                <div class="employee-item ${selectedEmployeeId === emp.id ? 'active' : ''}" data-id="${emp.id}">
-                    <span class="employee-name" title="${emp.fio}">${emp.fio}</span>
-                    <span class="employee-count">${emp.tasks_count || 0}</span>
-                </div>
-            `).join('');
+            
+            // Подсчитываем выполненные задания для каждого сотрудника
+            const completedTasksByEmployee = {};
+            allPlans.forEach(plan => {
+                if (plan.status === 'Завершен' || plan.status === '✅ Завершен') {
+                    const id = plan.responsible_id;
+                    if (!completedTasksByEmployee[id]) completedTasksByEmployee[id] = 0;
+                    completedTasksByEmployee[id]++;
+                }
+            });
+            
+            container.innerHTML = employees.map(emp => {
+                const isCompleted = completedTasksByEmployee[emp.id] > 0;
+                return `
+                    <div class="employee-item ${selectedEmployeeId === emp.id ? 'active' : ''}" data-id="${emp.id}">
+                        <span class="employee-name" title="${emp.fio}">${emp.fio}</span>
+                        <span class="employee-count">${emp.tasks_count || 0}</span>
+                    </div>
+                `;
+            }).join('');
             
             document.querySelectorAll('.employee-item').forEach(item => {
                 item.onclick = () => {
@@ -205,10 +232,23 @@
             if (!data || !data.length) { container.innerHTML = '<div class="loading">Нет напоминаний</div>'; return; }
             container.innerHTML = data.map(item => {
                 let itemClass = '', daysClass = '';
-                if (item.days_left < 0 || item.days_left <= 2) { itemClass = 'critical'; daysClass = 'days-critical'; }
-                else if (item.days_left <= 5) { itemClass = 'warning'; daysClass = 'days-warning'; }
+                if (item.status === 'Завершен' || item.status === '✅ Завершен') {
+                    itemClass = 'completed';
+                    daysClass = 'days-completed';
+                } else if (item.days_left < 0 || item.days_left <= 2) {
+                    itemClass = 'critical';
+                    daysClass = 'days-critical';
+                } else if (item.days_left <= 5) {
+                    itemClass = 'warning';
+                    daysClass = 'days-warning';
+                }
                 const daysText = item.days_left < 0 ? `Просрочен на ${Math.abs(item.days_left)} дн.` : `${item.days_left} дн.`;
-                return `<div class="urgent-item ${itemClass}"><div class="urgent-date">📅 ${item.end_date}</div><div class="urgent-title" title="${item.equipment}">${item.equipment}</div><div class="urgent-days ${daysClass}">⏰ ${daysText}</div></div>`;
+                const statusText = (item.status === 'Завершен' || item.status === '✅ Завершен') ? '✅ Выполнено | ' : '';
+                return `<div class="urgent-item ${itemClass}">
+                            <div class="urgent-date">📅 ${item.end_date}</div>
+                            <div class="urgent-title" title="${item.equipment}">${item.equipment}</div>
+                            <div class="urgent-days ${daysClass}">⏰ ${statusText}${daysText}</div>
+                        </div>`;
             }).join('');
         }
         
@@ -231,14 +271,16 @@
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
+            const completedPlans = allPlans.filter(p => p.status === 'Завершен' || p.status === '✅ Завершен');
             const allOverduePlans = allPlans.filter(p => {
                 const endDate = new Date(p.end_date);
                 endDate.setHours(0, 0, 0, 0);
-                return p.is_overdue === true || (endDate < today && p.status !== "Завершен" && p.status !== "Отменен");
+                return p.is_overdue === true || (endDate < today && p.status !== "Завершен" && p.status !== "Отменен" && p.status !== "✅ Завершен");
             });
             
             const allCriticalPlans = allPlans.filter(p => {
                 if (p.is_overdue === true) return false;
+                if (p.status === 'Завершен' || p.status === '✅ Завершен') return false;
                 const endDate = new Date(p.end_date);
                 endDate.setHours(0, 0, 0, 0);
                 const daysLeft = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
@@ -246,6 +288,7 @@
             });
             
             document.getElementById('totalPlans').innerHTML = allPlans.length;
+            document.getElementById('completedCount').innerHTML = completedPlans.length;
             document.getElementById('overdueCount').innerHTML = allOverduePlans.length;
             document.getElementById('criticalCount').innerHTML = allCriticalPlans.length;
         }
@@ -346,7 +389,10 @@
                         
                         if (planStartHour <= i && planEndHour > i) {
                             taskForHour = plan;
-                            if (plan.is_overdue) {
+                            // Определяем класс в зависимости от статуса и срочности
+                            if (plan.status === 'Завершен' || plan.status === '✅ Завершен') {
+                                taskClass = 'completed';
+                            } else if (plan.is_overdue) {
                                 taskClass = 'critical';
                             } else if (plan.days_left <= 3) {
                                 taskClass = 'warning';
@@ -359,19 +405,21 @@
                     if (taskForHour) {
                         let colspan = endHour - startHour;
                         let timeRange = `${startHour.toString().padStart(2, '0')}:00 - ${endHour.toString().padStart(2, '0')}:00`;
-                        html += `<td colspan="${colspan}" class="hour-cell ${taskClass}" style="cursor: pointer;" title="${taskForHour.equipment}">
+                        const isCompleted = (taskForHour.status === 'Завершен' || taskForHour.status === '✅ Завершен');
+                        const titleText = isCompleted ? `✅ ${taskForHour.equipment} (Выполнено)` : taskForHour.equipment;
+                        html += `<td colspan="${colspan}" class="hour-cell ${taskClass}" style="cursor: pointer;" title="${titleText}">
                                     <div class="hour-content">
                                         <div class="hour-title">${taskForHour.equipment}</div>
                                         <div class="hour-time">${timeRange}</div>
                                     </div>
-                                 </td>`;
+                                  </td>`;
                         i += colspan;
                     } else {
                         html += `<td class="hour-cell"><div class="hour-content"></div></td>`;
                         i++;
                     }
                 }
-                html += `</tr>`;
+                html += `</td>`;
             }
             
             html += `</tbody>`;
@@ -430,7 +478,10 @@
                         
                         if (planStart <= currentDay && planEnd >= currentDay && !isWeekendDay) {
                             taskForDay = plan;
-                            if (plan.is_overdue) {
+                            // Определяем класс в зависимости от статуса и срочности
+                            if (plan.status === 'Завершен' || plan.status === '✅ Завершен') {
+                                taskClass = 'completed';
+                            } else if (plan.is_overdue) {
                                 taskClass = 'critical';
                             } else if (plan.days_left <= 3) {
                                 taskClass = 'warning';
@@ -452,10 +503,12 @@
                     if (taskForDay) {
                         let colspan = taskEndIndex - taskStartIndex + 1;
                         let dateRange = `${taskForDay.start_date} - ${taskForDay.end_date}`;
-                        html += `<td colspan="${colspan}" class="task-cell ${taskClass}" style="cursor: pointer;" title="${taskForDay.equipment}">
+                        const isCompleted = (taskForDay.status === 'Завершен' || taskForDay.status === '✅ Завершен');
+                        const titleText = isCompleted ? `✅ ${taskForDay.equipment} (Выполнено)` : taskForDay.equipment;
+                        html += `<td colspan="${colspan}" class="task-cell ${taskClass}" style="cursor: pointer;" title="${titleText}">
                                     <div style="font-weight: 500; font-size: 10px;">${taskForDay.equipment}</div>
                                     <div style="font-size: 8px; color: #64748b;">${dateRange}</div>
-                                  </td>`;
+                                   </td>`;
                         i += colspan;
                     } else {
                         html += `<td class="${isWeekendDay ? 'weekend-day' : ''}"></td>`;

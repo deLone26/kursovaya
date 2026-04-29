@@ -1,5 +1,6 @@
-﻿using Microsoft.Web.WebView2.WinForms;
-using Microsoft.Web.WebView2.Core;
+﻿using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
+using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -7,8 +8,8 @@ using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using Npgsql;
 
 namespace WindowsFormsApp1
 {
@@ -19,6 +20,7 @@ namespace WindowsFormsApp1
         private WebView2 webView;
         private int selectedPlanId = -1;
         private int selectedAvariyaId = -1;
+        private string currentReportType = "Все планы";
 
         public FormBoss(string userConnectionString, int userId)
         {
@@ -94,6 +96,7 @@ namespace WindowsFormsApp1
                 LoadPlans();
                 LoadAvariya();
                 LoadStatistics();
+                LoadRepairHistory();
             }
             catch (Exception ex)
             {
@@ -117,6 +120,9 @@ namespace WindowsFormsApp1
                             break;
                         case "loadAvariya":
                             LoadAvariya(json);
+                            break;
+                        case "loadHistory":
+                            LoadRepairHistory(json);
                             break;
                         case "addPlan":
                             AddPlan(json);
@@ -157,6 +163,9 @@ namespace WindowsFormsApp1
                         case "loadStatistics":
                             LoadStatistics();
                             break;
+                        case "loadHistory":
+                            LoadRepairHistory();
+                            break;
                     }
                 }
             }
@@ -174,28 +183,59 @@ namespace WindowsFormsApp1
                 {
                     conn.Open();
 
+                    // Обновляем просроченные планы
                     string sql = @"
-                        UPDATE plan_to 
-                        SET is_overdue = CASE 
-                            WHEN data_okonchaniya < CURRENT_DATE 
-                                 AND status NOT IN ('Завершен', 'Отменен') 
-                            THEN TRUE 
-                            ELSE FALSE 
-                        END,
-                        status = CASE 
-                            WHEN data_okonchaniya < CURRENT_DATE 
-                                 AND status = 'Запланирован' 
-                            THEN 'Просрочен'
-                            WHEN data_okonchaniya < CURRENT_DATE 
-                                 AND status = 'В работе' 
-                            THEN 'Просрочен'
-                            ELSE status 
-                        END
-                        WHERE data_okonchaniya IS NOT NULL";
+                UPDATE plan_to 
+                SET is_overdue = CASE 
+                    WHEN data_okonchaniya < CURRENT_DATE 
+                         AND status NOT IN ('Завершен', 'Отменен') 
+                    THEN TRUE 
+                    ELSE FALSE 
+                END,
+                status = CASE 
+                    WHEN data_okonchaniya < CURRENT_DATE 
+                         AND status = 'Запланирован' 
+                    THEN 'Просрочен'
+                    WHEN data_okonchaniya < CURRENT_DATE 
+                         AND status = 'В работе' 
+                    THEN 'Просрочен'
+                    ELSE status 
+                END
+                WHERE data_okonchaniya IS NOT NULL";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.ExecuteNonQuery();
+                    }
+
+                    // Добавляем в историю все завершённые планы, которых ещё нет в истории
+                    string addHistorySql = @"
+                INSERT INTO remont (plan_id, oborudovanie_id, sotrudnik_id, data_nachala, data_okonchaniya, opisanie, stoimost, equipment_name, tip_name, sotrudnik_name)
+                SELECT 
+                    p.id,
+                    p.oborudovanie_id,
+                    p.otvetstvenniy_id,
+                    p.data_nachala,
+                    p.data_okonchaniya,
+                    COALESCE(r.opisanie, 'Автоматически завершён'),
+                    p.stoimost,
+                    o.nazvanie,
+                    COALESCE(t.nazvanie, 'Не указан'),
+                    CONCAT(s.familiya, ' ', LEFT(s.imya, 1), '.', LEFT(s.otchestvo, 1), '.')
+                FROM plan_to p
+                JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                LEFT JOIN remont r ON p.id = r.plan_id
+                WHERE p.status = 'Завершен' AND r.id IS NULL";
+
+                    using (var cmd = new NpgsqlCommand(addHistorySql, conn))
+                    {
+                        int added = cmd.ExecuteNonQuery();
+                        if (added > 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Добавлено {added} записей в историю ремонтов");
+                        }
                     }
                 }
             }
@@ -326,28 +366,22 @@ namespace WindowsFormsApp1
                     conn.Open();
 
                     StringBuilder sql = new StringBuilder(@"
-                        SELECT 
-                            p.id,
-                            o.nazvanie AS equipment,
-                            COALESCE(t.nazvanie, 'Не указан') AS tip,
-                            p.data_nachala AS start_date,
-                            p.data_okonchaniya AS end_date,
-                            COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
-                            CASE 
-                                WHEN p.status = 'Просрочен' THEN '🔴 Просрочен'
-                                WHEN p.status = 'Завершен' THEN '✅ Завершен'
-                                WHEN p.status = 'В работе' THEN '⚙️ В работе'
-                                WHEN p.status = 'Запланирован' THEN '📋 Запланирован'
-                                ELSE COALESCE(p.status, 'Не указан')
-                            END AS status,
-                            CASE WHEN p.avariya_id IS NOT NULL THEN '✅' ELSE '❌' END AS has_avariya,
-                            COALESCE(p.avariya_id, 0) AS avariya_id,
-                            COALESCE(p.stoimost, 0) AS cost,
-                            p.is_overdue
-                        FROM plan_to p
-                        JOIN oborudovanie o ON p.oborudovanie_id = o.id
-                        LEFT JOIN tip_to t ON p.tip_to_id = t.id
-                        LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id");
+                SELECT 
+                    p.id,
+                    o.nazvanie AS equipment,
+                    COALESCE(t.nazvanie, 'Не указан') AS tip,
+                    p.data_nachala AS start_date,
+                    p.data_okonchaniya AS end_date,
+                    COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
+                    p.status,
+                    CASE WHEN p.avariya_id IS NOT NULL THEN '✅' ELSE '❌' END AS has_avariya,
+                    COALESCE(p.avariya_id, 0) AS avariya_id,
+                    COALESCE(p.stoimost, 0) AS cost,
+                    p.is_overdue
+                FROM plan_to p
+                JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id");
 
                     if (json.ValueKind != JsonValueKind.Undefined)
                     {
@@ -360,7 +394,7 @@ namespace WindowsFormsApp1
                         }
                     }
 
-                    sql.Append(" ORDER BY p.is_overdue DESC, p.data_nachala DESC");
+                    sql.Append(" ORDER BY CASE WHEN p.status = 'Завершен' THEN 1 ELSE 0 END, p.is_overdue DESC, p.data_nachala DESC");
 
                     using (var cmd = new NpgsqlCommand(sql.ToString(), conn))
                     {
@@ -461,6 +495,75 @@ namespace WindowsFormsApp1
             catch (Exception ex)
             {
                 ShowError("Ошибка загрузки аварий: " + ex.Message);
+            }
+        }
+
+        private void LoadRepairHistory(JsonElement json = default)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // ВАЖНО: Берём стоимость из plan_to.stoimost, а не из remont
+                    StringBuilder sql = new StringBuilder(@"
+                SELECT 
+                    COALESCE(r.equipment_name, o.nazvanie) as equipment_name,
+                    COALESCE(r.tip_name, COALESCE(t.nazvanie, 'Не указан')) as tip_name,
+                    TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as plan_date,
+                    TO_CHAR(r.data_okonchaniya, 'DD.MM.YYYY') as completed_date,
+                    COALESCE(r.sotrudnik_name, CONCAT(s.familiya, ' ', LEFT(s.imya, 1), '.', LEFT(s.otchestvo, 1), '.')) as sotrudnik_name,
+                    COALESCE(r.opisanie, '') as opisanie,
+                    COALESCE(p.stoimost, 0) as cost
+                FROM remont r
+                JOIN plan_to p ON r.plan_id = p.id
+                JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                JOIN sotrudniki s ON r.sotrudnik_id = s.id
+                WHERE 1=1");
+
+                    if (json.ValueKind != JsonValueKind.Undefined)
+                    {
+                        string startDate = json.GetProperty("startDate").GetString();
+                        string endDate = json.GetProperty("endDate").GetString();
+                        if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
+                        {
+                            sql.Append($" AND DATE(r.data_okonchaniya) BETWEEN '{startDate}' AND '{endDate}'");
+                        }
+                    }
+
+                    sql.Append(" ORDER BY r.data_okonchaniya DESC");
+
+                    using (var cmd = new NpgsqlCommand(sql.ToString(), conn))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            var list = new List<object>();
+
+                            while (reader.Read())
+                            {
+                                list.Add(new
+                                {
+                                    equipment_name = reader.GetString(0),
+                                    tip_name = reader.GetString(1),
+                                    plan_date = reader.GetString(2),
+                                    completed_date = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                                    sotrudnik_name = reader.GetString(4),
+                                    opisanie = reader.GetString(5),
+                                    cost = reader.GetDecimal(6).ToString("N2")
+                                });
+                            }
+
+                            string jsonData = JsonSerializer.Serialize(list);
+                            SendToWebView("displayHistory", jsonData);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError("Ошибка загрузки истории ремонтов: " + ex.Message);
             }
         }
 
@@ -575,6 +678,56 @@ namespace WindowsFormsApp1
             }
         }
 
+        private void AddToRepairHistory(int planId)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Проверяем, есть ли уже запись
+                    string checkSql = "SELECT COUNT(*) FROM remont WHERE plan_id = @plan_id";
+                    using (var checkCmd = new NpgsqlCommand(checkSql, conn))
+                    {
+                        checkCmd.Parameters.AddWithValue("@plan_id", planId);
+                        int exists = Convert.ToInt32(checkCmd.ExecuteScalar());
+                        if (exists > 0) return;
+                    }
+
+                    // Вставляем с правильной стоимостью из plan_to
+                    string sql = @"
+                INSERT INTO remont (plan_id, oborudovanie_id, sotrudnik_id, data_nachala, data_okonchaniya, opisanie, stoimost, equipment_name, tip_name, sotrudnik_name)
+                SELECT 
+                    p.id,
+                    p.oborudovanie_id,
+                    p.otvetstvenniy_id,
+                    p.data_nachala,
+                    p.data_okonchaniya,
+                    COALESCE(r.opisanie, 'Завершено вручную'),
+                    p.stoimost,
+                    o.nazvanie,
+                    COALESCE(t.nazvanie, 'Не указан'),
+                    CONCAT(s.familiya, ' ', LEFT(s.imya, 1), '.', LEFT(s.otchestvo, 1), '.')
+                FROM plan_to p
+                JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                LEFT JOIN remont r ON p.id = r.plan_id
+                WHERE p.id = @plan_id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@plan_id", planId);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка добавления в историю: {ex.Message}");
+            }
+        }
         private void UpdatePlan(JsonElement json)
         {
             try
@@ -588,19 +741,34 @@ namespace WindowsFormsApp1
                 string status = json.GetProperty("status").GetString();
                 decimal cost = json.GetProperty("cost").GetDecimal();
 
+                // Получаем СТАРЫЙ статус до обновления
+                string oldStatus = "";
+                using (var connCheck = new NpgsqlConnection(connectionString))
+                {
+                    connCheck.Open();
+                    string checkSql = "SELECT status FROM plan_to WHERE id = @id";
+                    using (var cmdCheck = new NpgsqlCommand(checkSql, connCheck))
+                    {
+                        cmdCheck.Parameters.AddWithValue("@id", id);
+                        var result = cmdCheck.ExecuteScalar();
+                        if (result != null) oldStatus = result.ToString();
+                    }
+                }
+
+                // Обновляем план
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     conn.Open();
                     string sql = @"
-                        UPDATE plan_to SET
-                            oborudovanie_id = @oborudovanie_id,
-                            tip_to_id = @tip_to_id,
-                            data_nachala = @data_nachala,
-                            data_okonchaniya = @data_okonchaniya,
-                            otvetstvenniy_id = @otvetstvenniy_id,
-                            status = @status,
-                            stoimost = @stoimost
-                        WHERE id = @id";
+                UPDATE plan_to SET
+                    oborudovanie_id = @oborudovanie_id,
+                    tip_to_id = @tip_to_id,
+                    data_nachala = @data_nachala,
+                    data_okonchaniya = @data_okonchaniya,
+                    otvetstvenniy_id = @otvetstvenniy_id,
+                    status = @status,
+                    stoimost = @stoimost
+                WHERE id = @id";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -617,13 +785,61 @@ namespace WindowsFormsApp1
                     }
                 }
 
+                // ЕСЛИ СТАТУС ИЗМЕНИЛСЯ НА "Завершен" - добавляем в историю ремонтов
+                if (status == "Завершен" && oldStatus != "Завершен")
+                {
+                    AddToRepairHistory(id);
+                }
+
                 SendToWebView("showSuccess", "План успешно обновлен!");
                 LoadPlans();
                 LoadStatistics();
+                LoadRepairHistory();
             }
             catch (Exception ex)
             {
                 ShowError("Ошибка обновления: " + ex.Message);
+            }
+        }
+
+        private void AddToRepairHistory(int planId, int responsibleId, string startDate, string endDate)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string sql = @"
+                        INSERT INTO remont (plan_id, oborudovanie_id, sotrudnik_id, data_nachala, data_okonchaniya, opisanie, stoimost, equipment_name, tip_name, sotrudnik_name)
+                        SELECT 
+                            p.id,
+                            p.oborudovanie_id,
+                            p.otvetstvenniy_id,
+                            p.data_nachala,
+                            p.data_okonchaniya,
+                            COALESCE(r.opisanie, 'Завершено вручную'),
+                            p.stoimost,
+                            o.nazvanie,
+                            COALESCE(t.nazvanie, 'Не указан'),
+                            CONCAT(s.familiya, ' ', LEFT(s.imya, 1), '.', LEFT(s.otchestvo, 1), '.')
+                        FROM plan_to p
+                        JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                        LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                        JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                        LEFT JOIN remont r ON p.id = r.plan_id
+                        WHERE p.id = @id AND r.id IS NULL";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", planId);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка добавления в историю: {ex.Message}");
             }
         }
 
@@ -686,88 +902,153 @@ namespace WindowsFormsApp1
             }
         }
 
-        private void ExportToExcel()
+        private async void ExportToExcel()
         {
             try
             {
-                SaveFileDialog save = new SaveFileDialog();
-                save.Filter = "CSV files (*.csv)|*.csv";
-                save.FileName = $"Отчет_о_планах_ремонтов_{DateTime.Now:dd-MM-yyyy}.csv";
-
-                if (save.ShowDialog() == DialogResult.OK)
-                {
-                    using (var conn = new NpgsqlConnection(connectionString))
-                    {
-                        conn.Open();
-
-                        string sql = @"
-                            SELECT 
-                                p.id,
-                                o.nazvanie AS equipment,
-                                COALESCE(t.nazvanie, 'Не указан') AS tip,
-                                p.data_nachala AS start_date,
-                                p.data_okonchaniya AS end_date,
-                                COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
-                                p.status,
-                                CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
-                                p.stoimost AS cost
-                            FROM plan_to p
-                            JOIN oborudovanie o ON p.oborudovanie_id = o.id
-                            LEFT JOIN tip_to t ON p.tip_to_id = t.id
-                            LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
-                            ORDER BY p.data_nachala DESC";
-
-                        using (var cmd = new NpgsqlCommand(sql, conn))
-                        {
-                            using (var reader = cmd.ExecuteReader())
-                            {
-                                using (StreamWriter sw = new StreamWriter(save.FileName, false, Encoding.UTF8))
-                                {
-                                    sw.WriteLine("Отчет о планах ремонтов");
-                                    sw.WriteLine($"Дата формирования: {DateTime.Now:dd.MM.yyyy HH:mm}");
-                                    sw.WriteLine();
-
-                                    sw.WriteLine("ID;Оборудование;Тип ТО;Дата начала;Дата окончания;Ответственный;Статус;Связь с аварией;Стоимость");
-
-                                    int count = 0;
-                                    while (reader.Read())
-                                    {
-                                        string line = $"{reader.GetInt32(0)};" +
-                                                     $"{reader.GetString(1)};" +
-                                                     $"{reader.GetString(2)};" +
-                                                     $"{reader.GetDateTime(3):dd.MM.yyyy};" +
-                                                     $"{(reader.IsDBNull(4) ? "" : reader.GetDateTime(4).ToString("dd.MM.yyyy"))};" +
-                                                     $"{reader.GetString(5)};" +
-                                                     $"{reader.GetString(6)};" +
-                                                     $"{reader.GetString(7)};" +
-                                                     $"{reader.GetDecimal(8):N2}";
-                                        sw.WriteLine(line);
-                                        count++;
-                                    }
-
-                                    sw.WriteLine();
-                                    sw.WriteLine($"Всего записей: {count}");
-                                }
-                            }
-                        }
-                    }
-
-                    MessageBox.Show($"Отчет сохранен", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
+                string reportType = await GetReportTypeFromWebView();
+                ExportToExcelWithType(reportType);
             }
             catch (Exception ex)
             {
-                ShowError("Ошибка экспорта в Excel: " + ex.Message);
+                ShowError("Ошибка экспорта: " + ex.Message);
             }
         }
 
-        private void ExportToWord()
+        private async Task<string> GetReportTypeFromWebView()
+        {
+            if (webView?.CoreWebView2 != null)
+            {
+                try
+                {
+                    string script = "document.getElementById('reportTypeSelect')?.value || 'all'";
+                    string result = await webView.CoreWebView2.ExecuteScriptAsync(script);
+                    // Получаем значение из JS
+                    string value = result.Trim('"');
+
+                    // Преобразуем значение в текст
+                    switch (value)
+                    {
+                        case "planned": return "Запланированные";
+                        case "inprogress": return "В работе";
+                        case "completed": return "Завершенные";
+                        case "overdue": return "Просроченные";
+                        case "avariya": return "Аварии";
+                        case "history": return "История ремонтов";
+                        default: return "Все планы";
+                    }
+                }
+                catch
+                {
+                    return currentReportType;
+                }
+            }
+            return currentReportType;
+        }
+
+        private void ExportToWordWithType(string reportType)
         {
             try
             {
                 SaveFileDialog save = new SaveFileDialog();
                 save.Filter = "Rich Text Format (*.rtf)|*.rtf";
-                save.FileName = $"Отчет_о_планах_ремонтов_{DateTime.Now:dd-MM-yyyy}.rtf";
+
+                string fileName = "";
+                string sql = "";
+                string[] headers = null;
+
+                switch (reportType)
+                {
+                    case "Аварии":
+                        fileName = $"Отчет_об_авариях_{DateTime.Now:dd-MM-yyyy}.rtf";
+                        sql = @"
+                    SELECT 
+                        a.id,
+                        o.nazvanie AS equipment,
+                        a.data_avarii AS date,
+                        COALESCE(a.opisanie, '') AS description,
+                        COALESCE(a.posledstviya, '') AS consequences,
+                        COALESCE(a.status, '') AS status,
+                        CASE WHEN p.id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_plan
+                    FROM avariya a
+                    JOIN oborudovanie o ON a.oborudovanie_id = o.id
+                    LEFT JOIN plan_to p ON a.id = p.avariya_id
+                    ORDER BY a.data_avarii DESC";
+                        headers = new string[] { "ID", "Оборудование", "Дата аварии", "Описание", "Последствия", "Статус", "Наличие плана" };
+                        break;
+
+                    case "История ремонтов":
+                        fileName = $"Отчет_об_истории_ремонтов_{DateTime.Now:dd-MM-yyyy}.rtf";
+                        sql = @"
+                    SELECT 
+                        COALESCE(r.equipment_name, o.nazvanie) as equipment_name,
+                        COALESCE(r.tip_name, COALESCE(t.nazvanie, 'Не указан')) as tip_name,
+                        TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as plan_date,
+                        TO_CHAR(r.data_okonchaniya, 'DD.MM.YYYY') as completed_date,
+                        COALESCE(r.sotrudnik_name, CONCAT(s.familiya, ' ', LEFT(s.imya, 1), '.', LEFT(s.otchestvo, 1), '.')) as sotrudnik_name,
+                        COALESCE(r.opisanie, '') as opisanie,
+                        COALESCE(p.stoimost, 0) as cost
+                    FROM remont r
+                    JOIN plan_to p ON r.plan_id = p.id
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    JOIN sotrudniki s ON r.sotrudnik_id = s.id
+                    ORDER BY r.data_okonchaniya DESC";
+                        headers = new string[] { "Оборудование", "Тип ТО", "Плановая дата", "Дата выполнения", "Исполнитель", "Описание работ", "Стоимость (руб)" };
+                        break;
+
+                    case "Завершенные":
+                    case "Запланированные":
+                    case "В работе":
+                    case "Просроченные":
+                    default: // "Все планы"
+                        fileName = $"Отчет_о_планах_ремонтов_{DateTime.Now:dd-MM-yyyy}.rtf";
+                        sql = @"
+                    SELECT 
+                        p.id,
+                        o.nazvanie AS equipment,
+                        COALESCE(t.nazvanie, 'Не указан') AS tip,
+                        TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as start_date,
+                        TO_CHAR(p.data_okonchaniya, 'DD.MM.YYYY') as end_date,
+                        COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
+                        p.status,
+                        CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
+                        p.stoimost AS cost
+                    FROM plan_to p
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id";
+
+                        if (reportType == "Завершенные")
+                        {
+                            fileName = $"Отчет_о_завершенных_планах_{DateTime.Now:dd-MM-yyyy}.rtf";
+                            sql += " WHERE p.status = 'Завершен' ORDER BY p.data_okonchaniya DESC";
+                        }
+                        else if (reportType == "Запланированные")
+                        {
+                            fileName = $"Отчет_о_запланированных_планах_{DateTime.Now:dd-MM-yyyy}.rtf";
+                            sql += " WHERE p.status = 'Запланирован' ORDER BY p.data_nachala ASC";
+                        }
+                        else if (reportType == "В работе")
+                        {
+                            fileName = $"Отчет_о_планах_в_работе_{DateTime.Now:dd-MM-yyyy}.rtf";
+                            sql += " WHERE p.status = 'В работе' ORDER BY p.data_nachala ASC";
+                        }
+                        else if (reportType == "Просроченные")
+                        {
+                            fileName = $"Отчет_о_просроченных_планах_{DateTime.Now:dd-MM-yyyy}.rtf";
+                            sql += " WHERE p.status = 'Просрочен' ORDER BY p.data_okonchaniya ASC";
+                        }
+                        else
+                        {
+                            sql += " ORDER BY p.data_nachala DESC";
+                        }
+
+                        headers = new string[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией", "Стоимость (руб)" };
+                        break;
+                }
+
+                save.FileName = fileName;
 
                 if (save.ShowDialog() == DialogResult.OK)
                 {
@@ -775,39 +1056,27 @@ namespace WindowsFormsApp1
                     {
                         conn.Open();
 
-                        string sql = @"
-                            SELECT 
-                                p.id,
-                                o.nazvanie AS equipment,
-                                COALESCE(t.nazvanie, 'Не указан') AS tip,
-                                p.data_nachala AS start_date,
-                                p.data_okonchaniya AS end_date,
-                                COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
-                                p.status,
-                                CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
-                                p.stoimost AS cost
-                            FROM plan_to p
-                            JOIN oborudovanie o ON p.oborudovanie_id = o.id
-                            LEFT JOIN tip_to t ON p.tip_to_id = t.id
-                            LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
-                            ORDER BY p.data_nachala DESC";
-
                         using (var cmd = new NpgsqlCommand(sql, conn))
                         {
                             using (var reader = cmd.ExecuteReader())
                             {
                                 using (StreamWriter sw = new StreamWriter(save.FileName, false, Encoding.UTF8))
                                 {
+                                    // RTF заголовок
                                     sw.WriteLine(@"{\rtf1\ansi\deff0");
                                     sw.WriteLine(@"{\fonttbl{\f0 Times New Roman;}{\f1 Arial;}}");
                                     sw.WriteLine(@"\f0\fs24");
 
-                                    sw.WriteLine(@"\pard\qc\b\fs32 Отчет о планах ремонтов\b0\fs24\par");
+                                    // Заголовок отчета
+                                    sw.WriteLine(@"\pard\qc\b\fs32 Отчет: " + reportType + @"\b0\fs24\par");
                                     sw.WriteLine(@"\pard\qc\fs20 Дата формирования: " + DateTime.Now.ToString("dd.MM.yyyy HH:mm") + @"\par");
                                     sw.WriteLine(@"\par");
 
+                                    int columnCount = headers.Length;
+
+                                    // Создаем таблицу
                                     sw.WriteLine(@"\trowd");
-                                    for (int i = 0; i < 9; i++)
+                                    for (int i = 0; i < columnCount; i++)
                                         sw.WriteLine(@"\cellx" + ((i + 1) * 2000));
 
                                     sw.WriteLine(@"\clbrdrt\brdrw10\brdrs");
@@ -816,14 +1085,20 @@ namespace WindowsFormsApp1
                                     sw.WriteLine(@"\clbrdrr\brdrw10\brdrs");
                                     sw.WriteLine(@"\clcbpat8\cell");
                                     sw.WriteLine(@"\intbl\b\fs20 ");
-                                    sw.Write(@"ID \cell Оборудование \cell Тип ТО \cell Дата начала \cell Дата окончания \cell Ответственный \cell Статус \cell Связь \cell Стоимость \cell ");
+
+                                    // Заголовки столбцов (русские)
+                                    for (int i = 0; i < headers.Length; i++)
+                                    {
+                                        sw.Write(headers[i] + @" \cell ");
+                                    }
                                     sw.WriteLine(@"\row\b0");
 
+                                    // Данные
                                     int count = 0;
                                     while (reader.Read())
                                     {
                                         sw.WriteLine(@"\trowd");
-                                        for (int i = 0; i < 9; i++)
+                                        for (int i = 0; i < columnCount; i++)
                                             sw.WriteLine(@"\cellx" + ((i + 1) * 2000));
 
                                         sw.WriteLine(@"\clbrdrt\brdrw10\brdrs");
@@ -837,16 +1112,11 @@ namespace WindowsFormsApp1
                                         sw.WriteLine(@"\cell");
                                         sw.WriteLine(@"\intbl\fs20 ");
 
-                                        sw.Write($"{reader.GetInt32(0)} \\cell ");
-                                        sw.Write($"{reader.GetString(1)} \\cell ");
-                                        sw.Write($"{reader.GetString(2)} \\cell ");
-                                        sw.Write($"{reader.GetDateTime(3):dd.MM.yyyy} \\cell ");
-                                        sw.Write($"{(reader.IsDBNull(4) ? "" : reader.GetDateTime(4).ToString("dd.MM.yyyy"))} \\cell ");
-                                        sw.Write($"{reader.GetString(5)} \\cell ");
-                                        sw.Write($"{reader.GetString(6)} \\cell ");
-                                        sw.Write($"{reader.GetString(7)} \\cell ");
-                                        sw.Write($"{reader.GetDecimal(8):N2} \\cell ");
-
+                                        for (int i = 0; i < reader.FieldCount; i++)
+                                        {
+                                            string value = reader[i]?.ToString() ?? "";
+                                            sw.Write(value + @" \cell ");
+                                        }
                                         sw.WriteLine(@"\row");
                                         count++;
                                     }
@@ -864,6 +1134,237 @@ namespace WindowsFormsApp1
             catch (Exception ex)
             {
                 ShowError("Ошибка экспорта в Word: " + ex.Message);
+            }
+        }
+
+        private void ExportToExcelWithType(string reportType)
+        {
+            try
+            {
+                SaveFileDialog save = new SaveFileDialog();
+                save.Filter = "CSV files (*.csv)|*.csv";
+
+                string fileName = "";
+                string sql = "";
+                string[] headers = null;
+
+                switch (reportType)
+                {
+                    case "Аварии":
+                        fileName = $"Отчет_об_авариях_{DateTime.Now:dd-MM-yyyy}.csv";
+                        sql = @"
+                    SELECT 
+                        a.id,
+                        o.nazvanie AS equipment,
+                        a.data_avarii AS date,
+                        COALESCE(a.opisanie, '') AS description,
+                        COALESCE(a.posledstviya, '') AS consequences,
+                        COALESCE(a.status, '') AS status,
+                        CASE WHEN p.id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_plan
+                    FROM avariya a
+                    JOIN oborudovanie o ON a.oborudovanie_id = o.id
+                    LEFT JOIN plan_to p ON a.id = p.avariya_id
+                    ORDER BY a.data_avarii DESC";
+                        headers = new string[] { "ID", "Оборудование", "Дата аварии", "Описание", "Последствия", "Статус", "Наличие плана" };
+                        break;
+
+                    case "История ремонтов":
+                        fileName = $"Отчет_об_истории_ремонтов_{DateTime.Now:dd-MM-yyyy}.csv";
+                        sql = @"
+                    SELECT 
+                        COALESCE(r.equipment_name, o.nazvanie) as equipment_name,
+                        COALESCE(r.tip_name, COALESCE(t.nazvanie, 'Не указан')) as tip_name,
+                        TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as plan_date,
+                        TO_CHAR(r.data_okonchaniya, 'DD.MM.YYYY') as completed_date,
+                        COALESCE(r.sotrudnik_name, CONCAT(s.familiya, ' ', LEFT(s.imya, 1), '.', LEFT(s.otchestvo, 1), '.')) as sotrudnik_name,
+                        COALESCE(r.opisanie, '') as opisanie,
+                        COALESCE(p.stoimost, 0) as cost
+                    FROM remont r
+                    JOIN plan_to p ON r.plan_id = p.id
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    JOIN sotrudniki s ON r.sotrudnik_id = s.id
+                    ORDER BY r.data_okonchaniya DESC";
+                        headers = new string[] { "Оборудование", "Тип ТО", "Плановая дата", "Дата выполнения", "Исполнитель", "Описание работ", "Стоимость (руб)" };
+                        break;
+
+                    case "Завершенные":
+                        fileName = $"Отчет_о_завершенных_планах_{DateTime.Now:dd-MM-yyyy}.csv";
+                        sql = @"
+                    SELECT 
+                        p.id,
+                        o.nazvanie AS equipment,
+                        COALESCE(t.nazvanie, 'Не указан') AS tip,
+                        TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as start_date,
+                        TO_CHAR(p.data_okonchaniya, 'DD.MM.YYYY') as end_date,
+                        COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
+                        p.status,
+                        CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
+                        p.stoimost AS cost
+                    FROM plan_to p
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                    WHERE p.status = 'Завершен'
+                    ORDER BY p.data_okonchaniya DESC";
+                        headers = new string[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией", "Стоимость (руб)" };
+                        break;
+
+                    case "Запланированные":
+                        fileName = $"Отчет_о_запланированных_планах_{DateTime.Now:dd-MM-yyyy}.csv";
+                        sql = @"
+                    SELECT 
+                        p.id,
+                        o.nazvanie AS equipment,
+                        COALESCE(t.nazvanie, 'Не указан') AS tip,
+                        TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as start_date,
+                        TO_CHAR(p.data_okonchaniya, 'DD.MM.YYYY') as end_date,
+                        COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
+                        p.status,
+                        CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
+                        p.stoimost AS cost
+                    FROM plan_to p
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                    WHERE p.status = 'Запланирован'
+                    ORDER BY p.data_nachala ASC";
+                        headers = new string[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией", "Стоимость (руб)" };
+                        break;
+
+                    case "В работе":
+                        fileName = $"Отчет_о_планах_в_работе_{DateTime.Now:dd-MM-yyyy}.csv";
+                        sql = @"
+                    SELECT 
+                        p.id,
+                        o.nazvanie AS equipment,
+                        COALESCE(t.nazvanie, 'Не указан') AS tip,
+                        TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as start_date,
+                        TO_CHAR(p.data_okonchaniya, 'DD.MM.YYYY') as end_date,
+                        COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
+                        p.status,
+                        CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
+                        p.stoimost AS cost
+                    FROM plan_to p
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                    WHERE p.status = 'В работе'
+                    ORDER BY p.data_nachala ASC";
+                        headers = new string[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией", "Стоимость (руб)" };
+                        break;
+
+                    case "Просроченные":
+                        fileName = $"Отчет_о_просроченных_планах_{DateTime.Now:dd-MM-yyyy}.csv";
+                        sql = @"
+                    SELECT 
+                        p.id,
+                        o.nazvanie AS equipment,
+                        COALESCE(t.nazvanie, 'Не указан') AS tip,
+                        TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as start_date,
+                        TO_CHAR(p.data_okonchaniya, 'DD.MM.YYYY') as end_date,
+                        COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
+                        p.status,
+                        CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
+                        p.stoimost AS cost
+                    FROM plan_to p
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                    WHERE p.status = 'Просрочен'
+                    ORDER BY p.data_okonchaniya ASC";
+                        headers = new string[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией", "Стоимость (руб)" };
+                        break;
+
+                    default: // "Все планы"
+                        fileName = $"Отчет_о_планах_ремонтов_{DateTime.Now:dd-MM-yyyy}.csv";
+                        sql = @"
+                    SELECT 
+                        p.id,
+                        o.nazvanie AS equipment,
+                        COALESCE(t.nazvanie, 'Не указан') AS tip,
+                        TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as start_date,
+                        TO_CHAR(p.data_okonchaniya, 'DD.MM.YYYY') as end_date,
+                        COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
+                        p.status,
+                        CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
+                        p.stoimost AS cost
+                    FROM plan_to p
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                    ORDER BY p.data_nachala DESC";
+                        headers = new string[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией", "Стоимость (руб)" };
+                        break;
+                }
+
+                save.FileName = fileName;
+
+                if (save.ShowDialog() == DialogResult.OK)
+                {
+                    using (var conn = new NpgsqlConnection(connectionString))
+                    {
+                        conn.Open();
+
+                        using (var cmd = new NpgsqlCommand(sql, conn))
+                        {
+                            using (var reader = cmd.ExecuteReader())
+                            {
+                                using (StreamWriter sw = new StreamWriter(save.FileName, false, Encoding.UTF8))
+                                {
+                                    // Заголовок отчета
+                                    sw.WriteLine($"Отчет: {reportType}");
+                                    sw.WriteLine($"Дата формирования: {DateTime.Now:dd.MM.yyyy HH:mm}");
+                                    sw.WriteLine();
+
+                                    // Записываем русские заголовки столбцов
+                                    for (int i = 0; i < headers.Length; i++)
+                                    {
+                                        if (i > 0) sw.Write(";");
+                                        sw.Write(headers[i]);
+                                    }
+                                    sw.WriteLine();
+
+                                    // Записываем данные
+                                    int count = 0;
+                                    while (reader.Read())
+                                    {
+                                        for (int i = 0; i < reader.FieldCount; i++)
+                                        {
+                                            if (i > 0) sw.Write(";");
+                                            string value = reader[i]?.ToString() ?? "";
+                                            sw.Write(value);
+                                        }
+                                        sw.WriteLine();
+                                        count++;
+                                    }
+
+                                    sw.WriteLine();
+                                    sw.WriteLine($"Всего записей: {count}");
+                                }
+                            }
+                        }
+                    }
+
+                    MessageBox.Show($"Отчет сохранен", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError("Ошибка экспорта: " + ex.Message);
+            }
+        }
+
+        private async void ExportToWord()
+        {
+            try
+            {
+                string reportType = await GetReportTypeFromWebView();
+                ExportToWordWithType(reportType);
+            }
+            catch (Exception ex)
+            {
+                ShowError("Ошибка экспорта: " + ex.Message);
             }
         }
 
@@ -925,6 +1426,8 @@ namespace WindowsFormsApp1
                         }
                     }
 
+                    int historyCount = GetHistoryCount();
+
                     int withoutPlan = totalAvariya - withPlan;
                     int percent = totalPlans > 0 ? (completed * 100 / totalPlans) : 0;
 
@@ -951,6 +1454,9 @@ namespace WindowsFormsApp1
                                     $"║ Всего аварий: {totalAvariya,-39} ║\n" +
                                     $"║ С планом: {withPlan,-42} ║\n" +
                                     $"║ Без плана: {withoutPlan,-41} ║\n" +
+                                    $"╟──────────────────────────────────────────────────────────╢\n" +
+                                    $"║ ИСТОРИЯ РЕМОНТОВ:                                        ║\n" +
+                                    $"║ Выполненных ремонтов: {historyCount,-33} ║\n" +
                                     $"╚══════════════════════════════════════════════════════════╝";
 
                     MessageBox.Show(message, "Предпросмотр отчета", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -959,6 +1465,26 @@ namespace WindowsFormsApp1
             catch (Exception ex)
             {
                 ShowError("Ошибка предпросмотра: " + ex.Message);
+            }
+        }
+
+        private int GetHistoryCount()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string sql = "SELECT COUNT(*) FROM remont";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        return Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                }
+            }
+            catch
+            {
+                return 0;
             }
         }
 
