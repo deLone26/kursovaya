@@ -11,7 +11,7 @@ namespace WindowsFormsApp1
     public partial class LoginForm : Form
     {
         private readonly string connectionString =
-            "Host=localhost;Port=5432;Database=boiler_system;Username=postgres;Password=43898362Dd+-;";
+            "Host=localhost;Port=5432;Database=boiler_system;Username=postgres;Password=43898362Dd+-;Include Error Detail=true";
 
         private Point lastPoint;
 
@@ -34,26 +34,7 @@ namespace WindowsFormsApp1
             }
         }
 
-        // ===== МЕТОДЫ ИЗ ДИЗАЙНЕРА =====
-
-        private void label1_Click(object sender, EventArgs e) { }
-
-        private void pictureBox1_Click(object sender, EventArgs e) { }
-
-        private void closeButton_Click(object sender, EventArgs e)
-        {
-            this.Close();
-        }
-
-        private void closeButton_MouseEnter(object sender, EventArgs e)
-        {
-            closeButton.ForeColor = Color.Red;
-        }
-
-        private void closeButton_MouseLeave(object sender, EventArgs e)
-        {
-            closeButton.ForeColor = Color.White;
-        }
+        // ===== ПЕРЕМЕЩЕНИЕ ОКНА =====
 
         private void panel1_MouseMove(object sender, MouseEventArgs e)
         {
@@ -97,6 +78,21 @@ namespace WindowsFormsApp1
             }
         }
 
+        private void closeButton_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void closeButton_MouseEnter(object sender, EventArgs e)
+        {
+            closeButton.ForeColor = Color.Red;
+        }
+
+        private void closeButton_MouseLeave(object sender, EventArgs e)
+        {
+            closeButton.ForeColor = Color.White;
+        }
+
         // ===== ГЛАВНЫЙ МЕТОД АВТОРИЗАЦИИ =====
 
         private void button1_Click(object sender, EventArgs e)
@@ -110,103 +106,81 @@ namespace WindowsFormsApp1
                 return;
             }
 
-            string userConnString =
-                $"Host=localhost;Port=5432;Database=boiler_system;Username={login};Password={password};";
+            string passwordHash = HashPassword(password);
+            int employeeId = -1;
+            string role = "";
+            string dolzhnost = "";
 
-            try
-            {
-                using (var conn = new NpgsqlConnection(userConnString))
-                {
-                    conn.Open();
-
-                    string role = GetUserRole(login);
-                    int employeeId = GetEmployeeId(login);
-
-                    if (string.IsNullOrEmpty(role))
-                    {
-                        MessageBox.Show("У пользователя нет назначенной роли!");
-                        return;
-                    }
-
-                    // Передаем оба параметра: connString и employeeId
-                    OpenFormByRole(role, userConnString, employeeId);
-                    this.Hide();
-                }
-            }
-            catch (NpgsqlException)
-            {
-                MessageBox.Show("Неверный логин или пароль!");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Ошибка: " + ex.Message);
-            }
-        }
-
-        // ===== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =====
-
-        private string GetUserRole(string login)
-        {
             using (var conn = new NpgsqlConnection(connectionString))
             {
                 conn.Open();
+
                 string sql = @"
-                    SELECT g.rolname
-                    FROM pg_roles u
-                    JOIN pg_auth_members m ON u.oid = m.member
-                    JOIN pg_roles g ON m.roleid = g.oid
-                    WHERE u.rolname = @login AND g.rolname LIKE 'app_%'";
+                    SELECT u.sotrudnik_id, u.role, s.dolzhnost 
+                    FROM users u
+                    JOIN sotrudniki s ON u.sotrudnik_id = s.id
+                    WHERE u.login = @login 
+                      AND u.password_hash = @hash 
+                      AND u.is_active = true";
 
                 using (var cmd = new NpgsqlCommand(sql, conn))
                 {
                     cmd.Parameters.AddWithValue("@login", login);
-                    var result = cmd.ExecuteScalar();
-                    return result?.ToString() ?? "";
+                    cmd.Parameters.AddWithValue("@hash", passwordHash);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            employeeId = reader.GetInt32(0);
+                            role = reader.GetString(1);
+                            dolzhnost = reader.GetString(2);
+                        }
+                    }
                 }
             }
-        }
 
-        private int GetEmployeeId(string login)
-        {
-            using (var conn = new NpgsqlConnection(connectionString))
+            if (employeeId == -1)
             {
-                conn.Open();
-                string sql = "SELECT sotrudnik_id FROM users WHERE login = @login";
-                using (var cmd = new NpgsqlCommand(sql, conn))
-                {
-                    cmd.Parameters.AddWithValue("@login", login);
-                    var result = cmd.ExecuteScalar();
-                    return result != null && result != DBNull.Value ? Convert.ToInt32(result) : -1;
-                }
+                MessageBox.Show("Неверный логин или пароль, либо учетная запись неактивна!");
+                return;
             }
+
+            if (string.IsNullOrEmpty(role))
+            {
+                MessageBox.Show("У пользователя нет назначенной роли!");
+                return;
+            }
+
+            OpenFormByRole(role, employeeId, dolzhnost, login);
+            this.Hide();
         }
 
-        // ===== МЕТОД ОТКРЫТИЯ ФОРМ ПО РОЛЯМ =====
-
-        private void OpenFormByRole(string role, string connString, int employeeId)
+        private void OpenFormByRole(string role, int employeeId, string dolzhnost, string login)
         {
             Form form = null;
 
             switch (role)
             {
                 case "app_admin":
-                    MessageBox.Show("Вы вошли как Администратор");
-                    //  form = new FormAdmin(connString, employeeId);
+                    MessageBox.Show($"Вы вошли как Администратор ({dolzhnost})");
+                    form = new MainForm(connectionString, employeeId);
                     break;
 
                 case "app_boss":
-                    // ВАЖНО: передаем оба параметра!
-                    form = new MainForm(connString, employeeId);
+                    MessageBox.Show($"Вы вошли как Начальник котельной ({dolzhnost})");
+                    form = new MainForm(connectionString, employeeId);
                     break;
 
                 case "app_operator":
-                    MessageBox.Show("Вы вошли как Оператор");
-                    //  form = new FormOperator(connString, employeeId);
+                    MessageBox.Show($"Вы вошли как Оператор ({dolzhnost})");
+                    form = new FormAccidents();
                     break;
 
                 case "app_slesar":
-                    MessageBox.Show("Вы вошли как Слесарь");
-                    //    form = new Form2(connString, employeeId);
+                    MessageBox.Show($"Вы вошли как Слесарь ({dolzhnost})");
+                    // ПЕРЕДАЕМ ВСЕ 5 ПАРАМЕТРОВ
+                    form = new FormRepairs(connectionString, employeeId, login, role, employeeId);
                     break;
 
                 default:
@@ -219,5 +193,8 @@ namespace WindowsFormsApp1
                 form.Show();
             }
         }
+
+        private void label1_Click(object sender, EventArgs e) { }
+        private void pictureBox1_Click(object sender, EventArgs e) { }
     }
 }

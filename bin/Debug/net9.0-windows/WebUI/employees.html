@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление сотрудниками</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header h1 i {
+            margin-right: 10px;
+            color: #f1c40f;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+
+        .content {
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            background: #f5f7fa;
+        }
+
+        .left-panel {
+            flex: 2;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            padding: 20px;
+        }
+
+        .right-panel {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            padding: 20px;
+        }
+
+        .panel-header {
+            margin-bottom: 20px;
+        }
+
+        .panel-header h2 {
+            color: #2c3e50;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .panel-header h2 i {
+            color: #3498db;
+            margin-right: 8px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .search-box button {
+            padding: 12px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ecf0f1;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            font-size: 13px;
+            text-transform: uppercase;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ecf0f1;
+            font-size: 14px;
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #f5f9ff;
+        }
+
+        tbody tr.selected {
+            background: #e3f2fd;
+            border-left: 4px solid #3498db;
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .form-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .form-section h3 i {
+            color: #3498db;
+            margin-right: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #7f8c8d;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .form-group label.required::after {
+            content: " *";
+            color: #e74c3c;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .password-hint {
+            font-size: 11px;
+            color: #95a5a6;
+            margin-top: 5px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+            color: white;
+        }
+
+        .btn-add { background: #00b09b; }
+        .btn-update { background: #3498db; }
+        .btn-delete { background: #e74c3c; }
+        .btn-clear { background: #95a5a6; }
+
+        .stats-bar {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .stat-item {
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .role-admin { background: #e74c3c; color: white; }
+        .role-boss { background: #f39c12; color: white; }
+        .role-slesar { background: #3498db; color: white; }
+        .role-operator { background: #2ecc71; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-users"></i> УПРАВЛЕНИЕ СОТРУДНИКАМИ</h1>
+            <div class="user-info">
+                <i class="fas fa-user-circle"></i>
+                <span>Администратор</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Левая панель - таблица -->
+            <div class="left-panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-list"></i> СПИСОК СОТРУДНИКОВ</h2>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Поиск по фамилии или ID...">
+                        <button onclick="searchEmployees()"><i class="fas fa-search"></i> Найти</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>ФАМИЛИЯ</th>
+                                <th>ИМЯ</th>
+                                <th>ОТЧЕСТВО</th>
+                                <th>ДОЛЖНОСТЬ</th>
+                                <th>ТЕЛЕФОН</th>
+                                <th>EMAIL</th>
+                                <th>РОЛЬ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTableBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 50px;">
+                                    <i class="fas fa-spinner fa-spin" style="font-size: 30px; color: #3498db;"></i>
+                                    <p style="margin-top: 10px; color: #7f8c8d;">Загрузка данных...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalEmployees">0</div>
+                        <div class="stat-label">Всего сотрудников</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="activeEmployees">0</div>
+                        <div class="stat-label">Активных</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalRoles">4</div>
+                        <div class="stat-label">Ролей</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая панель - форма -->
+            <div class="right-panel">
+                <!-- Личные данные -->
+                <div class="form-section">
+                    <h3><i class="fas fa-user"></i> ЛИЧНЫЕ ДАННЫЕ</h3>
+                    
+                    <div class="form-group">
+                        <label class="required">Фамилия</label>
+                        <input type="text" id="familiya" placeholder="Введите фамилию">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="required">Имя</label>
+                        <input type="text" id="imya" placeholder="Введите имя">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Отчество</label>
+                        <input type="text" id="otchestvo" placeholder="Введите отчество">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Должность</label>
+                        <input type="text" id="dolzhnost" placeholder="Введите должность">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Телефон</label>
+                        <input type="text" id="telefon" placeholder="+7 (999) 123-45-67">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="email" placeholder="example@mail.com">
+                    </div>
+                </div>
+
+                <!-- Учетная запись -->
+                <div class="form-section">
+                    <h3><i class="fas fa-lock"></i> УЧЕТНАЯ ЗАПИСЬ</h3>
+                    
+                    <div class="form-group">
+                        <label class="required">Логин</label>
+                        <input type="text" id="login" placeholder="Введите логин">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="required">Пароль</label>
+                        <input type="password" id="password" placeholder="Введите пароль">
+                        <div class="password-hint">Минимум 6 символов</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="required">Роль</label>
+                        <select id="role">
+                            <option value="admin">Администратор</option>
+                            <option value="boss">Начальник котельной</option>
+                            <option value="slesar">Слесарь</option>
+                            <option value="operator">Оператор</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Кнопки действий -->
+                <div class="action-buttons">
+                    <button class="btn btn-add" onclick="addEmployee()">
+                        <i class="fas fa-plus"></i> ДОБАВИТЬ
+                    </button>
+                    <button class="btn btn-update" onclick="updateEmployee()">
+                        <i class="fas fa-save"></i> ОБНОВИТЬ
+                    </button>
+                    <button class="btn btn-delete" onclick="deleteEmployee()">
+                        <i class="fas fa-trash"></i> УДАЛИТЬ
+                    </button>
+                    <button class="btn btn-clear" onclick="clearForm()">
+                        <i class="fas fa-eraser"></i> ОЧИСТИТЬ
+                    </button>
+                </div>
+
+                <!-- Скрытое поле для ID выбранного сотрудника -->
+                <input type="hidden" id="selectedEmployeeId" value="-1">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
+        let employeesData = [];
+        let selectedEmployeeId = -1;
+
+        console.log("===== employees.js загружен =====");
+
+        // Функция для обновления таблицы из C#
+        window.updateEmployees = function(data) {
+            console.log("updateEmployees вызван с данными:", data);
+            
+            if (data && data.employees) {
+                employeesData = data.employees;
+                displayEmployees(employeesData);
+                updateStatistics();
+            } else {
+                console.error("Нет данных в updateEmployees");
+            }
+        };
+
+        // ================== ОТОБРАЖЕНИЕ СОТРУДНИКОВ ==================
+        function displayEmployees(employees) {
+            const tbody = document.getElementById('employeesTableBody');
+            
+            if (!tbody) return;
+            
+            if (!employees || employees.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 50px;">
+                            <i class="fas fa-users" style="font-size: 40px; opacity: 0.3;"></i>
+                            <p>Нет данных о сотрудниках</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            
+            employees.forEach(emp => {
+                const row = document.createElement('tr');
+                row.onclick = () => selectEmployee(emp.id);
+                row.id = `emp-${emp.id}`;
+                
+                // Определяем класс для роли
+                let roleClass = 'role-operator';
+                let roleText = 'Оператор';
+                
+                if (emp.role === 'admin') {
+                    roleClass = 'role-admin';
+                    roleText = 'Админ';
+                } else if (emp.role === 'boss') {
+                    roleClass = 'role-boss';
+                    roleText = 'Нач.котельной';
+                } else if (emp.role === 'slesar') {
+                    roleClass = 'role-slesar';
+                    roleText = 'Слесарь';
+                }
+                
+                row.innerHTML = `
+                    <td>${emp.id}</td>
+                    <td>${emp.familiya || ''}</td>
+                    <td>${emp.imya || ''}</td>
+                    <td>${emp.otchestvo || ''}</td>
+                    <td>${emp.dolzhnost || ''}</td>
+                    <td>${emp.telefon || ''}</td>
+                    <td>${emp.email || ''}</td>
+                    <td><span class="role-badge ${roleClass}">${roleText}</span></td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // ================== ВЫБОР СОТРУДНИКА ==================
+        function selectEmployee(id) {
+            selectedEmployeeId = id;
+            document.getElementById('selectedEmployeeId').value = id;
+            
+            // Подсветка строки
+            document.querySelectorAll('tbody tr').forEach(row => {
+                row.classList.remove('selected');
+            });
+            
+            const selectedRow = document.getElementById(`emp-${id}`);
+            if (selectedRow) {
+                selectedRow.classList.add('selected');
+            }
+            
+            // Заполняем форму
+            const emp = employeesData.find(e => e.id === id);
+            if (emp) {
+                document.getElementById('familiya').value = emp.familiya || '';
+                document.getElementById('imya').value = emp.imya || '';
+                document.getElementById('otchestvo').value = emp.otchestvo || '';
+                document.getElementById('dolzhnost').value = emp.dolzhnost || '';
+                document.getElementById('telefon').value = emp.telefon || '';
+                document.getElementById('email').value = emp.email || '';
+                document.getElementById('login').value = emp.login || '';
+                document.getElementById('role').value = emp.role || 'operator';
+            }
+        }
+
+        // ================== ПОИСК ==================
+        function searchEmployees() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (!searchText) {
+                displayEmployees(employeesData);
+                return;
+            }
+            
+            const filtered = employeesData.filter(emp => 
+                (emp.familiya && emp.familiya.toLowerCase().includes(searchText)) ||
+                emp.id.toString().includes(searchText) ||
+                (emp.imya && emp.imya.toLowerCase().includes(searchText))
+            );
+            
+            displayEmployees(filtered);
+        }
+
+        // ================== ДОБАВЛЕНИЕ ==================
+        function addEmployee() {
+            if (window.chrome?.webview) {
+                const employee = {
+                    familiya: document.getElementById('familiya').value,
+                    imya: document.getElementById('imya').value,
+                    otchestvo: document.getElementById('otchestvo').value,
+                    dolzhnost: document.getElementById('dolzhnost').value,
+                    telefon: document.getElementById('telefon').value,
+                    email: document.getElementById('email').value,
+                    login: document.getElementById('login').value,
+                    password: document.getElementById('password').value,
+                    role: document.getElementById('role').value
+                };
+                
+                window.chrome.webview.postMessage(JSON.stringify({
+                    action: 'addEmployee',
+                    data: employee
+                }));
+            }
+        }
+
+        // ================== ОБНОВЛЕНИЕ ==================
+        function updateEmployee() {
+            if (selectedEmployeeId === -1) {
+                alert('Выберите сотрудника!');
+                return;
+            }
+            
+            if (window.chrome?.webview) {
+                const employee = {
+                    id: selectedEmployeeId,
+                    familiya: document.getElementById('familiya').value,
+                    imya: document.getElementById('imya').value,
+                    otchestvo: document.getElementById('otchestvo').value,
+                    dolzhnost: document.getElementById('dolzhnost').value,
+                    telefon: document.getElementById('telefon').value,
+                    email: document.getElementById('email').value,
+                    login: document.getElementById('login').value,
+                    password: document.getElementById('password').value,
+                    role: document.getElementById('role').value
+                };
+                
+                window.chrome.webview.postMessage(JSON.stringify({
+                    action: 'updateEmployee',
+                    data: employee
+                }));
+            }
+        }
+
+        // ================== УДАЛЕНИЕ ==================
+        function deleteEmployee() {
+            if (selectedEmployeeId === -1) {
+                alert('Выберите сотрудника!');
+                return;
+            }
+            
+            if (confirm('Удалить сотрудника?')) {
+                if (window.chrome?.webview) {
+                    window.chrome.webview.postMessage(JSON.stringify({
+                        action: 'deleteEmployee',
+                        id: selectedEmployeeId
+                    }));
+                }
+            }
+        }
+
+        // ================== ОЧИСТКА ==================
+        function clearForm() {
+            selectedEmployeeId = -1;
+            document.getElementById('selectedEmployeeId').value = '-1';
+            document.getElementById('familiya').value = '';
+            document.getElementById('imya').value = '';
+            document.getElementById('otchestvo').value = '';
+            document.getElementById('dolzhnost').value = '';
+            document.getElementById('telefon').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('login').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('role').value = 'operator';
+            
+            document.querySelectorAll('tbody tr').forEach(row => {
+                row.classList.remove('selected');
+            });
+        }
+
+        // ================== СТАТИСТИКА ==================
+        function updateStatistics() {
+            const totalEl = document.getElementById('totalEmployees');
+            if (totalEl) totalEl.textContent = employeesData.length;
+            
+            const activeEl = document.getElementById('activeEmployees');
+            if (activeEl) activeEl.textContent = employeesData.length;
+        }
+
+        // ================== ЗАГРУЗКА ПРИ СТАРТЕ ==================
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage(JSON.stringify({ 
+                    action: 'loadEmployees' 
+                }));
+            }
+        });
+    </script>
+</body>
+</html>
