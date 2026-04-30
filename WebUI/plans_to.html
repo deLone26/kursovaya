@@ -45,7 +45,7 @@
         .urgent-item.critical { border-left-color: #ef4444; background: #fef2f2; }
         .urgent-item.warning { border-left-color: #f59e0b; background: #fffbeb; }
         .urgent-item.completed { border-left-color: #22c55e; background: #e8f5e9; opacity: 0.7; }
-        .urgent-date { font-size: 10px; color: #6b7280; }
+        .urgent-date { font-size: 10px; }
         .urgent-title { font-weight: 600; font-size: 11px; margin: 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .urgent-days { font-size: 10px; margin-top: 3px; }
         .days-critical { color: #dc2626; font-weight: 600; }
@@ -71,10 +71,14 @@
         
         .employee-cell { text-align: left; font-weight: 500; background: #f8fafc; position: sticky; left: 0; z-index: 5; }
         
-        .task-cell { background: #eff6ff; border-radius: 8px; margin: 2px; }
+        .task-cell { background: #eff6ff; border-radius: 8px; margin: 2px; cursor: pointer; transition: transform 0.1s; }
+        .task-cell:hover { transform: scale(1.02); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .task-cell.completed { background: #e8f5e9; }
         .task-cell.critical { background: #fee2e2; }
         .task-cell.warning { background: #fed7aa; }
+        .task-cell-content { padding: 4px 6px; }
+        .task-title { font-weight: 500; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .task-date { font-size: 8px; color: #64748b; margin-top: 2px; }
         
         .weekend-day { background: #fef2f2; color: #ef4444; }
         
@@ -83,13 +87,13 @@
         .day-table th { background: #f8fafc; font-weight: 600; font-size: 10px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #e2e8f0; }
         .day-table td { font-size: 9px; border-bottom: 1px solid #f1f5f9; }
         
-        .hour-cell { background: #eff6ff; border-radius: 8px; margin: 2px; cursor: pointer; transition: all 0.2s; }
-        .hour-cell:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .hour-cell { background: #eff6ff; border-radius: 8px; margin: 2px; cursor: pointer; transition: transform 0.1s; }
+        .hour-cell:hover { transform: scale(1.02); }
         .hour-cell.completed { background: #e8f5e9; }
         .hour-cell.critical { background: #fee2e2; }
         .hour-cell.warning { background: #fed7aa; }
         .hour-content { padding: 4px 6px; }
-        .hour-title { font-weight: 600; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hour-title { font-weight: 500; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .hour-time { font-size: 8px; color: #64748b; margin-top: 2px; }
         
         .loading { text-align: center; padding: 15px; color: #94a3b8; font-size: 11px; }
@@ -159,24 +163,14 @@
         const WORK_START_HOUR = 8;
         const WORK_END_HOUR = 17;
         
-        // Российские праздники
         const holidays = [
-            { month: 0, day: 1 },   // 1 января
-            { month: 0, day: 2 },   // 2 января
-            { month: 0, day: 7 },   // 7 января
-            { month: 1, day: 23 },  // 23 февраля
-            { month: 2, day: 8 },   // 8 марта
-            { month: 4, day: 1 },   // 1 мая
-            { month: 4, day: 9 },   // 9 мая
-            { month: 5, day: 12 },  // 12 июня
-            { month: 10, day: 4 }   // 4 ноября
+            { month: 0, day: 1 }, { month: 0, day: 2 }, { month: 0, day: 7 },
+            { month: 1, day: 23 }, { month: 2, day: 8 }, { month: 4, day: 1 },
+            { month: 4, day: 9 }, { month: 5, day: 12 }, { month: 10, day: 4 }
         ];
         
         function isHoliday(date) {
-            for (let h of holidays) {
-                if (date.getMonth() === h.month && date.getDate() === h.day) return true;
-            }
-            return false;
+            return holidays.some(h => date.getMonth() === h.month && date.getDate() === h.day);
         }
         
         function isWeekend(date) {
@@ -186,24 +180,16 @@
         
         function sendToCSharp(action, data = {}) {
             const msg = JSON.stringify({ action: action, ...data });
-            if (window.chrome && window.chrome.webview) {
-                window.chrome.webview.postMessage(msg);
-            }
+            if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(msg);
         }
         
         window.receiveFromCSharp = function(command, data) {
             if (command === 'initialData') {
                 if (data.employees) renderEmployees(data.employees);
-                if (data.plans) {
-                    allPlans = data.plans;
-                    applyFilters();
-                }
+                if (data.plans) { allPlans = data.plans; applyFilters(); }
                 if (data.urgent) renderUrgentReminders(data.urgent);
             }
-            else if (command === 'plansData') {
-                allPlans = data;
-                applyFilters();
-            }
+            else if (command === 'plansData') { allPlans = data; applyFilters(); }
             else if (command === 'showError') console.error('Error:', data);
         };
         
@@ -211,28 +197,15 @@
             const container = document.getElementById('employeesList');
             if (!data || !data.length) { container.innerHTML = '<div class="loading">Нет сотрудников</div>'; return; }
             employees = data;
-            
-            const completedTasksByEmployee = {};
-            allPlans.forEach(plan => {
-                if (plan.status === 'Завершен' || plan.status === '✅ Завершен') {
-                    const id = plan.responsible_id;
-                    if (!completedTasksByEmployee[id]) completedTasksByEmployee[id] = 0;
-                    completedTasksByEmployee[id]++;
-                }
-            });
-            
-            container.innerHTML = employees.map(emp => {
-                return `
-                    <div class="employee-item ${selectedEmployeeId === emp.id ? 'active' : ''}" data-id="${emp.id}">
-                        <span class="employee-name" title="${emp.fio}">${emp.fio}</span>
-                        <span class="employee-count">${emp.tasks_count || 0}</span>
-                    </div>
-                `;
-            }).join('');
-            
+            container.innerHTML = employees.map(emp => `
+                <div class="employee-item ${selectedEmployeeId === emp.id ? 'active' : ''}" data-id="${emp.id}">
+                    <span class="employee-name" title="${emp.fio}">${emp.fio}</span>
+                    <span class="employee-count">${emp.tasks_count || 0}</span>
+                </div>
+            `).join('');
             document.querySelectorAll('.employee-item').forEach(item => {
                 item.onclick = () => {
-                    const id = parseInt(item.getAttribute('data-id'));
+                    const id = parseInt(item.dataset.id);
                     selectedEmployeeId = selectedEmployeeId === id ? null : id;
                     renderEmployees(employees);
                     applyFilters();
@@ -268,40 +241,23 @@
         function applyFilters() {
             let filtered = [...allPlans];
             if (selectedEmployeeId !== null) {
-                if (selectedEmployeeId === -1) {
-                    filtered = filtered.filter(p => p.responsible_id === 0 || p.responsible_id === null);
-                } else {
-                    filtered = filtered.filter(p => p.responsible_id === selectedEmployeeId);
-                }
+                filtered = filtered.filter(p => p.responsible_id === selectedEmployeeId);
             }
             renderTimeline(filtered);
-            updateStats(filtered);
+            updateStats();
         }
         
-        function updateStats(filteredPlans) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
+        function updateStats() {
             const completedPlans = allPlans.filter(p => p.status === 'Завершен' || p.status === '✅ Завершен');
-            const allOverduePlans = allPlans.filter(p => {
-                const endDate = new Date(p.end_date);
-                endDate.setHours(0, 0, 0, 0);
-                return p.is_overdue === true || (endDate < today && p.status !== "Завершен" && p.status !== "Отменен" && p.status !== "✅ Завершен");
+            const overduePlans = allPlans.filter(p => p.is_overdue === true);
+            const criticalPlans = allPlans.filter(p => {
+                if (p.is_overdue === true || p.status === 'Завершен') return false;
+                return p.days_left <= 2;
             });
-            
-            const allCriticalPlans = allPlans.filter(p => {
-                if (p.is_overdue === true) return false;
-                if (p.status === 'Завершен' || p.status === '✅ Завершен') return false;
-                const endDate = new Date(p.end_date);
-                endDate.setHours(0, 0, 0, 0);
-                const daysLeft = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
-                return daysLeft >= 0 && daysLeft <= 2;
-            });
-            
             document.getElementById('totalPlans').innerHTML = allPlans.length;
             document.getElementById('completedCount').innerHTML = completedPlans.length;
-            document.getElementById('overdueCount').innerHTML = allOverduePlans.length;
-            document.getElementById('criticalCount').innerHTML = allCriticalPlans.length;
+            document.getElementById('overdueCount').innerHTML = overduePlans.length;
+            document.getElementById('criticalCount').innerHTML = criticalPlans.length;
         }
         
         function getDaysArray() {
@@ -314,8 +270,7 @@
                     day.setDate(weekStart.getDate() + i);
                     days.push(day);
                 }
-            }
-            else if (currentView === 'month') {
+            } else if (currentView === 'month') {
                 const year = selectedDate.getFullYear();
                 const month = selectedDate.getMonth();
                 const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -339,7 +294,7 @@
             const isWeekendDay = isWeekend(selectedDay);
             
             if (isHolidayDay || isWeekendDay) {
-                document.getElementById('timelineContainer').innerHTML = `<div class="timeline-header"><div class="timeline-title">📊 ${selectedDay.toLocaleDateString('ru-RU')} - ${isHolidayDay ? 'праздничный' : 'выходной'} день</div></div>`;
+                document.getElementById('timelineContainer').innerHTML = `<div class="timeline-header"><div class="timeline-title">📊 ${selectedDay.toLocaleDateString('ru-RU')} - выходной день</div></div>`;
                 return;
             }
             
@@ -347,18 +302,13 @@
             plansData.forEach(plan => {
                 const planStart = new Date(plan.start_date);
                 const planEnd = new Date(plan.end_date);
-                planStart.setHours(0, 0, 0, 0);
-                planEnd.setHours(0, 0, 0, 0);
-                selectedDay.setHours(0, 0, 0, 0);
-                
+                planStart.setHours(0,0,0,0);
+                planEnd.setHours(0,0,0,0);
+                selectedDay.setHours(0,0,0,0);
                 if (planStart <= selectedDay && planEnd >= selectedDay) {
                     const key = plan.responsible_id;
                     if (!plansByEmployee.has(key)) {
-                        plansByEmployee.set(key, {
-                            name: plan.responsible,
-                            id: key,
-                            plans: []
-                        });
+                        plansByEmployee.set(key, { name: plan.responsible, id: key, plans: [] });
                     }
                     plansByEmployee.get(key).plans.push(plan);
                 }
@@ -369,68 +319,78 @@
                 return;
             }
             
-            let html = `<table class="day-table">`;
-            html += `<thead><tr><th style="width: 180px; position: sticky; left: 0; background: #f8fafc;">Сотрудник</th>`;
+            let html = `<table class="day-table"><thead><tr><th style="width: 180px; position: sticky; left: 0; background: #f8fafc;">Сотрудник</th>`;
             for (let hour = WORK_START_HOUR; hour <= WORK_END_HOUR; hour++) {
-                html += `<th style="width: 60px; min-width: 60px;">${hour.toString().padStart(2, '0')}:00</th>`;
+                html += `<th style="width: 60px;">${hour.toString().padStart(2,'0')}:00</th>`;
             }
             html += `</thead><tbody>`;
             
-            for (let [key, employeeData] of plansByEmployee) {
-                employeeData.plans.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
-                html += `<tr>`;
-                html += `<td class="employee-cell" style="position: sticky; left: 0; background: #f8fafc;" title="${employeeData.name}">👤 ${employeeData.name}</td>`;
+            for (let [key, emp] of plansByEmployee) {
+                emp.plans.sort((a,b) => new Date(a.start_date) - new Date(b.start_date));
                 
-                let i = WORK_START_HOUR;
-                let taskIndex = 0;
-                
-                while (i <= WORK_END_HOUR) {
-                    let taskForHour = null;
-                    let taskClass = '';
-                    let startHour = i;
-                    let endHour = i;
-                    
-                    for (let plan of employeeData.plans) {
-                        const planStart = new Date(plan.start_date);
-                        const planEnd = new Date(plan.end_date);
-                        const planStartHour = planStart.getHours();
-                        const planEndHour = planEnd.getHours();
-                        
-                        if (planStartHour <= i && planEndHour > i) {
-                            taskForHour = plan;
-                            if (plan.status === 'Завершен' || plan.status === '✅ Завершен') {
-                                taskClass = 'completed';
-                            } else if (plan.is_overdue) {
-                                taskClass = 'critical';
-                            } else if (plan.days_left <= 3) {
-                                taskClass = 'warning';
-                            }
-                            endHour = Math.min(planEndHour, WORK_END_HOUR);
-                            break;
+                // Группируем задания по времени
+                const timeSlots = [];
+                for (let hour = WORK_START_HOUR; hour < WORK_END_HOUR; hour++) {
+                    const tasksAtHour = [];
+                    for (let plan of emp.plans) {
+                        const pStart = new Date(plan.start_date);
+                        const pEnd = new Date(plan.end_date);
+                        const startH = pStart.getHours();
+                        const endH = pEnd.getHours();
+                        if (startH <= hour && endH > hour) {
+                            tasksAtHour.push(plan);
                         }
                     }
-                    
-                    if (taskForHour) {
-                        let colspan = endHour - startHour;
-                        let timeRange = `${startHour.toString().padStart(2, '0')}:00 - ${endHour.toString().padStart(2, '0')}:00`;
-                        // СТУПЕНЬКА: отступ зависит от номера задачи
-                        const indent = taskIndex * 4;
-                        html += `<td colspan="${colspan}" class="hour-cell ${taskClass}" style="cursor: pointer; padding-left: ${indent}px;" title="${taskForHour.equipment}">
-                                    <div class="hour-content">
-                                        <div class="hour-title">${taskForHour.equipment}</div>
-                                        <div class="hour-time">${timeRange}</div>
-                                    </div>
-                                   </td>`;
-                        i += colspan;
-                        taskIndex++;
-                    } else {
-                        html += `<td class="hour-cell"><div class="hour-content"></div></td>`;
-                        i++;
-                    }
+                    timeSlots.push(tasksAtHour);
                 }
-                html += `</table>`;
+                
+                const maxTasksPerSlot = Math.max(...timeSlots.map(t => t.length), 1);
+                
+                for (let level = 0; level < maxTasksPerSlot; level++) {
+                    html += `<tr>`;
+                    if (level === 0) {
+                        html += `<td class="employee-cell" rowspan="${maxTasksPerSlot}" style="position: sticky; left: 0; background: #f8fafc; vertical-align: middle;" title="${emp.name}">👤 ${emp.name}</td>`;
+                    }
+                    
+                    for (let hour = WORK_START_HOUR; hour < WORK_END_HOUR; hour++) {
+                        const tasks = timeSlots[hour - WORK_START_HOUR];
+                        const task = tasks[level];
+                        
+                        if (task) {
+                            let taskClass = '';
+                            if (task.status === 'Завершен' || task.status === '✅ Завершен') taskClass = 'completed';
+                            else if (task.is_overdue) taskClass = 'critical';
+                            else if (task.days_left <= 3) taskClass = 'warning';
+                            
+                            // Проверяем, нужно ли объединять ячейки по часам для этой задачи
+                            let span = 1;
+                            let nextHour = hour + 1;
+                            while (nextHour < WORK_END_HOUR) {
+                                const nextTasks = timeSlots[nextHour - WORK_START_HOUR];
+                                const nextTask = nextTasks[level];
+                                if (nextTask && nextTask.id === task.id) {
+                                    span++;
+                                    nextHour++;
+                                } else {
+                                    break;
+                                }
+                            }
+                            
+                            let timeRange = `${hour.toString().padStart(2,'0')}:00 - ${nextHour.toString().padStart(2,'0')}:00`;
+                            html += `<td colspan="${span}" class="hour-cell ${taskClass}" style="cursor:pointer;" title="${task.equipment}">
+                                        <div class="hour-content">
+                                            <div class="hour-title">${task.equipment}</div>
+                                            <div class="hour-time">${timeRange}</div>
+                                        </div>
+                                      </div>`;
+                            hour = nextHour - 1;
+                        } else {
+                            html += `<td class="hour-cell">飞</td>`;
+                        }
+                    }
+                    html += `</tr>`;
+                }
             }
-            
             html += `</tbody>`;
             html += `</table>`;
             
@@ -444,112 +404,128 @@
             plansData.forEach(plan => {
                 const key = plan.responsible_id;
                 if (!plansByEmployee.has(key)) {
-                    plansByEmployee.set(key, {
-                        name: plan.responsible,
-                        id: key,
-                        plans: []
-                    });
+                    plansByEmployee.set(key, { name: plan.responsible, id: key, plans: [] });
                 }
                 plansByEmployee.get(key).plans.push(plan);
             });
             
             for (let [key, emp] of plansByEmployee) {
-                emp.plans.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+                emp.plans.sort((a,b) => new Date(a.start_date) - new Date(b.start_date));
             }
             
             const columnWidth = getColumnWidth(days.length);
             
             let html = `<table class="gantt-table">`;
-            html += `<thead><tr><th style="width: 180px; position: sticky; left: 0; background: #f8fafc;">Сотрудник</th>`;
-            days.forEach((day, idx) => {
-                const isHolidayDay = isHoliday(day);
-                const isWeekendDay = isWeekend(day);
-                const isSpecialDay = isHolidayDay || isWeekendDay;
-                const dayNumber = day.getDate();
+            html += `<thead>`;
+            html += `<tr>`;
+            html += `<th style="width: 180px; position: sticky; left: 0; background: #f8fafc;">Сотрудник</th>`;
+            days.forEach(day => {
+                const isSpecial = isHoliday(day) || isWeekend(day);
+                const dayNum = day.getDate();
                 const monthName = monthNames[day.getMonth()];
-                html += `<th class="${isSpecialDay ? 'weekend-day' : ''}" style="width: ${columnWidth}; min-width: ${columnWidth};">${dayNumber}<br><span style="font-size: 9px;">${monthName}</span></th>`;
+                html += `<th class="${isSpecial ? 'weekend-day' : ''}" style="width: ${columnWidth};">${dayNum}<br><span style="font-size:9px;">${monthName}</span></th>`;
             });
-            html += `</thead><tbody>`;
+            html += `</tr>`;
+            html += `</thead>`;
+            html += `<tbody>`;
             
-            for (let [key, employeeData] of plansByEmployee) {
-                html += `<tr>`;
-                html += `<td class="employee-cell" style="position: sticky; left: 0; background: #f8fafc;" title="${employeeData.name}">👤 ${employeeData.name}</td>`;
-                
-                let i = 0;
-                let taskIndex = 0;
-                
-                while (i < days.length) {
-                    const currentDay = days[i];
-                    const isHolidayDay = isHoliday(currentDay);
-                    const isWeekendDay = isWeekend(currentDay);
-                    const isSpecialDay = isHolidayDay || isWeekendDay;
-                    
-                    let taskForDay = null;
-                    let taskClass = '';
-                    let taskStartIndex = i;
-                    let taskEndIndex = i;
-                    
-                    for (let plan of employeeData.plans) {
+            for (let [key, emp] of plansByEmployee) {
+                // Для каждого дня определяем активные задания
+                const dailyTasks = [];
+                for (let i = 0; i < days.length; i++) {
+                    const day = days[i];
+                    const isSpecial = isHoliday(day) || isWeekend(day);
+                    if (isSpecial) {
+                        dailyTasks.push([]);
+                        continue;
+                    }
+                    const tasks = [];
+                    for (let plan of emp.plans) {
                         const planStart = new Date(plan.start_date);
                         const planEnd = new Date(plan.end_date);
-                        planStart.setHours(0, 0, 0, 0);
-                        planEnd.setHours(0, 0, 0, 0);
+                        planStart.setHours(0,0,0,0);
+                        planEnd.setHours(0,0,0,0);
+                        if (planStart <= day && planEnd >= day) {
+                            tasks.push(plan);
+                        }
+                    }
+                    dailyTasks.push(tasks);
+                }
+                
+                const maxTasksPerDay = Math.max(...dailyTasks.map(t => t.length), 1);
+                
+                for (let level = 0; level < maxTasksPerDay; level++) {
+                    html += `<tr>`;
+                    if (level === 0) {
+                        html += `<td class="employee-cell" rowspan="${maxTasksPerDay}" style="position: sticky; left: 0; background: #f8fafc; vertical-align: middle;" title="${emp.name}">👤 ${emp.name}</td>`;
+                    }
+                    
+                    let colIdx = 0;
+                    while (colIdx < days.length) {
+                        const day = days[colIdx];
+                        const isSpecial = isHoliday(day) || isWeekend(day);
                         
-                        if (planStart <= currentDay && planEnd >= currentDay && !isSpecialDay) {
-                            taskForDay = plan;
-                            if (plan.status === 'Завершен' || plan.status === '✅ Завершен') {
-                                taskClass = 'completed';
-                            } else if (plan.is_overdue) {
-                                taskClass = 'critical';
-                            } else if (plan.days_left <= 3) {
-                                taskClass = 'warning';
-                            }
+                        if (isSpecial) {
+                            html += `<td class="weekend-day"></td>`;
+                            colIdx++;
+                            continue;
+                        }
+                        
+                        const tasks = dailyTasks[colIdx];
+                        const task = tasks[level];
+                        
+                        if (task) {
+                            let taskClass = '';
+                            if (task.status === 'Завершен' || task.status === '✅ Завершен') taskClass = 'completed';
+                            else if (task.is_overdue) taskClass = 'critical';
+                            else if (task.days_left <= 3) taskClass = 'warning';
                             
-                            for (let j = i; j < days.length; j++) {
-                                const checkDay = days[j];
-                                checkDay.setHours(0, 0, 0, 0);
-                                const checkIsSpecial = isHoliday(checkDay) || isWeekend(checkDay);
-                                if (planStart <= checkDay && planEnd >= checkDay && !checkIsSpecial) {
-                                    taskEndIndex = j;
+                            // Проверяем, сколько дней подряд продолжается это же задание
+                            let span = 1;
+                            let nextCol = colIdx + 1;
+                            while (nextCol < days.length) {
+                                const nextDay = days[nextCol];
+                                const nextIsSpecial = isHoliday(nextDay) || isWeekend(nextDay);
+                                if (nextIsSpecial) {
+                                    nextCol++;
+                                    continue;
+                                }
+                                const nextTasks = dailyTasks[nextCol];
+                                const nextTask = nextTasks[level];
+                                if (nextTask && nextTask.id === task.id) {
+                                    span++;
+                                    nextCol++;
                                 } else {
                                     break;
                                 }
                             }
-                            break;
+                            
+                            let dateRange = `${task.start_date} - ${task.end_date}`;
+                            html += `<td colspan="${span}" class="task-cell ${taskClass}" style="cursor:pointer;" title="${task.equipment}">
+                                        <div class="task-cell-content">
+                                            <div class="task-title">${task.equipment}</div>
+                                            <div class="task-date">${dateRange}</div>
+                                        </div>
+                                      </td>`;
+                            colIdx += span;
+                        } else {
+                            html += `<td class=""></td>`;
+                            colIdx++;
                         }
                     }
-                    
-                    if (taskForDay) {
-                        let colspan = taskEndIndex - taskStartIndex + 1;
-                        let dateRange = `${taskForDay.start_date} - ${taskForDay.end_date}`;
-                        // СТУПЕНЬКА: отступ зависит от номера задачи
-                        const indent = taskIndex * 4;
-                        html += `<td colspan="${colspan}" class="task-cell ${taskClass}" style="cursor: pointer; padding-left: ${indent}px;" title="${taskForDay.equipment}">
-                                    <div style="font-weight: 500; font-size: 10px;">${taskForDay.equipment}</div>
-                                    <div style="font-size: 8px; color: #64748b;">${dateRange}</div>
-                                    </td>`;
-                        i += colspan;
-                        taskIndex++;
-                    } else {
-                        html += `<td class="${isSpecialDay ? 'weekend-day' : ''}"></td>`;
-                        i++;
-                    }
+                    html += `</tr>`;
                 }
-                html += `</td>`;
             }
-            
             html += `</tbody>`;
             html += `</table>`;
             
             let title = '';
             if (currentView === 'week') {
-                const weekStart = days[0];
-                const weekEnd = days[days.length - 1];
+                const weekStart = days[0], weekEnd = days[days.length-1];
                 title = `График работ за неделю ${weekStart.toLocaleDateString('ru-RU')} - ${weekEnd.toLocaleDateString('ru-RU')}`;
             } else {
                 title = `График работ за ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
             }
-            
             document.getElementById('currentDateRange').innerHTML = title;
             document.getElementById('timelineContainer').innerHTML = `<div class="timeline-header"><div class="timeline-title">📊 ${title}</div></div>${html}`;
         }
@@ -564,13 +540,9 @@
         }
         
         function navigateDate(delta) {
-            if (currentView === 'day') {
-                currentDate.setDate(currentDate.getDate() + delta);
-            } else if (currentView === 'week') {
-                currentDate.setDate(currentDate.getDate() + delta * 7);
-            } else if (currentView === 'month') {
-                currentDate.setMonth(currentDate.getMonth() + delta);
-            }
+            if (currentView === 'day') currentDate.setDate(currentDate.getDate() + delta);
+            else if (currentView === 'week') currentDate.setDate(currentDate.getDate() + delta * 7);
+            else if (currentView === 'month') currentDate.setMonth(currentDate.getMonth() + delta);
             selectedDate = new Date(currentDate);
             applyFilters();
         }
@@ -608,18 +580,16 @@
                 btn.onclick = () => {
                     document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
-                    currentView = btn.getAttribute('data-view');
+                    currentView = btn.dataset.view;
                     applyFilters();
                 };
             });
             
             document.querySelectorAll('.filter-all, .filter-btn').forEach(btn => {
-                btn.onclick = () => {
-                    filterEmployees(btn.getAttribute('data-filter'));
-                };
+                btn.onclick = () => filterEmployees(btn.dataset.filter);
             });
             
-            setTimeout(() => { loadInitialData(); }, 500);
+            setTimeout(() => loadInitialData(), 500);
         });
     </script>
 </body>
