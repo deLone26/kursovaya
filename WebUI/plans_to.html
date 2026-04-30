@@ -38,16 +38,12 @@
         .employee-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .employee-count { background: #e2e8f0; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; flex-shrink: 0; }
         
-        /* Зелёный цвет для выполненных заданий в списке сотрудников */
-        .employee-item.completed .employee-count { background: #22c55e; color: white; }
-        
         .urgent-section { padding: 12px; background: #fefce8; border-bottom: 1px solid #e2e8f0; }
         .urgent-section h3 { font-size: 12px; font-weight: 600; color: #854d0e; margin-bottom: 8px; }
         .urgent-list { max-height: 250px; overflow-y: auto; }
         .urgent-item { background: white; border-left: 2px solid #eab308; padding: 8px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 11px; cursor: pointer; }
         .urgent-item.critical { border-left-color: #ef4444; background: #fef2f2; }
         .urgent-item.warning { border-left-color: #f59e0b; background: #fffbeb; }
-        /* Зелёный для выполненных в срочных напоминаниях */
         .urgent-item.completed { border-left-color: #22c55e; background: #e8f5e9; opacity: 0.7; }
         .urgent-date { font-size: 10px; color: #6b7280; }
         .urgent-title { font-weight: 600; font-size: 11px; margin: 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -64,12 +60,10 @@
         .stat-value.completed { color: #22c55e; }
         
         .right-panel { flex: 1; background: white; display: flex; flex-direction: column; overflow: auto; min-width: 0; }
-        
         .timeline-container { flex: 1; padding: 15px; overflow-x: auto; overflow-y: auto; }
         .timeline-header { margin-bottom: 15px; }
         .timeline-title { font-weight: 600; font-size: 14px; margin-bottom: 10px; }
         
-        /* Стили для таблиц */
         .gantt-table { border-collapse: collapse; width: 100%; }
         .gantt-table th, .gantt-table td { border: none; padding: 8px 4px; text-align: center; vertical-align: middle; }
         .gantt-table th { background: #f8fafc; font-weight: 600; font-size: 11px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #e2e8f0; }
@@ -77,17 +71,13 @@
         
         .employee-cell { text-align: left; font-weight: 500; background: #f8fafc; position: sticky; left: 0; z-index: 5; }
         
-        /* Зелёный цвет для выполненных заданий в таблице */
         .task-cell { background: #eff6ff; border-radius: 8px; margin: 2px; }
         .task-cell.completed { background: #e8f5e9; }
         .task-cell.critical { background: #fee2e2; }
         .task-cell.warning { background: #fed7aa; }
-        .task-cell.completed.critical { background: #e8f5e9; }
-        .task-cell.completed.warning { background: #e8f5e9; }
         
         .weekend-day { background: #fef2f2; color: #ef4444; }
         
-        /* Стили для дневного режима */
         .day-table { border-collapse: collapse; width: 100%; }
         .day-table th, .day-table td { border: none; padding: 6px 2px; text-align: center; vertical-align: middle; }
         .day-table th { background: #f8fafc; font-weight: 600; font-size: 10px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #e2e8f0; }
@@ -169,6 +159,31 @@
         const WORK_START_HOUR = 8;
         const WORK_END_HOUR = 17;
         
+        // Российские праздники
+        const holidays = [
+            { month: 0, day: 1 },   // 1 января
+            { month: 0, day: 2 },   // 2 января
+            { month: 0, day: 7 },   // 7 января
+            { month: 1, day: 23 },  // 23 февраля
+            { month: 2, day: 8 },   // 8 марта
+            { month: 4, day: 1 },   // 1 мая
+            { month: 4, day: 9 },   // 9 мая
+            { month: 5, day: 12 },  // 12 июня
+            { month: 10, day: 4 }   // 4 ноября
+        ];
+        
+        function isHoliday(date) {
+            for (let h of holidays) {
+                if (date.getMonth() === h.month && date.getDate() === h.day) return true;
+            }
+            return false;
+        }
+        
+        function isWeekend(date) {
+            const day = date.getDay();
+            return day === 0 || day === 6;
+        }
+        
         function sendToCSharp(action, data = {}) {
             const msg = JSON.stringify({ action: action, ...data });
             if (window.chrome && window.chrome.webview) {
@@ -197,7 +212,6 @@
             if (!data || !data.length) { container.innerHTML = '<div class="loading">Нет сотрудников</div>'; return; }
             employees = data;
             
-            // Подсчитываем выполненные задания для каждого сотрудника
             const completedTasksByEmployee = {};
             allPlans.forEach(plan => {
                 if (plan.status === 'Завершен' || plan.status === '✅ Завершен') {
@@ -208,7 +222,6 @@
             });
             
             container.innerHTML = employees.map(emp => {
-                const isCompleted = completedTasksByEmployee[emp.id] > 0;
                 return `
                     <div class="employee-item ${selectedEmployeeId === emp.id ? 'active' : ''}" data-id="${emp.id}">
                         <span class="employee-name" title="${emp.fio}">${emp.fio}</span>
@@ -254,7 +267,6 @@
         
         function applyFilters() {
             let filtered = [...allPlans];
-            
             if (selectedEmployeeId !== null) {
                 if (selectedEmployeeId === -1) {
                     filtered = filtered.filter(p => p.responsible_id === 0 || p.responsible_id === null);
@@ -262,7 +274,6 @@
                     filtered = filtered.filter(p => p.responsible_id === selectedEmployeeId);
                 }
             }
-            
             renderTimeline(filtered);
             updateStats(filtered);
         }
@@ -293,14 +304,8 @@
             document.getElementById('criticalCount').innerHTML = allCriticalPlans.length;
         }
         
-        function isWeekend(date) {
-            const day = date.getDay();
-            return day === 0 || day === 6;
-        }
-        
         function getDaysArray() {
             const days = [];
-            
             if (currentView === 'week') {
                 const weekStart = new Date(selectedDate);
                 weekStart.setDate(selectedDate.getDate() - selectedDate.getDay() + 1);
@@ -330,10 +335,11 @@
         
         function renderDayView(plansData) {
             const selectedDay = selectedDate;
+            const isHolidayDay = isHoliday(selectedDay);
             const isWeekendDay = isWeekend(selectedDay);
             
-            if (isWeekendDay) {
-                document.getElementById('timelineContainer').innerHTML = `<div class="timeline-header"><div class="timeline-title">📊 ${selectedDay.toLocaleDateString('ru-RU')} - выходной день</div></div>`;
+            if (isHolidayDay || isWeekendDay) {
+                document.getElementById('timelineContainer').innerHTML = `<div class="timeline-header"><div class="timeline-title">📊 ${selectedDay.toLocaleDateString('ru-RU')} - ${isHolidayDay ? 'праздничный' : 'выходной'} день</div></div>`;
                 return;
             }
             
@@ -371,10 +377,13 @@
             html += `</thead><tbody>`;
             
             for (let [key, employeeData] of plansByEmployee) {
+                employeeData.plans.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
                 html += `<tr>`;
                 html += `<td class="employee-cell" style="position: sticky; left: 0; background: #f8fafc;" title="${employeeData.name}">👤 ${employeeData.name}</td>`;
                 
                 let i = WORK_START_HOUR;
+                let taskIndex = 0;
+                
                 while (i <= WORK_END_HOUR) {
                     let taskForHour = null;
                     let taskClass = '';
@@ -389,7 +398,6 @@
                         
                         if (planStartHour <= i && planEndHour > i) {
                             taskForHour = plan;
-                            // Определяем класс в зависимости от статуса и срочности
                             if (plan.status === 'Завершен' || plan.status === '✅ Завершен') {
                                 taskClass = 'completed';
                             } else if (plan.is_overdue) {
@@ -405,21 +413,22 @@
                     if (taskForHour) {
                         let colspan = endHour - startHour;
                         let timeRange = `${startHour.toString().padStart(2, '0')}:00 - ${endHour.toString().padStart(2, '0')}:00`;
-                        const isCompleted = (taskForHour.status === 'Завершен' || taskForHour.status === '✅ Завершен');
-                        const titleText = isCompleted ? `✅ ${taskForHour.equipment} (Выполнено)` : taskForHour.equipment;
-                        html += `<td colspan="${colspan}" class="hour-cell ${taskClass}" style="cursor: pointer;" title="${titleText}">
+                        // СТУПЕНЬКА: отступ зависит от номера задачи
+                        const indent = taskIndex * 4;
+                        html += `<td colspan="${colspan}" class="hour-cell ${taskClass}" style="cursor: pointer; padding-left: ${indent}px;" title="${taskForHour.equipment}">
                                     <div class="hour-content">
                                         <div class="hour-title">${taskForHour.equipment}</div>
                                         <div class="hour-time">${timeRange}</div>
                                     </div>
-                                  </td>`;
+                                   </td>`;
                         i += colspan;
+                        taskIndex++;
                     } else {
                         html += `<td class="hour-cell"><div class="hour-content"></div></td>`;
                         i++;
                     }
                 }
-                html += `</td>`;
+                html += `</table>`;
             }
             
             html += `</tbody>`;
@@ -444,15 +453,21 @@
                 plansByEmployee.get(key).plans.push(plan);
             });
             
+            for (let [key, emp] of plansByEmployee) {
+                emp.plans.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+            }
+            
             const columnWidth = getColumnWidth(days.length);
             
             let html = `<table class="gantt-table">`;
             html += `<thead><tr><th style="width: 180px; position: sticky; left: 0; background: #f8fafc;">Сотрудник</th>`;
             days.forEach((day, idx) => {
+                const isHolidayDay = isHoliday(day);
                 const isWeekendDay = isWeekend(day);
+                const isSpecialDay = isHolidayDay || isWeekendDay;
                 const dayNumber = day.getDate();
                 const monthName = monthNames[day.getMonth()];
-                html += `<th class="${isWeekendDay ? 'weekend-day' : ''}" style="width: ${columnWidth}; min-width: ${columnWidth};">${dayNumber}<br><span style="font-size: 9px;">${monthName}</span></th>`;
+                html += `<th class="${isSpecialDay ? 'weekend-day' : ''}" style="width: ${columnWidth}; min-width: ${columnWidth};">${dayNumber}<br><span style="font-size: 9px;">${monthName}</span></th>`;
             });
             html += `</thead><tbody>`;
             
@@ -461,9 +476,13 @@
                 html += `<td class="employee-cell" style="position: sticky; left: 0; background: #f8fafc;" title="${employeeData.name}">👤 ${employeeData.name}</td>`;
                 
                 let i = 0;
+                let taskIndex = 0;
+                
                 while (i < days.length) {
                     const currentDay = days[i];
+                    const isHolidayDay = isHoliday(currentDay);
                     const isWeekendDay = isWeekend(currentDay);
+                    const isSpecialDay = isHolidayDay || isWeekendDay;
                     
                     let taskForDay = null;
                     let taskClass = '';
@@ -476,9 +495,8 @@
                         planStart.setHours(0, 0, 0, 0);
                         planEnd.setHours(0, 0, 0, 0);
                         
-                        if (planStart <= currentDay && planEnd >= currentDay && !isWeekendDay) {
+                        if (planStart <= currentDay && planEnd >= currentDay && !isSpecialDay) {
                             taskForDay = plan;
-                            // Определяем класс в зависимости от статуса и срочности
                             if (plan.status === 'Завершен' || plan.status === '✅ Завершен') {
                                 taskClass = 'completed';
                             } else if (plan.is_overdue) {
@@ -490,7 +508,8 @@
                             for (let j = i; j < days.length; j++) {
                                 const checkDay = days[j];
                                 checkDay.setHours(0, 0, 0, 0);
-                                if (planStart <= checkDay && planEnd >= checkDay && !isWeekend(checkDay)) {
+                                const checkIsSpecial = isHoliday(checkDay) || isWeekend(checkDay);
+                                if (planStart <= checkDay && planEnd >= checkDay && !checkIsSpecial) {
                                     taskEndIndex = j;
                                 } else {
                                     break;
@@ -503,19 +522,20 @@
                     if (taskForDay) {
                         let colspan = taskEndIndex - taskStartIndex + 1;
                         let dateRange = `${taskForDay.start_date} - ${taskForDay.end_date}`;
-                        const isCompleted = (taskForDay.status === 'Завершен' || taskForDay.status === '✅ Завершен');
-                        const titleText = isCompleted ? `✅ ${taskForDay.equipment} (Выполнено)` : taskForDay.equipment;
-                        html += `<td colspan="${colspan}" class="task-cell ${taskClass}" style="cursor: pointer;" title="${titleText}">
+                        // СТУПЕНЬКА: отступ зависит от номера задачи
+                        const indent = taskIndex * 4;
+                        html += `<td colspan="${colspan}" class="task-cell ${taskClass}" style="cursor: pointer; padding-left: ${indent}px;" title="${taskForDay.equipment}">
                                     <div style="font-weight: 500; font-size: 10px;">${taskForDay.equipment}</div>
                                     <div style="font-size: 8px; color: #64748b;">${dateRange}</div>
-                                   </td>`;
+                                    </td>`;
                         i += colspan;
+                        taskIndex++;
                     } else {
-                        html += `<td class="${isWeekendDay ? 'weekend-day' : ''}"></td>`;
+                        html += `<td class="${isSpecialDay ? 'weekend-day' : ''}"></td>`;
                         i++;
                     }
                 }
-                html += `</tr>`;
+                html += `</td>`;
             }
             
             html += `</tbody>`;

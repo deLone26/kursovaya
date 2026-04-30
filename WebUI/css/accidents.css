@@ -1,11 +1,9 @@
 /* Стили для раздела Аварии */
 
-/* Основные стили */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
 }
 
 body {
@@ -14,28 +12,6 @@ body {
     line-height: 1.5;
     color: #333;
     background: #f5f7fa;
-}
-
-/* Для заголовков */
-h1, h2, h3, h4, h5, h6 {
-    font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
-    font-weight: 600;
-}
-
-/* Для кнопок */
-button, .btn, .btn-primary, .btn-success, .btn-warning, .btn-danger, .btn-secondary {
-    font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
-    font-weight: 500;
-}
-
-/* Для таблиц */
-table, th, td {
-    font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
-}
-
-/* Для полей ввода */
-input, select, textarea {
-    font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
 }
 
 .accidents-container {
@@ -51,6 +27,15 @@ input, select, textarea {
     margin-bottom: 32px;
 }
 
+.header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 8px;
+}
+
 .title {
     font-size: 28px;
     font-weight: 700;
@@ -58,7 +43,7 @@ input, select, textarea {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 8px;
+    margin: 0;
 }
 
 .title-icon {
@@ -69,6 +54,43 @@ input, select, textarea {
     color: #64748b;
     font-size: 14px;
     margin: 0;
+}
+
+/* Панель пользователя */
+.user-panel {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-name {
+    background: #e2e8f0;
+    padding: 8px 16px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.logout-btn {
+    background: #dc3545;
+    border: none;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.logout-btn:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
+.user-panel.hidden {
+    display: none;
 }
 
 /* Статистика */
@@ -91,10 +113,10 @@ input, select, textarea {
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 12px -4px rgba(0, 0, 0, 0.1);
-    }
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 12px -4px rgba(0, 0, 0, 0.1);
+}
 
 .stat-icon {
     font-size: 32px;
@@ -158,15 +180,15 @@ input, select, textarea {
     min-width: 280px;
 }
 
-    .filter-group label {
-        display: block;
-        font-size: 12px;
-        font-weight: 600;
-        color: #64748b;
-        margin-bottom: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+.filter-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 
 .date-range {
     display: flex;
@@ -184,11 +206,11 @@ input, select, textarea {
     flex: 1;
 }
 
-    .date-input:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
+.date-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
 
 .date-separator {
     color: #94a3b8;
@@ -203,12 +225,12 @@ input, select, textarea {
     padding: 8px 0;
 }
 
-    .checkbox-label input {
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
+.checkbox-label input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
 
 .checkmark {
     position: relative;
@@ -246,6 +268,31 @@ input, select, textarea {
     display: block;
 }
 
+/* Кнопки */
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.btn-icon {
+    font-size: 14px;
+}
+
 /* Таблица */
 .table-container {
     background: white;
@@ -262,35 +309,35 @@ input, select, textarea {
     font-size: 14px;
 }
 
-    .data-table th {
-        background: #f8fafc;
-        padding: 14px 16px;
-        text-align: left;
-        font-weight: 600;
-        color: #475569;
-        border-bottom: 1px solid #e2e8f0;
-        white-space: nowrap;
-    }
+.data-table th {
+    background: #f8fafc;
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #475569;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
 
-    .data-table td {
-        padding: 14px 16px;
-        border-bottom: 1px solid #f1f5f9;
-        color: #334155;
-    }
+.data-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
 
-    .data-table tbody tr {
-        transition: background 0.2s;
-        cursor: pointer;
-    }
+.data-table tbody tr {
+    transition: background 0.2s;
+    cursor: pointer;
+}
 
-        .data-table tbody tr:hover {
-            background: #f8fafc;
-        }
+.data-table tbody tr:hover {
+    background: #f8fafc;
+}
 
-        .data-table tbody tr.selected {
-            background: #eff6ff;
-            border-left: 3px solid #3b82f6;
-        }
+.data-table tbody tr.selected {
+    background: #eff6ff;
+    border-left: 3px solid #3b82f6;
+}
 
 .loading {
     text-align: center;
@@ -328,17 +375,19 @@ input, select, textarea {
     color: #b91c1c;
 }
 
+/* План */
 .plan-badge {
     font-size: 16px;
+    text-align: center;
 }
 
-    .plan-badge.yes {
-        color: #22c55e;
-    }
+.plan-badge.yes {
+    color: #22c55e;
+}
 
-    .plan-badge.no {
-        color: #ef4444;
-    }
+.plan-badge.no {
+    color: #ef4444;
+}
 
 /* Форма */
 .form-panel {
@@ -358,16 +407,16 @@ input, select, textarea {
     border-bottom: 1px solid #e2e8f0;
 }
 
-    .form-header .form-icon {
-        font-size: 24px;
-    }
+.form-header .form-icon {
+    font-size: 24px;
+}
 
-    .form-header h3 {
-        font-size: 18px;
-        font-weight: 600;
-        color: #0f172a;
-        margin: 0;
-    }
+.form-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0;
+}
 
 .form-grid {
     display: grid;
@@ -382,15 +431,15 @@ input, select, textarea {
     gap: 8px;
 }
 
-    .form-group.full-width {
-        grid-column: span 2;
-    }
+.form-group.full-width {
+    grid-column: span 2;
+}
 
-    .form-group label {
-        font-size: 13px;
-        font-weight: 500;
-        color: #334155;
-    }
+.form-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+}
 
 .required {
     color: #ef4444;
@@ -405,11 +454,11 @@ input, select, textarea {
     background: white;
 }
 
-    .form-input:focus, .form-select:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
 
 .form-textarea {
     padding: 12px 14px;
@@ -421,21 +470,22 @@ input, select, textarea {
     transition: all 0.2s;
 }
 
-    .form-textarea:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
+.form-textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
 
 .datetime-group {
     display: flex;
     gap: 12px;
 }
 
-    .datetime-group .form-input {
-        flex: 1;
-    }
+.datetime-group .form-input {
+    flex: 1;
+}
 
+/* Кнопки формы */
 .form-actions {
     display: flex;
     gap: 12px;
@@ -444,10 +494,11 @@ input, select, textarea {
     border-top: 1px solid #e2e8f0;
 }
 
-/* Кнопки */
-.btn-primary, .btn-success, .btn-warning, .btn-danger, .btn-secondary {
-    padding: 12px 24px;
+.btn-success {
+    background: #22c55e;
+    color: white;
     border: none;
+    padding: 12px 24px;
     border-radius: 10px;
     font-size: 14px;
     font-weight: 600;
@@ -458,59 +509,70 @@ input, select, textarea {
     transition: all 0.2s;
 }
 
-.btn-icon {
-    font-size: 14px;
+.btn-success:hover {
+    background: #16a34a;
+    transform: translateY(-1px);
 }
-
-.btn-primary {
-    background: #3b82f6;
-    color: white;
-}
-
-    .btn-primary:hover {
-        background: #2563eb;
-        transform: translateY(-1px);
-    }
-
-.btn-success {
-    background: #22c55e;
-    color: white;
-}
-
-    .btn-success:hover {
-        background: #16a34a;
-        transform: translateY(-1px);
-    }
 
 .btn-warning {
     background: #f59e0b;
     color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
 }
 
-    .btn-warning:hover {
-        background: #d97706;
-        transform: translateY(-1px);
-    }
+.btn-warning:hover {
+    background: #d97706;
+    transform: translateY(-1px);
+}
 
 .btn-danger {
     background: #ef4444;
     color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
 }
 
-    .btn-danger:hover {
-        background: #dc2626;
-        transform: translateY(-1px);
-    }
+.btn-danger:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
 
 .btn-secondary {
     background: #64748b;
     color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
 }
 
-    .btn-secondary:hover {
-        background: #475569;
-        transform: translateY(-1px);
-    }
+.btn-secondary:hover {
+    background: #475569;
+    transform: translateY(-1px);
+}
 
 /* Toast сообщения */
 .toast {
@@ -528,28 +590,47 @@ input, select, textarea {
     animation: slideInRight 0.3s ease-out;
 }
 
-    .toast.success {
-        background: #22c55e;
-    }
+.toast.success {
+    background: #22c55e;
+}
 
-    .toast.error {
-        background: #ef4444;
-    }
+.toast.error {
+    background: #ef4444;
+}
 
-    .toast.warning {
-        background: #f59e0b;
-    }
+.toast.warning {
+    background: #f59e0b;
+}
 
 @keyframes slideInRight {
     from {
         transform: translateX(100%);
         opacity: 0;
     }
-
     to {
         transform: translateX(0);
         opacity: 1;
     }
+}
+
+/* Скроллбар */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 /* Адаптивность */
@@ -557,11 +638,11 @@ input, select, textarea {
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-
+    
     .form-grid {
         grid-template-columns: 1fr;
     }
-
+    
     .form-group.full-width {
         grid-column: span 1;
     }
@@ -571,27 +652,32 @@ input, select, textarea {
     .accidents-container {
         padding: 16px;
     }
-
+    
     .stats-grid {
         grid-template-columns: 1fr;
         gap: 12px;
     }
-
+    
     .filters-panel {
         flex-direction: column;
         align-items: stretch;
     }
-
+    
     .filter-group {
         min-width: auto;
     }
-
+    
     .form-actions {
         flex-direction: column;
     }
-
-        .form-actions button {
-            width: 100%;
-            justify-content: center;
-        }
+    
+    .form-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .header-main {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }

@@ -370,10 +370,16 @@ namespace WindowsFormsApp1
                     p.id,
                     o.nazvanie AS equipment,
                     COALESCE(t.nazvanie, 'Не указан') AS tip,
-                    p.data_nachala AS start_date,
-                    p.data_okonchaniya AS end_date,
+                    TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as start_date,
+                    TO_CHAR(p.data_okonchaniya, 'DD.MM.YYYY') as end_date,
                     COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
-                    p.status,
+                    CASE 
+                        WHEN p.status = 'Просрочен' THEN '🔴 Просрочен'
+                        WHEN p.status = 'Завершен' THEN '✅ Завершен'
+                        WHEN p.status = 'В работе' THEN '⚙️ В работе'
+                        WHEN p.status = 'Запланирован' THEN '📋 Запланирован'
+                        ELSE COALESCE(p.status, 'Не указан')
+                    END AS status,
                     CASE WHEN p.avariya_id IS NOT NULL THEN '✅' ELSE '❌' END AS has_avariya,
                     COALESCE(p.avariya_id, 0) AS avariya_id,
                     COALESCE(p.stoimost, 0) AS cost,
@@ -381,7 +387,8 @@ namespace WindowsFormsApp1
                 FROM plan_to p
                 JOIN oborudovanie o ON p.oborudovanie_id = o.id
                 LEFT JOIN tip_to t ON p.tip_to_id = t.id
-                LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id");
+                LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                WHERE p.status != 'Завершен'");
 
                     if (json.ValueKind != JsonValueKind.Undefined)
                     {
@@ -390,37 +397,50 @@ namespace WindowsFormsApp1
                         {
                             string startDate = json.GetProperty("startDate").GetString();
                             string endDate = json.GetProperty("endDate").GetString();
-                            sql.Append($" WHERE DATE(p.data_nachala) BETWEEN '{startDate}' AND '{endDate}'");
+                            if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
+                            {
+                                sql.Append($" AND DATE(p.data_nachala) BETWEEN '{startDate}' AND '{endDate}'");
+                            }
                         }
                     }
 
-                    sql.Append(" ORDER BY CASE WHEN p.status = 'Завершен' THEN 1 ELSE 0 END, p.is_overdue DESC, p.data_nachala DESC");
+                    sql.Append(" ORDER BY p.data_nachala DESC");
 
                     using (var cmd = new NpgsqlCommand(sql.ToString(), conn))
                     {
                         using (var reader = cmd.ExecuteReader())
                         {
                             var list = new List<object>();
+                            decimal uncompletedCost = 0;
 
                             while (reader.Read())
                             {
+                                string status = reader.GetString(6);
+                                decimal cost = reader.GetDecimal(9);
+
+                                if (status != "✅ Завершен" && status != "Завершен")
+                                {
+                                    uncompletedCost += cost;
+                                }
+
                                 list.Add(new
                                 {
                                     id = reader.GetInt32(0),
                                     equipment = reader.GetString(1),
                                     tip = reader.GetString(2),
-                                    start_date = reader.GetDateTime(3).ToString("yyyy-MM-dd"),
-                                    end_date = reader.IsDBNull(4) ? "" : reader.GetDateTime(4).ToString("yyyy-MM-dd"),
+                                    start_date = reader.GetString(3),
+                                    end_date = reader.GetString(4),
                                     responsible = reader.GetString(5),
-                                    status = reader.GetString(6),
+                                    status = status,
                                     has_avariya = reader.GetString(7),
                                     avariya_id = reader.GetInt32(8),
-                                    cost = reader.GetDecimal(9).ToString("N2"),
+                                    cost = cost.ToString("N2"),
                                     is_overdue = reader.GetBoolean(10)
                                 });
                             }
 
-                            string jsonData = JsonSerializer.Serialize(list);
+                            var result = new { plans = list, uncompletedCost = uncompletedCost.ToString("N2") };
+                            string jsonData = JsonSerializer.Serialize(result, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
                             SendToWebView("displayPlans", jsonData);
                         }
                     }
@@ -498,15 +518,14 @@ namespace WindowsFormsApp1
             }
         }
 
-        private void LoadRepairHistory(JsonElement json = default)
+        private async Task LoadRepairHistory(JsonElement json = default)
         {
             try
             {
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
 
-                    // ВАЖНО: Берём стоимость из plan_to.stoimost, а не из remont
                     StringBuilder sql = new StringBuilder(@"
                 SELECT 
                     COALESCE(r.equipment_name, o.nazvanie) as equipment_name,
@@ -537,12 +556,18 @@ namespace WindowsFormsApp1
 
                     using (var cmd = new NpgsqlCommand(sql.ToString(), conn))
                     {
-                        using (var reader = cmd.ExecuteReader())
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
                             var list = new List<object>();
+                            decimal totalCost = 0;
+                            int totalCount = 0;
 
-                            while (reader.Read())
+                            while (await reader.ReadAsync())
                             {
+                                decimal cost = reader.GetDecimal(6);
+                                totalCost += cost;
+                                totalCount++;
+
                                 list.Add(new
                                 {
                                     equipment_name = reader.GetString(0),
@@ -551,11 +576,23 @@ namespace WindowsFormsApp1
                                     completed_date = reader.IsDBNull(3) ? "" : reader.GetString(3),
                                     sotrudnik_name = reader.GetString(4),
                                     opisanie = reader.GetString(5),
-                                    cost = reader.GetDecimal(6).ToString("N2")
+                                    cost = cost.ToString("N2")
                                 });
                             }
 
-                            string jsonData = JsonSerializer.Serialize(list);
+                            var result = new
+                            {
+                                history = list,
+                                totalCost = totalCost.ToString("N2"),
+                                totalCount = totalCount
+                            };
+
+                            string jsonData = JsonSerializer.Serialize(result, new JsonSerializerOptions
+                            {
+                                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                            });
+
+                            System.Diagnostics.Debug.WriteLine($"Sending displayHistory with {totalCount} records, totalCost: {totalCost}");
                             SendToWebView("displayHistory", jsonData);
                         }
                     }
@@ -563,6 +600,7 @@ namespace WindowsFormsApp1
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Error in LoadRepairHistory: {ex.Message}");
                 ShowError("Ошибка загрузки истории ремонтов: " + ex.Message);
             }
         }
@@ -582,15 +620,15 @@ namespace WindowsFormsApp1
                     string lastDayOfMonth = new DateTime(currentMonth.Year, currentMonth.Month, DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month)).ToString("yyyy-MM-dd");
 
                     string sql = @"
-                        SELECT 
-                            (SELECT COUNT(*) FROM oborudovanie) as total_equipment,
-                            (SELECT COUNT(*) FROM avariya) as total_avariya,
-                            (SELECT COUNT(*) FROM plan_to) as total_plans,
-                            (SELECT COUNT(*) FROM plan_to WHERE status = 'Завершен') as completed_plans,
-                            (SELECT COUNT(*) FROM plan_to WHERE status = 'Просрочен') as overdue_plans,
-                            (SELECT COUNT(*) FROM plan_to WHERE status = 'В работе') as in_progress_plans,
-                            (SELECT COALESCE(SUM(stoimost), 0) FROM plan_to) as total_cost,
-                            (SELECT COALESCE(SUM(stoimost), 0) FROM plan_to WHERE DATE(data_nachala) BETWEEN '" + firstDayOfMonth + "' AND '" + lastDayOfMonth + "') as monthly_cost";
+                SELECT 
+                    (SELECT COUNT(*) FROM oborudovanie) as total_equipment,
+                    (SELECT COUNT(*) FROM avariya) as total_avariya,
+                    (SELECT COUNT(*) FROM plan_to WHERE status != 'Завершен') as total_plans,
+                    (SELECT COUNT(*) FROM plan_to WHERE status = 'Завершен') as completed_plans,
+                    (SELECT COUNT(*) FROM plan_to WHERE status = 'Просрочен') as overdue_plans,
+                    (SELECT COUNT(*) FROM plan_to WHERE status = 'В работе') as in_progress_plans,
+                    (SELECT COALESCE(SUM(stoimost), 0) FROM plan_to) as total_cost,
+                    (SELECT COALESCE(SUM(stoimost), 0) FROM plan_to WHERE DATE(data_nachala) BETWEEN '" + firstDayOfMonth + "' AND '" + lastDayOfMonth + "') as monthly_cost";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -639,10 +677,10 @@ namespace WindowsFormsApp1
                     conn.Open();
 
                     string sql = @"
-                        INSERT INTO plan_to 
-                        (oborudovanie_id, tip_to_id, data_nachala, data_okonchaniya, otvetstvenniy_id, status, stoimost, avariya_id)
-                        VALUES 
-                        (@oborudovanie_id, @tip_to_id, @data_nachala, @data_okonchaniya, @otvetstvenniy_id, @status, @stoimost, @avariya_id)";
+                INSERT INTO plan_to 
+                (oborudovanie_id, tip_to_id, data_nachala, data_okonchaniya, otvetstvenniy_id, status, stoimost, avariya_id)
+                VALUES 
+                (@oborudovanie_id, @tip_to_id, @data_nachala, @data_okonchaniya, @otvetstvenniy_id, @status, @stoimost, @avariya_id)";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -655,9 +693,21 @@ namespace WindowsFormsApp1
                         cmd.Parameters.AddWithValue("@stoimost", cost);
 
                         if (selectedAvariyaId != -1)
+                        {
                             cmd.Parameters.AddWithValue("@avariya_id", selectedAvariyaId);
+
+                            // ОБНОВЛЯЕМ СТАТУС АВАРИИ НА "В работе"
+                            string updateAvariyaSql = "UPDATE avariya SET status = 'В работе' WHERE id = @avariya_id";
+                            using (var updateCmd = new NpgsqlCommand(updateAvariyaSql, conn))
+                            {
+                                updateCmd.Parameters.AddWithValue("@avariya_id", selectedAvariyaId);
+                                updateCmd.ExecuteNonQuery();
+                            }
+                        }
                         else
+                        {
                             cmd.Parameters.AddWithValue("@avariya_id", DBNull.Value);
+                        }
 
                         cmd.ExecuteNonQuery();
                     }
@@ -675,6 +725,26 @@ namespace WindowsFormsApp1
             catch (Exception ex)
             {
                 ShowError("Ошибка добавления: " + ex.Message);
+            }
+        }
+
+        private async Task<decimal> GetTotalCompletedCost()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+                    string sql = "SELECT COALESCE(SUM(stoimost), 0) FROM remont";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        return Convert.ToDecimal(await cmd.ExecuteScalarAsync());
+                    }
+                }
+            }
+            catch
+            {
+                return 0;
             }
         }
 

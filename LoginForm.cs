@@ -174,7 +174,7 @@ namespace WindowsFormsApp1
 
                 case "app_operator":
                     MessageBox.Show($"Вы вошли как Оператор ({dolzhnost})");
-                    form = new FormAccidents();
+                    form = new FormAccidents(employeeId, login, role);
                     break;
 
                 case "app_slesar":

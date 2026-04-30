@@ -15,31 +15,54 @@ namespace WindowsFormsApp1
 {
     public partial class FormAccidents : Form
     {
-        // ================== СТРОКА ПОДКЛЮЧЕНИЯ К БД ==================
         private readonly string connectionString =
-            "Host=localhost;Port=5432;Database=boiler_system;Username=postgres;Password=43898362Dd+-;";
+            "Host=localhost;Port=5432;Database=boiler_system;Username=postgres;Password=43898362Dd+-;Include Error Detail=true";
 
-        // ================== WebView2 ==================
         private WebView2 webView;
         private string webUIPath;
         private bool isWebViewInitialized = false;
 
-        public FormAccidents()
+        private int currentEmployeeId;
+        private string currentUserLogin;
+        private string currentUserRole;
+        private string currentEmployeeFullName;
+
+        public FormAccidents(int employeeId, string userLogin, string userRole)
         {
             InitializeComponent();
 
-            // Путь к папке WebUI
+            this.currentEmployeeId = employeeId;
+            this.currentUserLogin = userLogin;
+            this.currentUserRole = userRole;
+            this.currentEmployeeFullName = GetFullName(employeeId);
+
             webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
 
-            // Настройка формы
             this.Text = "Журнал аварий";
             this.WindowState = FormWindowState.Maximized;
             this.StartPosition = FormStartPosition.CenterScreen;
 
-            // Очищаем все старые элементы
             this.Controls.Clear();
-
             InitializeWebView();
+        }
+
+        private string GetFullName(int employeeId)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string sql = "SELECT CONCAT(familiya, ' ', LEFT(imya, 1), '.', LEFT(otchestvo, 1), '.') FROM sotrudniki WHERE id = @id";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", employeeId);
+                        var result = cmd.ExecuteScalar();
+                        return result?.ToString() ?? "Оператор";
+                    }
+                }
+            }
+            catch { return "Оператор"; }
         }
 
         private async void InitializeWebView()
@@ -57,17 +80,16 @@ namespace WindowsFormsApp1
                 webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
                 string htmlPath = Path.Combine(webUIPath, "accidents.html");
-                System.Diagnostics.Debug.WriteLine($"Загрузка HTML из: {htmlPath}");
 
                 if (File.Exists(htmlPath))
                 {
-                    webView.CoreWebView2.Navigate($"file:///{htmlPath}");
+                    webView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
                     isWebViewInitialized = true;
 
                     webView.CoreWebView2.NavigationCompleted += async (s, e) =>
                     {
-                        System.Diagnostics.Debug.WriteLine("Навигация завершена");
                         await Task.Delay(500);
+                        await SetCurrentUserInWebView();
                         await LoadInitialData();
                     };
                 }
@@ -79,6 +101,15 @@ namespace WindowsFormsApp1
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка WebView2: {ex.Message}");
+            }
+        }
+
+        private async Task SetCurrentUserInWebView()
+        {
+            if (isWebViewInitialized && webView?.CoreWebView2 != null)
+            {
+                string script = $"setCurrentUser({currentEmployeeId}, '{currentUserLogin}', '{currentUserRole}', '{currentEmployeeFullName}');";
+                await webView.CoreWebView2.ExecuteScriptAsync(script);
             }
         }
 
@@ -141,8 +172,8 @@ namespace WindowsFormsApp1
                         SELECT 
                             a.id,
                             o.nazvanie AS equipment,
-                            a.data_avarii AS date,
-                            a.opisanie AS description,
+                            TO_CHAR(a.data_avarii, 'DD.MM.YYYY HH24:MI') as date,
+                            COALESCE(a.opisanie, '') AS description,
                             COALESCE(a.posledstviya, '') AS consequences,
                             COALESCE(a.status, 'Зарегистрирована') AS status,
                             CASE WHEN p.id IS NOT NULL THEN '✅' ELSE '❌' END AS has_plan
@@ -162,7 +193,7 @@ namespace WindowsFormsApp1
                         if (!showAll && !string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
                         {
                             cmd.Parameters.AddWithValue("@start", DateTime.Parse(startDate).Date);
-                            cmd.Parameters.AddWithValue("@end", DateTime.Parse(endDate).Date.AddDays(1).AddSeconds(-1));
+                            cmd.Parameters.AddWithValue("@end", DateTime.Parse(endDate).Date);
                         }
 
                         using (var reader = await cmd.ExecuteReaderAsync())
@@ -173,7 +204,7 @@ namespace WindowsFormsApp1
                                 {
                                     id = reader.GetInt32(0),
                                     equipment = reader.GetString(1),
-                                    date = reader.GetDateTime(2).ToString("dd.MM.yyyy HH:mm"),
+                                    date = reader.GetString(2),
                                     description = reader.GetString(3),
                                     consequences = reader.GetString(4),
                                     status = reader.GetString(5),
@@ -242,32 +273,23 @@ namespace WindowsFormsApp1
             }
         }
 
-        // ================== ДОБАВЛЕНИЕ АВАРИИ ==================
         private async Task AddAccident(JsonElement root)
         {
             try
             {
                 int equipmentId = root.GetProperty("equipment").GetInt32();
-                string dateTime = root.GetProperty("dateTime").GetString();
+                string date = root.GetProperty("date").GetString();
+                string time = root.GetProperty("time").GetString();
                 string description = root.GetProperty("description").GetString();
                 string consequences = root.GetProperty("consequences").GetString();
-                string status = root.GetProperty("status").GetString();
 
-                // Замените мягкий знак на твердый, если нужно
-                // или приведите к правильному формату
-                string correctStatus = status switch
-                {
-                    "Завершена" => "Завершена",  // если в БД "Завершена" (без мягкого знака)
-                    "В работе" => "В работе",
-                    "Зарегистрирована" => "Зарегистрирована",
-                    "Требует ремонта" => "Требует ремонта",
-                    _ => "Зарегистрирована"
-                };
+                DateTime accidentDateTime = DateTime.Parse($"{date} {time}");
 
-                DateTime accidentDateTime;
-                if (!DateTime.TryParse(dateTime, out accidentDateTime))
+                // Проверка: нельзя регистрировать аварию на прошедшую дату
+                if (accidentDateTime.Date < DateTime.Now.Date)
                 {
-                    accidentDateTime = DateTime.Now;
+                    SendToWebView("showError", "Нельзя зарегистрировать аварию на прошедшую дату!");
+                    return;
                 }
 
                 using (var conn = new NpgsqlConnection(connectionString))
@@ -278,7 +300,7 @@ namespace WindowsFormsApp1
                 INSERT INTO avariya 
                 (oborudovanie_id, data_avarii, opisanie, posledstviya, status)
                 VALUES 
-                (@oborudovanie_id, @data_avarii, @opisanie, @posledstviya, @status)";
+                (@oborudovanie_id, @data_avarii, @opisanie, @posledstviya, 'Зарегистрирована')";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -286,59 +308,43 @@ namespace WindowsFormsApp1
                         cmd.Parameters.AddWithValue("@data_avarii", accidentDateTime);
                         cmd.Parameters.AddWithValue("@opisanie", description);
                         cmd.Parameters.AddWithValue("@posledstviya", consequences ?? "");
-                        cmd.Parameters.AddWithValue("@status", correctStatus);
-
-                        int rowsAffected = await cmd.ExecuteNonQueryAsync();
-
-                        if (rowsAffected > 0)
-                        {
-                            SendToWebView("showSuccess", "Авария успешно добавлена!");
-                            await LoadAccidents();
-                        }
-                        else
-                        {
-                            SendToWebView("showError", "Не удалось добавить запись");
-                        }
+                        await cmd.ExecuteNonQueryAsync();
                     }
                 }
-            }
-            catch (PostgresException pgEx)
-            {
-                System.Diagnostics.Debug.WriteLine($"Ошибка PostgreSQL: {pgEx.Message}");
-                SendToWebView("showError", $"Ошибка БД: {pgEx.Message}");
+
+                SendToWebView("showSuccess", "Авария зарегистрирована!");
+                await LoadAccidents();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Ошибка: {ex.Message}");
-                SendToWebView("showError", $"Ошибка: {ex.Message}");
+                SendToWebView("showError", "Ошибка добавления: " + ex.Message);
             }
         }
 
-        // ================== ОБНОВЛЕНИЕ АВАРИИ ==================
         private async Task UpdateAccident(JsonElement root)
         {
             try
             {
                 int id = root.GetProperty("id").GetInt32();
                 int equipmentId = root.GetProperty("equipment").GetInt32();
-                string dateTime = root.GetProperty("dateTime").GetString();
+                string date = root.GetProperty("date").GetString();
+                string time = root.GetProperty("time").GetString();
                 string description = root.GetProperty("description").GetString();
                 string consequences = root.GetProperty("consequences").GetString();
-                string status = root.GetProperty("status").GetString();
 
-                DateTime accidentDateTime = DateTime.Parse(dateTime);
+                DateTime accidentDateTime = DateTime.Parse($"{date} {time}");
 
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     await conn.OpenAsync();
 
+                    // При обновлении не меняем статус (статус меняется только когда начальник создаёт план)
                     string sql = @"
                         UPDATE avariya SET
                             oborudovanie_id = @oborudovanie_id,
                             data_avarii = @data_avarii,
                             opisanie = @opisanie,
-                            posledstviya = @posledstviya,
-                            status = @status
+                            posledstviya = @posledstviya
                         WHERE id = @id";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
@@ -348,14 +354,11 @@ namespace WindowsFormsApp1
                         cmd.Parameters.AddWithValue("@data_avarii", accidentDateTime);
                         cmd.Parameters.AddWithValue("@opisanie", description);
                         cmd.Parameters.AddWithValue("@posledstviya", consequences ?? "");
-                        cmd.Parameters.AddWithValue("@status", status ?? "Зарегистрирована");
-
-                        int rowsAffected = await cmd.ExecuteNonQueryAsync();
-                        System.Diagnostics.Debug.WriteLine($"Обновлено строк: {rowsAffected}");
+                        await cmd.ExecuteNonQueryAsync();
                     }
                 }
 
-                SendToWebView("showSuccess", "Авария успешно обновлена!");
+                SendToWebView("showSuccess", "Авария обновлена!");
                 await LoadAccidents();
             }
             catch (Exception ex)
@@ -364,7 +367,6 @@ namespace WindowsFormsApp1
             }
         }
 
-        // ================== УДАЛЕНИЕ АВАРИИ ==================
         private async Task DeleteAccident(int id)
         {
             try
@@ -380,7 +382,7 @@ namespace WindowsFormsApp1
                     }
                 }
 
-                SendToWebView("showSuccess", "Авария успешно удалена!");
+                SendToWebView("showSuccess", "Авария удалена!");
                 await LoadAccidents();
             }
             catch (Exception ex)
@@ -389,7 +391,29 @@ namespace WindowsFormsApp1
             }
         }
 
-        // ================== ОТПРАВКА СООБЩЕНИЙ В JAVASCRIPT ==================
+        // Метод для автоматического обновления статуса аварии при создании плана
+        public async Task UpdateAccidentStatusOnPlanCreated(int accidentId)
+        {
+            if (accidentId <= 0) return;
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+                    string sql = "UPDATE avariya SET status = 'В работе' WHERE id = @id AND status = 'Зарегистрирована'";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", accidentId);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка обновления статуса аварии: {ex.Message}");
+            }
+        }
+
         private void SendToWebView(string command, string data)
         {
             try
@@ -406,7 +430,6 @@ namespace WindowsFormsApp1
             }
         }
 
-        // ================== ОБРАБОТКА СООБЩЕНИЙ ОТ JAVASCRIPT ==================
         private async void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             string message = e.TryGetWebMessageAsString();
@@ -414,35 +437,46 @@ namespace WindowsFormsApp1
 
             try
             {
-                var jsonDoc = JsonDocument.Parse(message);
-                var root = jsonDoc.RootElement;
-                string action = root.GetProperty("action").GetString();
-
-                switch (action)
+                using (var jsonDoc = JsonDocument.Parse(message))
                 {
-                    case "loadEquipment":
-                        await LoadEquipment();
-                        break;
+                    var root = jsonDoc.RootElement;
+                    string action = root.GetProperty("action").GetString();
 
-                    case "loadAccidents":
-                        string startDate = root.TryGetProperty("startDate", out var s) ? s.GetString() : "";
-                        string endDate = root.TryGetProperty("endDate", out var eDate) ? eDate.GetString() : "";
-                        bool showAll = root.TryGetProperty("showAll", out var all) && all.GetBoolean();
-                        await LoadAccidents(startDate, endDate, showAll);
-                        break;
+                    switch (action)
+                    {
+                        case "loadEquipment":
+                            await LoadEquipment();
+                            break;
 
-                    case "addAccident":
-                        await AddAccident(root);
-                        break;
+                        case "loadAccidents":
+                            string startDate = root.TryGetProperty("startDate", out var s) ? s.GetString() : "";
+                            string endDate = root.TryGetProperty("endDate", out var eDate) ? eDate.GetString() : "";
+                            bool showAll = root.TryGetProperty("showAll", out var all) && all.GetBoolean();
+                            await LoadAccidents(startDate, endDate, showAll);
+                            break;
 
-                    case "updateAccident":
-                        await UpdateAccident(root);
-                        break;
+                        case "addAccident":
+                            await AddAccident(root);
+                            break;
 
-                    case "deleteAccident":
-                        int deleteId = root.GetProperty("id").GetInt32();
-                        await DeleteAccident(deleteId);
-                        break;
+                        case "updateAccident":
+                            await UpdateAccident(root);
+                            break;
+
+                        case "deleteAccident":
+                            int deleteId = root.GetProperty("id").GetInt32();
+                            await DeleteAccident(deleteId);
+                            break;
+
+                        case "logout":
+                            this.Invoke(new Action(() =>
+                            {
+                                LoginForm loginForm = new LoginForm();
+                                loginForm.Show();
+                                this.Close();
+                            }));
+                            break;
+                    }
                 }
             }
             catch (Exception ex)

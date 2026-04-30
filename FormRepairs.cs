@@ -373,6 +373,7 @@ namespace WindowsFormsApp1
 
                     using (var transaction = await conn.BeginTransactionAsync())
                     {
+                        // 1. Обновляем статус плана
                         string sqlPlan = "UPDATE plan_to SET status = 'Завершен' WHERE id = @id";
                         using (var cmd = new NpgsqlCommand(sqlPlan, conn, transaction))
                         {
@@ -380,10 +381,11 @@ namespace WindowsFormsApp1
                             await cmd.ExecuteNonQueryAsync();
                         }
 
+                        // 2. Добавляем запись в ремонт (историю)
                         string sqlRemont = @"
-                            INSERT INTO remont (oborudovanie_id, sotrudnik_id, data_nachala, data_okonchaniya, opisanie, plan_id)
-                            SELECT oborudovanie_id, @sotrudnik_id, @start, @end, @opisanie, @plan_id
-                            FROM plan_to WHERE id = @plan_id";
+                    INSERT INTO remont (oborudovanie_id, sotrudnik_id, data_nachala, data_okonchaniya, opisanie, plan_id)
+                    SELECT oborudovanie_id, @sotrudnik_id, @start, @end, @opisanie, @plan_id
+                    FROM plan_to WHERE id = @plan_id";
 
                         using (var cmd = new NpgsqlCommand(sqlRemont, conn, transaction))
                         {
@@ -393,6 +395,29 @@ namespace WindowsFormsApp1
                             cmd.Parameters.AddWithValue("@opisanie", description);
                             cmd.Parameters.AddWithValue("@plan_id", planId);
                             await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        // 3. НАХОДИМ СВЯЗАННУЮ АВАРИЮ И ОБНОВЛЯЕМ ЕЁ СТАТУС НА "Завершена"
+                        string sqlGetAvariyaId = "SELECT avariya_id FROM plan_to WHERE id = @id AND avariya_id IS NOT NULL";
+                        int? avariyaId = null;
+                        using (var cmd = new NpgsqlCommand(sqlGetAvariyaId, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@id", planId);
+                            var result = await cmd.ExecuteScalarAsync();
+                            if (result != null && result != DBNull.Value)
+                            {
+                                avariyaId = Convert.ToInt32(result);
+                            }
+                        }
+
+                        if (avariyaId.HasValue && avariyaId.Value > 0)
+                        {
+                            string sqlUpdateAvariya = "UPDATE avariya SET status = 'Завершена' WHERE id = @avariya_id";
+                            using (var cmd = new NpgsqlCommand(sqlUpdateAvariya, conn, transaction))
+                            {
+                                cmd.Parameters.AddWithValue("@avariya_id", avariyaId.Value);
+                                await cmd.ExecuteNonQueryAsync();
+                            }
                         }
 
                         await transaction.CommitAsync();

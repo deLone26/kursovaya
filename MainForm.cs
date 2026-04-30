@@ -109,10 +109,23 @@ namespace WindowsFormsApp1
 
         private bool IsSectionAllowed(string page)
         {
+            // Для оператора
             if (userRole == "operator")
                 return page == "home" || page == "dashboard" || page == "accidents";
+
+            // Для слесаря
             if (userRole == "slesar")
                 return page == "home" || page == "dashboard" || page == "repairs" || page == "plans";
+
+            // Для начальника (boss) — всё, кроме accidents и repairs
+            if (userRole == "boss")
+                return page != "accidents" && page != "repairs";
+
+            // Для администратора — всё
+            if (userRole == "admin")
+                return true;
+
+            // По умолчанию всё разрешено
             return true;
         }
 
@@ -170,8 +183,14 @@ namespace WindowsFormsApp1
             row++;
 
             AddMenuButtonIfAllowed(tlp, "🔧", "Всё оборудование", "equipment", ref row);
-            AddMenuButtonIfAllowed(tlp, "⚠️", "Аварии", "accidents", ref row);
-            AddMenuButtonIfAllowed(tlp, "🔨", "Ремонты", "repairs", ref row);
+
+            // Для начальника (boss) НЕ показываем Аварии и Ремонты
+            if (userRole != "boss")
+            {
+                AddMenuButtonIfAllowed(tlp, "⚠️", "Аварии", "accidents", ref row);
+                AddMenuButtonIfAllowed(tlp, "🔨", "Ремонты", "repairs", ref row);
+            }
+
             AddMenuButtonIfAllowed(tlp, "📋", "Паспорта", "passports", ref row);
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
@@ -370,7 +389,7 @@ namespace WindowsFormsApp1
                                 OpenChildForm(new Form1());
                                 break;
                             case "openAccidents":
-                                OpenChildForm(new FormAccidents());
+                                OpenChildForm(new FormAccidents(employeeId, userLogin, userRole));
                                 break;
                             case "openRepairs":
                                 OpenChildForm(new FormRepairs(connectionString, employeeId, userLogin, userRole, GetEmployeeIdByLogin(userLogin)));
@@ -460,7 +479,7 @@ namespace WindowsFormsApp1
                     OpenChildForm(new Form1());
                     break;
                 case "accidents":
-                    OpenChildForm(new FormAccidents());
+                    OpenChildForm(new FormAccidents(employeeId, userLogin, userRole));
                     break;
                 case "repairs":
                     OpenChildForm(new FormRepairs(connectionString, employeeId, userLogin, userRole, GetEmployeeIdByLogin(userLogin)));

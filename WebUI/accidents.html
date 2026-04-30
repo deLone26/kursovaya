@@ -9,16 +9,20 @@
 </head>
 <body>
     <div class="accidents-container">
-        <!-- Шапка -->
         <div class="header">
-            <h1 class="title">
-                <span class="title-icon">⚠️</span>
-                Журнал аварий
-            </h1>
-            <p class="subtitle">Регистрация и контроль аварийных ситуаций на оборудовании</p>
+            <div class="header-main">
+                <h1 class="title">
+                    <span class="title-icon">⚠️</span>
+                    Журнал аварий
+                </h1>
+                <div class="user-panel" id="userPanel">
+                    <span class="user-name" id="userName">Загрузка...</span>
+                    <button class="logout-btn" id="logoutBtn">Выход</button>
+                </div>
+            </div>
+            <p class="subtitle">Регистрация и контроль аварийных ситуаций</p>
         </div>
 
-        <!-- Статистика -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon">📊</div>
@@ -50,7 +54,6 @@
             </div>
         </div>
 
-        <!-- Фильтры -->
         <div class="filters-panel">
             <div class="filter-group">
                 <label>Период</label>
@@ -73,7 +76,6 @@
             </button>
         </div>
 
-        <!-- Таблица аварий -->
         <div class="table-container">
             <table class="data-table" id="accidentsTable">
                 <thead>
@@ -88,14 +90,11 @@
                     </tr>
                 </thead>
                 <tbody id="accidentsTableBody">
-                    <tr>
-                        <td colspan="7" class="loading">Загрузка данных...</td>
-                    </tr>
+                    <tr><td colspan="7" class="loading">Загрузка数据...</td></tr>
                 </tbody>
             </table>
         </div>
 
-        <!-- Форма регистрации аварии -->
         <div class="form-panel">
             <div class="form-header">
                 <span class="form-icon">📝</span>
@@ -128,14 +127,9 @@
                     <textarea id="consequences" rows="2" class="form-textarea" placeholder="Какие последствия вызвала авария..."></textarea>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="statusGroup" style="display: none;">
                     <label>Статус</label>
-                    <select id="statusSelect" class="form-select">
-                        <option value="Зарегистрирована">📋 Зарегистрирована</option>
-                        <option value="В работе">⚙️ В работе</option>
-                        <option value="Завершена">✅ Завершена</option>
-                        <option value="Требует ремонта">🔧 Требует ремонта</option>
-                    </select>
+                    <input type="text" id="statusReadonly" class="form-input" readonly value="Зарегистрирована">
                 </div>
             </div>
 
@@ -159,7 +153,6 @@
             </div>
         </div>
 
-        <!-- Toast сообщение -->
         <div id="toastMessage" class="toast" style="display: none;"></div>
     </div>
 
