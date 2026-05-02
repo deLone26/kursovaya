@@ -202,7 +202,7 @@ namespace WindowsFormsApp1
             row++;
 
             AddMenuButtonIfAllowed(tlp, "📅", "Планы ТО", "plans", ref row);
-            AddMenuButtonIfAllowed(tlp, "📈", "Графики", "schedules", ref row);
+            AddMenuButtonIfAllowed(tlp, "📈", "Графики", "charts", ref row);
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
 
@@ -490,8 +490,8 @@ namespace WindowsFormsApp1
                 case "plans":
                     OpenPlansTOForm();
                     break;
-                case "schedules":
-                    ShowPlaceholder("Графики работ");
+                case "charts":
+                    OpenChildForm(new FormCharts(connectionString, employeeId, userLogin, userRole));
                     break;
                 case "boss":
                     OpenChildForm(new FormBoss(connectionString, employeeId));

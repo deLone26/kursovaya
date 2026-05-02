@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Графики и аналитика</title>
+    <link rel="stylesheet" href="css/charts.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="charts-container">
+        <div class="header">
+            <h1 class="title">📊 Графики и аналитика</h1>
+            <p class="subtitle">Визуализация данных по техническому обслуживанию</p>
+        </div>
+
+        <div class="stats-cards">
+            <div class="stat-card">
+                <span class="stat-value" id="totalPlansStat">0</span>
+                <span class="stat-label">Всего планов ТО</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="completedPlansStat">0</span>
+                <span class="stat-label">Выполнено</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="inProgressPlansStat">0</span>
+                <span class="stat-label">В работе</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="overduePlansStat">0</span>
+                <span class="stat-label">Просрочено</span>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>Статусы планов ТО</h3>
+                <canvas id="statusChart" width="400" height="300"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Загрузка сотрудников</h3>
+                <canvas id="workersChart" width="400" height="300"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Динамика выполнения планов</h3>
+                <canvas id="monthlyChart" width="400" height="300"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Стоимость ремонтов по месяцам</h3>
+                <canvas id="costChart" width="400" height="300"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Аварии по оборудованию</h3>
+                <canvas id="accidentsChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label>Период для анализа:</label>
+                <div class="date-range">
+                    <input type="date" id="startDate" class="date-input">
+                    <span class="date-separator">—</span>
+                    <input type="date" id="endDate" class="date-input">
+                </div>
+            </div>
+            <button id="refreshBtn" class="btn-primary">Обновить графики</button>
+        </div>
+    </div>
+
+    <script src="js/charts.js"></script>
+</body>
+</html>
