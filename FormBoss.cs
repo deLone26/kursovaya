@@ -20,7 +20,6 @@ namespace WindowsFormsApp1
         private int selectedPlanId = -1;
         private int selectedAvariyaId = -1;
 
-        // Строка подключения (замените на свои данные)
         private readonly string connString = "Host=localhost;Port=5432;Database=boiler_system;Username=postgres;Password=43898362Dd+-;Include Error Detail=true";
 
         public FormBoss(string userConnectionString, int userId)
@@ -202,19 +201,20 @@ namespace WindowsFormsApp1
                     conn.Open();
                     var sql = new StringBuilder(@"
                         SELECT 
-                            p.id, o.nazvanie AS equipment, COALESCE(t.nazvanie, 'Не указан') AS tip,
+                            p.id, 
+                            o.nazvanie AS equipment, 
+                            COALESCE(t.nazvanie, 'Не указан') AS tip,
                             TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as start_date,
                             TO_CHAR(p.data_okonchaniya, 'DD.MM.YYYY') as end_date,
                             COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
                             CASE 
-                                WHEN p.status = 'Просрочен' THEN '🔴 Просрочен'
-                                WHEN p.status = 'Завершен' THEN '✅ Завершен'
-                                WHEN p.status = 'В работе' THEN '⚙️ В работе'
+                                WHEN p.status = 'Просрочен' THEN 'Просрочен'
+                                WHEN p.status = 'Завершен' THEN 'Завершен'
+                                WHEN p.status = 'В работе' THEN 'В работе'
                                 ELSE COALESCE(p.status, 'Не указан')
                             END AS status,
-                            CASE WHEN p.avariya_id IS NOT NULL THEN '✅' ELSE '❌' END AS has_avariya,
+                            CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
                             COALESCE(p.avariya_id, 0) AS avariya_id,
-                            COALESCE(p.stoimost, 0) AS cost,
                             p.is_overdue
                         FROM plan_to p
                         JOIN oborudovanie o ON p.oborudovanie_id = o.id
@@ -238,12 +238,8 @@ namespace WindowsFormsApp1
                     using (var reader = cmd.ExecuteReader())
                     {
                         var list = new List<object>();
-                        decimal uncompletedCost = 0;
                         while (reader.Read())
                         {
-                            string status = reader.GetString(6);
-                            decimal cost = reader.GetDecimal(9);
-                            if (status != "✅ Завершен" && status != "Завершен") uncompletedCost += cost;
                             list.Add(new
                             {
                                 id = reader.GetInt32(0),
@@ -252,14 +248,13 @@ namespace WindowsFormsApp1
                                 start_date = reader.GetString(3),
                                 end_date = reader.GetString(4),
                                 responsible = reader.GetString(5),
-                                status = status,
+                                status = reader.GetString(6),
                                 has_avariya = reader.GetString(7),
                                 avariya_id = reader.GetInt32(8),
-                                cost = cost.ToString("N2"),
-                                is_overdue = reader.GetBoolean(10)
+                                is_overdue = reader.GetBoolean(9)
                             });
                         }
-                        var result = new { plans = list, uncompletedCost = uncompletedCost.ToString("N2") };
+                        var result = new { plans = list };
                         SendToWebView("displayPlans", JsonSerializer.Serialize(result));
                     }
                 }
@@ -279,7 +274,7 @@ namespace WindowsFormsApp1
                                COALESCE(a.opisanie, '') AS description,
                                COALESCE(a.posledstviya, '') AS consequences,
                                COALESCE(a.status, '') AS status,
-                               CASE WHEN p.id IS NOT NULL THEN '✅' ELSE '❌' END AS has_plan
+                               CASE WHEN p.id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_plan
                         FROM avariya a
                         JOIN oborudovanie o ON a.oborudovanie_id = o.id
                         LEFT JOIN plan_to p ON a.id = p.avariya_id");
@@ -334,8 +329,7 @@ namespace WindowsFormsApp1
                             TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as plan_date,
                             TO_CHAR(r.data_okonchaniya, 'DD.MM.YYYY') as completed_date,
                             COALESCE(r.sotrudnik_name, CONCAT(s.familiya, ' ', LEFT(s.imya, 1), '.', LEFT(s.otchestvo, 1), '.')) as sotrudnik_name,
-                            COALESCE(r.opisanie, '') as opisanie,
-                            COALESCE(p.stoimost, 0) as cost
+                            COALESCE(r.opisanie, '') as opisanie
                         FROM remont r
                         JOIN plan_to p ON r.plan_id = p.id
                         JOIN oborudovanie o ON p.oborudovanie_id = o.id
@@ -355,11 +349,8 @@ namespace WindowsFormsApp1
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         var list = new List<object>();
-                        decimal totalCost = 0;
                         while (await reader.ReadAsync())
                         {
-                            decimal cost = reader.GetDecimal(6);
-                            totalCost += cost;
                             list.Add(new
                             {
                                 equipment_name = reader.GetString(0),
@@ -367,11 +358,10 @@ namespace WindowsFormsApp1
                                 plan_date = reader.GetString(2),
                                 completed_date = reader.IsDBNull(3) ? "" : reader.GetString(3),
                                 sotrudnik_name = reader.GetString(4),
-                                opisanie = reader.GetString(5),
-                                cost = cost.ToString("N2")
+                                opisanie = reader.GetString(5)
                             });
                         }
-                        var result = new { history = list, totalCost = totalCost.ToString("N2") };
+                        var result = new { history = list };
                         SendToWebView("displayHistory", JsonSerializer.Serialize(result));
                     }
                 }
@@ -393,9 +383,7 @@ namespace WindowsFormsApp1
                             (SELECT COUNT(*) FROM plan_to WHERE status != 'Завершен') as total_plans,
                             (SELECT COUNT(*) FROM plan_to WHERE status = 'Завершен') as completed_plans,
                             (SELECT COUNT(*) FROM plan_to WHERE status = 'Просрочен') as overdue_plans,
-                            (SELECT COUNT(*) FROM plan_to WHERE status = 'В работе') as in_progress_plans,
-                            (SELECT COALESCE(SUM(stoimost), 0) FROM plan_to) as total_cost,
-                            (SELECT COALESCE(SUM(stoimost), 0) FROM plan_to WHERE EXTRACT(MONTH FROM data_nachala) = EXTRACT(MONTH FROM CURRENT_DATE)) as monthly_cost";
+                            (SELECT COUNT(*) FROM plan_to WHERE status = 'В работе') as in_progress_plans";
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     using (var reader = cmd.ExecuteReader())
                     {
@@ -408,9 +396,7 @@ namespace WindowsFormsApp1
                                 totalPlans = reader.GetInt32(2),
                                 completedPlans = reader.GetInt32(3),
                                 overduePlans = reader.GetInt32(4),
-                                inProgressPlans = reader.GetInt32(5),
-                                totalCost = reader.GetDecimal(6).ToString("N2"),
-                                monthlyCost = reader.GetDecimal(7).ToString("N2")
+                                inProgressPlans = reader.GetInt32(5)
                             };
                             SendToWebView("updateStatistics", JsonSerializer.Serialize(stats));
                         }
@@ -430,14 +416,13 @@ namespace WindowsFormsApp1
                 string endDate = json.GetProperty("endDate").GetString();
                 int responsible = json.GetProperty("responsible").GetInt32();
                 string status = json.GetProperty("status").GetString();
-                decimal cost = json.GetProperty("cost").GetDecimal();
 
                 using (var conn = new NpgsqlConnection(connString))
                 {
                     conn.Open();
                     string sql = @"
-                        INSERT INTO plan_to (oborudovanie_id, tip_to_id, data_nachala, data_okonchaniya, otvetstvenniy_id, status, stoimost, avariya_id)
-                        VALUES (@oborudovanie_id, @tip_to_id, @data_nachala, @data_okonchaniya, @otvetstvenniy_id, @status, @stoimost, @avariya_id)";
+                        INSERT INTO plan_to (oborudovanie_id, tip_to_id, data_nachala, data_okonchaniya, otvetstvenniy_id, status, avariya_id)
+                        VALUES (@oborudovanie_id, @tip_to_id, @data_nachala, @data_okonchaniya, @otvetstvenniy_id, @status, @avariya_id)";
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@oborudovanie_id", equipment);
@@ -446,7 +431,6 @@ namespace WindowsFormsApp1
                         cmd.Parameters.AddWithValue("@data_okonchaniya", DateTime.Parse(endDate));
                         cmd.Parameters.AddWithValue("@otvetstvenniy_id", responsible);
                         cmd.Parameters.AddWithValue("@status", status);
-                        cmd.Parameters.AddWithValue("@stoimost", cost);
                         cmd.Parameters.AddWithValue("@avariya_id", selectedAvariyaId != -1 ? (object)selectedAvariyaId : DBNull.Value);
                         cmd.ExecuteNonQuery();
                     }
@@ -470,12 +454,11 @@ namespace WindowsFormsApp1
                 string endDate = json.GetProperty("endDate").GetString();
                 int responsible = json.GetProperty("responsible").GetInt32();
                 string status = json.GetProperty("status").GetString();
-                decimal cost = json.GetProperty("cost").GetDecimal();
 
                 using (var conn = new NpgsqlConnection(connString))
                 {
                     conn.Open();
-                    string sql = @"UPDATE plan_to SET oborudovanie_id=@oborudovanie_id, tip_to_id=@tip_to_id, data_nachala=@data_nachala, data_okonchaniya=@data_okonchaniya, otvetstvenniy_id=@otvetstvenniy_id, status=@status, stoimost=@stoimost WHERE id=@id";
+                    string sql = @"UPDATE plan_to SET oborudovanie_id=@oborudovanie_id, tip_to_id=@tip_to_id, data_nachala=@data_nachala, data_okonchaniya=@data_okonchaniya, otvetstvenniy_id=@otvetstvenniy_id, status=@status WHERE id=@id";
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
@@ -485,7 +468,6 @@ namespace WindowsFormsApp1
                         cmd.Parameters.AddWithValue("@data_okonchaniya", DateTime.Parse(endDate));
                         cmd.Parameters.AddWithValue("@otvetstvenniy_id", responsible);
                         cmd.Parameters.AddWithValue("@status", status);
-                        cmd.Parameters.AddWithValue("@stoimost", cost);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -586,28 +568,28 @@ namespace WindowsFormsApp1
                         break;
                     case "История ремонтов":
                         fileName = $"Отчет_об_истории_ремонтов_{DateTime.Now:dd-MM-yyyy}.csv";
-                        sql = @"SELECT COALESCE(r.equipment_name,o.nazvanie), COALESCE(r.tip_name,COALESCE(t.nazvanie,'Не указан')), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(r.data_okonchaniya,'DD.MM.YYYY'), COALESCE(r.sotrudnik_name,CONCAT(s.familiya,' ',LEFT(s.imya,1),'.',LEFT(s.otchestvo,1),'.')), COALESCE(r.opisanie,''), COALESCE(p.stoimost,0) FROM remont r JOIN plan_to p ON r.plan_id=p.id JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id JOIN sotrudniki s ON r.sotrudnik_id=s.id ORDER BY r.data_okonchaniya DESC";
-                        headers = new[] { "Оборудование", "Тип ТО", "Плановая дата", "Дата выполнения", "Исполнитель", "Описание работ", "Стоимость (руб)" };
+                        sql = @"SELECT COALESCE(r.equipment_name,o.nazvanie), COALESCE(r.tip_name,COALESCE(t.nazvanie,'Не указан')), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(r.data_okonchaniya,'DD.MM.YYYY'), COALESCE(r.sotrudnik_name,CONCAT(s.familiya,' ',LEFT(s.imya,1),'.',LEFT(s.otchestvo,1),'.')), COALESCE(r.opisanie,'') FROM remont r JOIN plan_to p ON r.plan_id=p.id JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id JOIN sotrudniki s ON r.sotrudnik_id=s.id ORDER BY r.data_okonchaniya DESC";
+                        headers = new[] { "Оборудование", "Тип ТО", "Плановая дата", "Дата выполнения", "Исполнитель", "Описание работ" };
                         break;
                     case "Завершенные":
                         fileName = $"Отчет_о_завершенных_планах_{DateTime.Now:dd-MM-yyyy}.csv";
-                        sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END, p.stoimost FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Завершен' ORDER BY p.data_okonchaniya DESC";
-                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией", "Стоимость (руб)" };
+                        sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Завершен' ORDER BY p.data_okonchaniya DESC";
+                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
                         break;
                     case "В работе":
                         fileName = $"Отчет_о_планах_в_работе_{DateTime.Now:dd-MM-yyyy}.csv";
-                        sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END, p.stoimost FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='В работе' ORDER BY p.data_nachala ASC";
-                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией", "Стоимость (руб)" };
+                        sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='В работе' ORDER BY p.data_nachala ASC";
+                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
                         break;
                     case "Просроченные":
                         fileName = $"Отчет_о_просроченных_планах_{DateTime.Now:dd-MM-yyyy}.csv";
-                        sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END, p.stoimost FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Просрочен' ORDER BY p.data_okonchaniya ASC";
-                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией", "Стоимость (руб)" };
+                        sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Просрочен' ORDER BY p.data_okonchaniya ASC";
+                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
                         break;
                     default:
                         fileName = $"Отчет_о_планах_ремонтов_{DateTime.Now:dd-MM-yyyy}.csv";
-                        sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END, p.stoimost FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id ORDER BY p.data_nachala DESC";
-                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией", "Стоимость (руб)" };
+                        sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id ORDER BY p.data_nachala DESC";
+                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
                         break;
                 }
 
@@ -653,23 +635,23 @@ namespace WindowsFormsApp1
                 string reportType = GetReportTypeFromSelect();
                 var save = new SaveFileDialog { Filter = "Rich Text Format (*.rtf)|*.rtf", RestoreDirectory = true };
                 string fileName = $"Отчет_о_планах_ремонтов_{DateTime.Now:dd-MM-yyyy}.rtf";
-                string sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END, p.stoimost FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id ORDER BY p.data_nachala DESC";
-                string[] headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией", "Стоимость (руб)" };
+                string sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id ORDER BY p.data_nachala DESC";
+                string[] headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
 
                 if (reportType == "Завершенные")
                 {
                     fileName = $"Отчет_о_завершенных_планах_{DateTime.Now:dd-MM-yyyy}.rtf";
-                    sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END, p.stoimost FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Завершен' ORDER BY p.data_okonchaniya DESC";
+                    sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Завершен' ORDER BY p.data_okonchaniya DESC";
                 }
                 else if (reportType == "В работе")
                 {
                     fileName = $"Отчет_о_планах_в_работе_{DateTime.Now:dd-MM-yyyy}.rtf";
-                    sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END, p.stoimost FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='В работе' ORDER BY p.data_nachala ASC";
+                    sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='В работе' ORDER BY p.data_nachala ASC";
                 }
                 else if (reportType == "Просроченные")
                 {
                     fileName = $"Отчет_о_просроченных_планах_{DateTime.Now:dd-MM-yyyy}.rtf";
-                    sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END, p.stoimost FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Просрочен' ORDER BY p.data_okonchaniya ASC";
+                    sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Просрочен' ORDER BY p.data_okonchaniya ASC";
                 }
                 else if (reportType == "Аварии")
                 {
@@ -680,8 +662,8 @@ namespace WindowsFormsApp1
                 else if (reportType == "История ремонтов")
                 {
                     fileName = $"Отчет_об_истории_ремонтов_{DateTime.Now:dd-MM-yyyy}.rtf";
-                    sql = @"SELECT COALESCE(r.equipment_name,o.nazvanie), COALESCE(r.tip_name,COALESCE(t.nazvanie,'Не указан')), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(r.data_okonchaniya,'DD.MM.YYYY'), COALESCE(r.sotrudnik_name,CONCAT(s.familiya,' ',LEFT(s.imya,1),'.',LEFT(s.otchestvo,1),'.')), COALESCE(r.opisanie,''), COALESCE(p.stoimost,0) FROM remont r JOIN plan_to p ON r.plan_id=p.id JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id JOIN sotrudniki s ON r.sotrudnik_id=s.id ORDER BY r.data_okonchaniya DESC";
-                    headers = new[] { "Оборудование", "Тип ТО", "Плановая дата", "Дата выполнения", "Исполнитель", "Описание работ", "Стоимость (руб)" };
+                    sql = @"SELECT COALESCE(r.equipment_name,o.nazvanie), COALESCE(r.tip_name,COALESCE(t.nazvanie,'Не указан')), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(r.data_okonchaniya,'DD.MM.YYYY'), COALESCE(r.sotrudnik_name,CONCAT(s.familiya,' ',LEFT(s.imya,1),'.',LEFT(s.otchestvo,1),'.')), COALESCE(r.opisanie,'') FROM remont r JOIN plan_to p ON r.plan_id=p.id JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id JOIN sotrudniki s ON r.sotrudnik_id=s.id ORDER BY r.data_okonchaniya DESC";
+                    headers = new[] { "Оборудование", "Тип ТО", "Плановая дата", "Дата выполнения", "Исполнитель", "Описание работ" };
                 }
 
                 save.FileName = fileName;
@@ -733,9 +715,8 @@ namespace WindowsFormsApp1
                 using (var conn = new NpgsqlConnection(connString))
                 {
                     conn.Open();
-                    string sqlPlans = "SELECT COUNT(*) as total, COUNT(CASE WHEN status='Завершен' THEN 1 END) as completed, COUNT(CASE WHEN status='В работе' THEN 1 END) as in_progress, COUNT(CASE WHEN status='Просрочен' THEN 1 END) as overdue, COALESCE(SUM(stoimost),0) as total_cost FROM plan_to";
+                    string sqlPlans = "SELECT COUNT(*) as total, COUNT(CASE WHEN status='Завершен' THEN 1 END) as completed, COUNT(CASE WHEN status='В работе' THEN 1 END) as in_progress, COUNT(CASE WHEN status='Просрочен' THEN 1 END) as overdue FROM plan_to";
                     int totalPlans = 0, completed = 0, inProgress = 0, overdue = 0;
-                    decimal totalCost = 0;
                     using (var cmd = new NpgsqlCommand(sqlPlans, conn))
                     using (var reader = cmd.ExecuteReader())
                     {
@@ -745,7 +726,6 @@ namespace WindowsFormsApp1
                             completed = reader.GetInt32(1);
                             inProgress = reader.GetInt32(2);
                             overdue = reader.GetInt32(3);
-                            totalCost = reader.GetDecimal(4);
                         }
                     }
 
@@ -779,7 +759,6 @@ namespace WindowsFormsApp1
                                  $"║ ├─ В работе: {inProgress,-39} ║\n" +
                                  $"║ └─ Просрочено: {overdue,-38} ║\n" +
                                  $"║ Процент выполнения: {percent,-3}%                                     ║\n" +
-                                 $"║ Общая стоимость: {totalCost:N2} руб.                     ║\n" +
                                  $"╟──────────────────────────────────────────────────────────╢\n" +
                                  $"║ АВАРИИ:                                                  ║\n" +
                                  $"║ Всего аварий: {totalAvariya,-39} ║\n" +

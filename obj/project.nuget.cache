@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "34P6SHFEoqs=",
+  "dgSpecHash": "3h+Q8sU3CqQ=",
   "success": true,
   "projectFilePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\WindowsFormsApp1.csproj",
   "expectedPackageFiles": [
@@ -93,10 +93,10 @@
     "C:\\Users\\Daniil\\.nuget\\packages\\system.windows.extensions\\6.0.0\\system.windows.extensions.6.0.0.nupkg.sha512",
     "C:\\Users\\Daniil\\.nuget\\packages\\system.xml.readerwriter\\4.3.0\\system.xml.readerwriter.4.3.0.nupkg.sha512",
     "C:\\Users\\Daniil\\.nuget\\packages\\system.xml.xmldocument\\4.3.0\\system.xml.xmldocument.4.3.0.nupkg.sha512",
-    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\9.0.12\\microsoft.windowsdesktop.app.ref.9.0.12.nupkg.sha512",
-    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.12\\microsoft.netcore.app.ref.9.0.12.nupkg.sha512",
-    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.12\\microsoft.aspnetcore.app.ref.9.0.12.nupkg.sha512",
-    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\9.0.12\\microsoft.netcore.app.host.win-x64.9.0.12.nupkg.sha512"
+    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\9.0.15\\microsoft.windowsdesktop.app.ref.9.0.15.nupkg.sha512",
+    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.15\\microsoft.netcore.app.ref.9.0.15.nupkg.sha512",
+    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.15\\microsoft.aspnetcore.app.ref.9.0.15.nupkg.sha512",
+    "C:\\Users\\Daniil\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\9.0.15\\microsoft.netcore.app.host.win-x64.9.0.15.nupkg.sha512"
   ],
   "logs": [
     {
@@ -108,7 +108,7 @@
       "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Bunifu.Charts.WinForms",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -120,7 +120,7 @@
       "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Bunifu.UI.WinForms",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -132,7 +132,7 @@
       "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Bunifu.Utils",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -144,7 +144,7 @@
       "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "GumroadLicensing",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -156,7 +156,7 @@
       "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Jenga.NET",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -168,7 +168,7 @@
       "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Kimtoo.BindingProvider",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -180,7 +180,7 @@
       "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Kimtoo.ButtonGroup",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -192,7 +192,7 @@
       "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Kimtoo.DbManager",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -204,7 +204,7 @@
       "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Kimtoo.NavigationMenu",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -216,7 +216,7 @@
       "filePath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\WindowsFormsApp1.csproj",
       "libraryId": "Kimtoo.ValidationProvider",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     }
   ]

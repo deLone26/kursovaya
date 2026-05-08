@@ -2,240 +2,598 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Мои задания - Слесарь</title>
+    <title>Слесарь - Рабочее место</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .app { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #1e3c72, #2a5298); padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; color: white; }
-        .user { display: flex; align-items: center; gap: 15px; }
-        .logout-btn { background: #dc3545; border: none; color: white; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; }
-        .hidden { display: none; }
-        .stats { display: flex; gap: 20px; margin: 25px; flex-wrap: wrap; }
-        .stat { background: #f8f9fa; border-radius: 12px; padding: 15px 25px; text-align: center; flex: 1; min-width: 120px; }
-        .stat-value { font-size: 32px; font-weight: bold; color: #1e3c72; }
-        .stat-label { font-size: 12px; color: #666; margin-top: 5px; }
-        .filters { display: flex; gap: 15px; margin: 0 25px 20px 25px; flex-wrap: wrap; align-items: flex-end; }
-        .filter-group { display: flex; flex-direction: column; gap: 5px; }
-        .filter-group label { font-size: 12px; font-weight: 600; color: #666; }
-        input { padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; }
-        button { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        button:hover { background: #0069d9; }
-        .check-label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; margin: 25px; width: calc(100% - 50px); }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }
-        th { background: #f8f9fa; font-weight: 600; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #f1f5f9; padding: 20px; }
+        .app { max-width: 1400px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; }
+        
+        /* Шапка */
+        .header { background: #0f172a; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; color: white; }
+        .user-info { display: flex; align-items: center; gap: 20px; }
+        #userName { font-size: 14px; font-weight: 500; }
+        .logout-btn { background: #ef4444; border: none; color: white; padding: 6px 14px; border-radius: 8px; cursor: pointer; }
+        .logout-btn:hover { background: #dc2626; }
+        
+        /* Уведомления */
+        .notifications-panel { position: relative; }
+        .bell-icon { background: none; border: none; font-size: 22px; cursor: pointer; color: white; position: relative; }
+        .badge { position: absolute; top: -5px; right: -10px; background: #ef4444; color: white; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 10px; min-width: 18px; text-align: center; display: none; }
+        .notif-dropdown { position: absolute; right: 0; top: 35px; width: 320px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 100; display: none; max-height: 400px; overflow-y: auto; }
+        .notif-header { padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #e2e8f0; }
+        .notif-item { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+        .notif-item:hover { background: #f8fafc; }
+        .notif-item.unread { background: #eff6ff; }
+        .notif-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+        .notif-time { font-size: 11px; color: #94a3b8; }
+        
+        /* Статистика - 4 карточки */
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            padding: 24px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .stat-icon { font-size: 32px; margin-bottom: 8px; }
+        .stat-value { font-size: 32px; font-weight: 700; color: #0f172a; }
+        .stat-label { font-size: 12px; color: #64748b; margin-top: 5px; }
+        .stat-unit { font-size: 12px; color: #94a3b8; margin-left: 2px; }
+        
+        /* Вкладки */
+        .tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0 24px;
+            gap: 8px;
+        }
+        .tab-btn {
+            padding: 14px 24px;
+            background: none;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn:hover { color: #3b82f6; }
+        .tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+        
+        .tab-content { display: none; padding: 24px; }
+        .tab-content.active { display: block; }
+        
+        /* Фильтры */
+        .filters-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
+        .filter-group label { font-size: 12px; font-weight: 600; color: #475569; }
+        input, select { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+        .btn-primary { background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary { background: #64748b; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+        
+        /* Таблицы */
+        .table-container { overflow-x: auto; border-radius: 12px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f8fafc; font-weight: 600; font-size: 13px; color: #475569; }
+        tr:hover { background: #f8fafc; }
+        
         .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
-        .status-completed { background: #d4edda; color: #155724; }
-        .status-progress { background: #cce5ff; color: #004085; }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .btn-complete { background: #28a745; padding: 5px 12px; font-size: 12px; }
-        .btn-complete:hover { background: #218838; }
-        .loading { text-align: center; padding: 40px; color: #999; margin: 25px; }
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-content { background: white; border-radius: 12px; width: 450px; max-width: 90%; }
-        .modal-header { padding: 15px 20px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
-        .close { font-size: 24px; cursor: pointer; color: #999; }
-        .close:hover { color: #333; }
+        .status-pending { background: #fef3c7; color: #d97706; }
+        .status-overdue { background: #fee2e2; color: #dc2626; }
+        .status-today { background: #dbeafe; color: #2563eb; }
+        
+        .btn-report {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-report:hover { background: #16a34a; }
+        
+        /* Модальное окно */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 500px;
+            max-width: 90%;
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .close { font-size: 24px; cursor: pointer; color: #94a3b8; }
         .modal-body { padding: 20px; }
-        .modal-footer { padding: 15px 20px; border-top: 1px solid #dee2e6; display: flex; justify-content: flex-end; gap: 10px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
-        textarea { width: 100%; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; resize: vertical; font-family: inherit; }
-        .btn-secondary { background: #6c757d; }
-        .toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 12px 20px; border-radius: 8px; z-index: 1100; }
-        .toast.success { background: #28a745; }
-        .toast.error { background: #dc3545; }
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; color: #475569; }
+        textarea { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; resize: vertical; font-family: inherit; }
+        
+        /* Статистическая таблица */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stats-block {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        .stats-block h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #0f172a;
+            border-bottom: 2px solid #3b82f6;
+            display: inline-block;
+            padding-bottom: 5px;
+        }
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .stats-row:last-child { border-bottom: none; }
+        .stats-label { font-weight: 500; color: #475569; }
+        .stats-number { font-size: 20px; font-weight: 700; color: #0f172a; }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 1100;
+            display: none;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.info { background: #3b82f6; }
+        
+        .loading, .empty { text-align: center; padding: 40px; color: #94a3b8; }
     </style>
 </head>
 <body>
+
 <div class="app">
+    <!-- Шапка -->
     <div class="header">
-        <h2>Мои задания</h2>
-        <div class="user">
+        <h1>Рабочее место слесаря</h1>
+        <div class="user-info">
             <span id="userName">Загрузка...</span>
-            <button id="logoutBtn" class="logout-btn hidden">Выход</button>
+            <div class="notifications-panel">
+                <button class="bell-icon" id="bellBtn">🔔</button>
+                <span class="badge" id="notifBadge">0</span>
+                <div class="notif-dropdown" id="notifDropdown">
+                    <div class="notif-header">Уведомления</div>
+                    <div id="notifList"></div>
+                </div>
+            </div>
+            <button class="logout-btn" id="logoutBtn">Выход</button>
         </div>
     </div>
 
-    <div class="stats" id="statsPanel"></div>
-
-    <div class="filters">
-        <div class="filter-group"><label>Дата от</label><input type="date" id="startDate"></div>
-        <div class="filter-group"><label>Дата до</label><input type="date" id="endDate"></div>
-        <div class="filter-group"><label class="check-label"><input type="checkbox" id="showAll"> <span>Показать все</span></label></div>
-        <button id="applyFilterBtn">Применить</button>
+    <!-- 4 карточки статистики (вместо старого счетчика) -->
+    <div class="stats-cards">
+        <div class="stat-card">
+            <div class="stat-icon">🚨</div>
+            <div class="stat-value" id="statEmergency">0</div>
+            <div class="stat-label">Аварий за месяц</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-value" id="statCompletion">0<span class="stat-unit">%</span></div>
+            <div class="stat-label">Выполнение плана</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">⏱️</div>
+            <div class="stat-value" id="statAvgTime">0<span class="stat-unit">дн</span></div>
+            <div class="stat-label">Среднее время выполнения</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🔧</div>
+            <div class="stat-value" id="statParts">0</div>
+            <div class="stat-label">Заменено запчастей</div>
+        </div>
     </div>
 
-    <div id="tasksTable">Загрузка...</div>
+    <!-- Вкладки -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="tasks">📋 Текущие задачи</button>
+        <button class="tab-btn" data-tab="history">📜 История работ</button>
+        <button class="tab-btn" data-tab="statistics">📈 Подробная статистика</button>
+    </div>
+
+    <!-- Вкладка "Текущие задачи" -->
+    <div id="tasksTab" class="tab-content active">
+        <div class="table-container">
+            <table style="width:100%">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Оборудование</th>
+                        <th>Описание</th>
+                        <th>Срок</th>
+                        <th>Статус</th>
+                        <th>Отчёт</th>
+                    </tr>
+                </thead>
+                <tbody id="tasksTableBody">
+                    <tr><td colspan="6" class="loading">Загрузка...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Вкладка "История работ" -->
+    <div id="historyTab" class="tab-content">
+        <div class="filters-bar">
+            <div class="filter-group"><label>С</label><input type="date" id="historyStartDate"></div>
+            <div class="filter-group"><label>По</label><input type="date" id="historyEndDate"></div>
+            <button class="btn-primary" id="applyHistoryFilterBtn">Показать</button>
+            <button class="btn-secondary" id="resetHistoryFilterBtn">Сбросить</button>
+        </div>
+        <div class="table-container">
+            <table style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Оборудование</th>
+                        <th>Выполненные работы</th>
+                        <th>Заменённая деталь</th>
+                        <th>Сотрудник</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <tr><td colspan="5" class="loading">Загрузка...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Вкладка "Подробная статистика" -->
+    <div id="statisticsTab" class="tab-content">
+        <div class="stats-grid">
+            <div class="stats-block">
+                <h3>📊 Выполнение задач</h3>
+                <div class="stats-row"><span class="stats-label">Всего назначено:</span><span class="stats-number" id="statTotalTasks">0</span></div>
+                <div class="stats-row"><span class="stats-label">Выполнено:</span><span class="stats-number" id="statCompletedTasks">0</span></div>
+                <div class="stats-row"><span class="stats-label">В работе:</span><span class="stats-number" id="statInProgressTasks">0</span></div>
+                <div class="stats-row"><span class="stats-label">Просрочено:</span><span class="stats-number" id="statOverdueTasks">0</span></div>
+                <div class="stats-row"><span class="stats-label">Процент выполнения:</span><span class="stats-number" id="statDetailCompletion">0%</span></div>
+            </div>
+            <div class="stats-block">
+                <h3>🔧 Работа с запчастями</h3>
+                <div class="stats-row"><span class="stats-label">Всего заменено деталей:</span><span class="stats-number" id="statTotalParts">0</span></div>
+                <div class="stats-row"><span class="stats-label">Наиболее часто заменяемая:</span><span class="stats-number" id="statTopPart">—</span></div>
+            </div>
+            <div class="stats-block">
+                <h3>⏱️ Временные показатели</h3>
+                <div class="stats-row"><span class="stats-label">Среднее время выполнения:</span><span class="stats-number" id="statDetailAvgTime">0 дн</span></div>
+                <div class="stats-row"><span class="stats-label">Минимальное время:</span><span class="stats-number" id="statMinTime">0 дн</span></div>
+                <div class="stats-row"><span class="stats-label">Максимальное время:</span><span class="stats-number" id="statMaxTime">0 дн</span></div>
+            </div>
+            <div class="stats-block">
+                <h3>🚨 Аварийные ситуации</h3>
+                <div class="stats-row"><span class="stats-label">Аварий за месяц:</span><span class="stats-number" id="statMonthEmergency">0</span></div>
+                <div class="stats-row"><span class="stats-label">Аварий за год:</span><span class="stats-number" id="statYearEmergency">0</span></div>
+                <div class="stats-row"><span class="stats-label">Среднее время устранения:</span><span class="stats-number" id="statAvgFixTime">0 дн</span></div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div id="completeModal" class="modal" style="display:none">
+<!-- Модальное окно для отчёта -->
+<div id="reportModal" class="modal" style="display:none">
     <div class="modal-content">
-        <div class="modal-header"><h3>Выполнение задания</h3><span class="close" onclick="closeModal('completeModal')">&times;</span></div>
-        <div class="modal-body">
-            <input type="hidden" id="taskId">
-            <div class="form-group"><label>Дата начала</label><input type="date" id="actualStartDate"></div>
-            <div class="form-group"><label>Дата окончания</label><input type="date" id="actualEndDate"></div>
-            <div class="form-group"><label>Описание работ</label><textarea id="completionDesc" rows="4" placeholder="Что было сделано..."></textarea></div>
+        <div class="modal-header">
+            <h3>📝 Отчёт о выполненной работе</h3>
+            <span class="close" onclick="closeModal('reportModal')">&times;</span>
         </div>
-        <div class="modal-footer"><button id="confirmCompleteBtn" class="btn-complete">Отметить завершённым</button><button class="btn-secondary" onclick="closeModal('completeModal')">Отмена</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="reportTaskId">
+            <div class="form-group">
+                <label>Оборудование</label>
+                <input type="text" id="reportEquipment" readonly style="background:#f1f5f9;">
+            </div>
+            <div class="form-group">
+                <label>Заменённая деталь</label>
+                <select id="reportSparePart">
+                    <option value="">-- Выберите деталь --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Описание работ</label>
+                <textarea id="reportDescription" rows="4" placeholder="Что было сделано..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Дата начала</label>
+                <input type="date" id="reportStartDate">
+            </div>
+            <div class="form-group">
+                <label>Дата окончания</label>
+                <input type="date" id="reportEndDate">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-primary" id="submitReportBtn">📤 Отправить отчёт</button>
+            <button class="btn-secondary" onclick="closeModal('reportModal')">Отмена</button>
+        </div>
     </div>
 </div>
 
-<div id="toast" class="toast" style="display:none"></div>
+<div id="toast" class="toast"></div>
 
 <script>
     let currentEmployeeId = 0;
-    let currentUserRole = '';
+    let currentEmployeeFullName = '';
+    let notifications = [];
+    let notifiedTasks = new Set();
 
-    function setCurrentUser(id, login, role, fullName) {
-        currentEmployeeId = id;
-        currentUserRole = role;
-        document.getElementById('userName').innerHTML = fullName;
-        
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (role === 'app_slesar') {
-            logoutBtn.classList.remove('hidden');
-            logoutBtn.onclick = function() { logout(); };
-        } else {
-            logoutBtn.classList.add('hidden');
+    function sendToCSharp(action, data) {
+        if (window.chrome && window.chrome.webview) {
+            let msg = { action: action };
+            if (data) for (let k in data) msg[k] = data[k];
+            window.chrome.webview.postMessage(JSON.stringify(msg));
         }
     }
 
-    function logout() {
-        if (window.chrome?.webview) {
-            window.chrome.webview.postMessage(JSON.stringify({ action: 'logout' }));
-        }
-    }
-
-    function showToast(msg, type) {
-        let toast = document.getElementById('toast');
-        toast.textContent = msg;
-        toast.className = 'toast ' + (type || '');
-        toast.style.display = 'block';
-        setTimeout(() => toast.style.display = 'none', 3000);
-    }
-
-    function closeModal(id) {
-        document.getElementById(id).style.display = 'none';
-    }
-
-    window.receiveFromCSharp = function(command, data) {
-        if (command === 'displayTasks') displayTasks(data);
-        else if (command === 'updateStatistics') updateStatistics(data);
-        else if (command === 'showSuccess') showToast(data, 'success');
-        else if (command === 'showError') showToast(data, 'error');
-    };
-
-    function loadTasks(startDate, endDate, showAll) {
-        if (window.chrome?.webview) {
-            window.chrome.webview.postMessage(JSON.stringify({ action: 'loadTasks', startDate, endDate, showAll }));
-        }
+    function loadTasks() { sendToCSharp('loadTasks'); }
+    function loadHistory(s, e) { sendToCSharp('loadHistory', { startDate: s || '', endDate: e || '' }); }
+    function loadStatistics() { sendToCSharp('loadStatistics'); }
+    function loadSpareParts(id) { sendToCSharp('loadSpareParts', { equipmentId: id }); }
+    function submitReport(taskId, spareId, desc, sDate, eDate) {
+        sendToCSharp('submitReport', { taskId: taskId, sparePartId: spareId, description: desc, startDate: sDate, endDate: eDate });
     }
 
     function displayTasks(data) {
         let tasks = typeof data === 'string' ? JSON.parse(data) : data;
+        let tbody = document.getElementById('tasksTableBody');
         if (!tasks || tasks.length === 0) {
-            document.getElementById('tasksTable').innerHTML = '<div class="loading">Нет заданий</div>';
+            tbody.innerHTML = '<tr><td colspan="6" class="empty">Нет активных задач</td></tr>';
             return;
         }
-        
-        // Для слесаря показываем только незавершённые задания
-        let activeTasks = tasks.filter(t => t.status !== 'Завершен');
-        
-        if (activeTasks.length === 0) {
-            document.getElementById('tasksTable').innerHTML = '<div class="loading">Нет активных заданий</div>';
-            updateStatistics({ total: tasks.length, completed: tasks.filter(t => t.status === 'Завершен').length, inProgress: tasks.filter(t => t.status === 'В работе').length, overdue: tasks.filter(t => t.status === 'Просрочен').length });
+        let today = new Date().toISOString().split('T')[0];
+        let html = '';
+        for (let t of tasks) {
+            let cls = 'status-pending', txt = 'Ожидает';
+            if (t.due_date && t.due_date < today) { cls = 'status-overdue'; txt = 'Просрочена'; }
+            else if (t.due_date && t.due_date === today) { cls = 'status-today'; txt = 'На сегодня'; }
+            html += `<tr>
+                <td>${t.id}</td>
+                <td>${escapeHtml(t.equipment_name || '-')}</td>
+                <td>${escapeHtml(t.description || '-')}</td>
+                <td>${t.due_date || '-'}</td>
+                <td><span class="status-badge ${cls}">${txt}</span></td>
+                <td><button class="btn-report" onclick="openReportModal(${t.id}, '${escapeHtml(t.equipment_name || '')}', ${t.equipment_id || 0})">📝 Отчёт</button></td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+    }
+
+    function displayHistory(data) {
+        let history = typeof data === 'string' ? JSON.parse(data) : data;
+        let tbody = document.getElementById('historyTableBody');
+        if (!history || history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">Нет записей за выбранный период</td></tr>';
             return;
         }
-        
-        let html = '<table><thead><tr><th>ID</th><th>Оборудование</th><th>Тип ТО</th><th>Плановая дата</th><th>Статус</th><th></th></tr></thead><tbody>';
-        for (let t of activeTasks) {
-            let statusClass = (t.status === 'Завершен') ? 'status-completed' : ((t.status === 'В работе') ? 'status-progress' : 'status-pending');
-            let statusText = (t.status === 'Завершен') ? 'Выполнено' : ((t.status === 'В работе') ? 'В работе' : 'Ожидает');
-            html += '<tr>';
-            html += '<td>' + t.id + '</td>';
-            html += '<td>' + escapeHtml(t.equipment) + '</td>';
-            html += '<td>' + escapeHtml(t.tip) + '</td>';
-            html += '<td>' + (t.start_date || '—') + '</td>';
-            html += '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>';
-            html += '<td><button class="btn-complete" onclick="openCompleteModal(' + t.id + ')">Отметить завершённым</button></td>';
-            html += '</tr>';
+        let html = '';
+        for (let r of history) {
+            html += `<tr>
+                <td>${r.completion_date || '-'}</td>
+                <td>${escapeHtml(r.equipment || '-')}</td>
+                <td>${escapeHtml(r.description || '-')}</td>
+                <td>${escapeHtml(r.replaced_part || '-')}</td>
+                <td>${escapeHtml(r.employee_name || '-')}</td>
+            </tr>`;
         }
-        html += '</tbody></table>';
-        document.getElementById('tasksTable').innerHTML = html;
-        
-        // Обновляем статистику по всем заданиям
-        updateStatistics({
-            total: tasks.length,
-            completed: tasks.filter(t => t.status === 'Завершен').length,
-            inProgress: tasks.filter(t => t.status === 'В работе').length,
-            overdue: tasks.filter(t => t.status === 'Просрочен').length
-        });
+        tbody.innerHTML = html;
     }
 
     function updateStatistics(data) {
         let s = typeof data === 'string' ? JSON.parse(data) : data;
-        document.getElementById('statsPanel').innerHTML = 
-            '<div class="stat"><div class="stat-value">' + (s.total || 0) + '</div><div class="stat-label">Всего заданий</div></div>' +
-            '<div class="stat"><div class="stat-value">' + (s.completed || 0) + '</div><div class="stat-label">Выполнено</div></div>' +
-            '<div class="stat"><div class="stat-value">' + (s.inProgress || 0) + '</div><div class="stat-label">В работе</div></div>' +
-            '<div class="stat"><div class="stat-value">' + (s.overdue || 0) + '</div><div class="stat-label">Просрочено</div></div>';
+        document.getElementById('statEmergency').innerHTML = s.emergencyCount || 0;
+        document.getElementById('statCompletion').innerHTML = (s.completionRate || 0) + '<span class="stat-unit">%</span>';
+        document.getElementById('statAvgTime').innerHTML = (s.avgCompletionDays || 0) + '<span class="stat-unit">дн</span>';
+        document.getElementById('statParts').innerHTML = s.partsReplaced || 0;
+        
+        // Детальная статистика
+        document.getElementById('statTotalTasks').innerHTML = s.totalTasks || 0;
+        document.getElementById('statCompletedTasks').innerHTML = s.completedTasks || 0;
+        document.getElementById('statInProgressTasks').innerHTML = s.inProgressTasks || 0;
+        document.getElementById('statOverdueTasks').innerHTML = s.overdueTasks || 0;
+        document.getElementById('statDetailCompletion').innerHTML = (s.completionRate || 0) + '%';
+        document.getElementById('statTotalParts').innerHTML = s.partsReplaced || 0;
+        document.getElementById('statTopPart').innerHTML = s.topPart || '—';
+        document.getElementById('statDetailAvgTime').innerHTML = (s.avgCompletionDays || 0) + ' дн';
+        document.getElementById('statMinTime').innerHTML = (s.minCompletionDays || 0) + ' дн';
+        document.getElementById('statMaxTime').innerHTML = (s.maxCompletionDays || 0) + ' дн';
+        document.getElementById('statMonthEmergency').innerHTML = s.emergencyCount || 0;
+        document.getElementById('statYearEmergency').innerHTML = s.yearEmergencyCount || 0;
+        document.getElementById('statAvgFixTime').innerHTML = (s.avgFixTime || 0) + ' дн';
     }
 
-    function openCompleteModal(taskId) {
-        document.getElementById('taskId').value = taskId;
-        document.getElementById('actualStartDate').value = new Date().toISOString().split('T')[0];
-        document.getElementById('actualEndDate').value = '';
-        document.getElementById('completionDesc').value = '';
-        document.getElementById('completeModal').style.display = 'flex';
-    }
-
-    function confirmComplete() {
-        let id = document.getElementById('taskId').value;
-        let desc = document.getElementById('completionDesc').value;
-        let start = document.getElementById('actualStartDate').value;
-        let end = document.getElementById('actualEndDate').value;
-        if (!desc) { showToast('Введите описание!', 'error'); return; }
-        if (window.chrome?.webview) {
-            window.chrome.webview.postMessage(JSON.stringify({
-                action: 'completeTask',
-                id: parseInt(id),
-                description: desc,
-                actualStartDate: start,
-                actualEndDate: end
-            }));
+    function displaySpareParts(data) {
+        let parts = typeof data === 'string' ? JSON.parse(data) : data;
+        let select = document.getElementById('reportSparePart');
+        if (!select) return;
+        select.innerHTML = '<option value="">-- Выберите деталь --</option>';
+        if (parts && parts.length > 0) {
+            for (let p of parts) select.innerHTML += `<option value="${p.id}">${escapeHtml(p.name)}</option>`;
         }
-        closeModal('completeModal');
     }
 
-    function escapeHtml(s) {
-        if (!s) return '';
-        return s.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
+    function openReportModal(taskId, eqName, eqId) {
+        document.getElementById('reportTaskId').value = taskId;
+        document.getElementById('reportEquipment').value = eqName;
+        document.getElementById('reportDescription').value = '';
+        document.getElementById('reportStartDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('reportEndDate').value = '';
+        loadSpareParts(eqId);
+        document.getElementById('reportModal').style.display = 'flex';
     }
 
-    let today = new Date();
-    let monthAgo = new Date();
-    monthAgo.setMonth(monthAgo.getMonth() - 1);
-    document.getElementById('startDate').value = monthAgo.toISOString().split('T')[0];
-    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    
+    function showToast(msg, type) {
+        let t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast ' + (type || '');
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;'));
+    }
 
-    document.getElementById('applyFilterBtn').onclick = function() {
-        let start = document.getElementById('startDate').value;
-        let end = document.getElementById('endDate').value;
-        let all = document.getElementById('showAll').checked;
-        loadTasks(start, end, all);
+    function setDefaultDates() {
+        let today = new Date();
+        let monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1);
+        let start = document.getElementById('historyStartDate');
+        let end = document.getElementById('historyEndDate');
+        if (start) start.value = monthAgo.toISOString().split('T')[0];
+        if (end) end.value = today.toISOString().split('T')[0];
+    }
+
+    function setupEvents() {
+        document.getElementById('logoutBtn').onclick = () => sendToCSharp('logout');
+        document.getElementById('applyHistoryFilterBtn').onclick = () => {
+            let s = document.getElementById('historyStartDate')?.value || '';
+            let e = document.getElementById('historyEndDate')?.value || '';
+            loadHistory(s, e);
+        };
+        document.getElementById('resetHistoryFilterBtn').onclick = () => {
+            setDefaultDates();
+            let s = document.getElementById('historyStartDate')?.value || '';
+            let e = document.getElementById('historyEndDate')?.value || '';
+            loadHistory(s, e);
+        };
+        document.getElementById('submitReportBtn').onclick = () => {
+            let tid = document.getElementById('reportTaskId')?.value;
+            let sid = document.getElementById('reportSparePart')?.value;
+            let desc = document.getElementById('reportDescription')?.value;
+            let sd = document.getElementById('reportStartDate')?.value;
+            let ed = document.getElementById('reportEndDate')?.value;
+            if (!sid) { showToast('Выберите деталь!', 'error'); return; }
+            if (!desc) { showToast('Введите описание!', 'error'); return; }
+            submitReport(tid, sid, desc, sd, ed);
+            closeModal('reportModal');
+        };
+        
+        let bell = document.getElementById('bellBtn'), drop = document.getElementById('notifDropdown');
+        if (bell && drop) {
+            bell.onclick = (e) => { e.stopPropagation(); drop.style.display = drop.style.display === 'block' ? 'none' : 'block'; };
+            document.addEventListener('click', () => drop.style.display = 'none');
+            drop.addEventListener('click', (e) => e.stopPropagation());
+        }
+    }
+
+    function setupTabs() {
+        let btns = document.querySelectorAll('.tab-btn');
+        let tasksTab = document.getElementById('tasksTab');
+        let historyTab = document.getElementById('historyTab');
+        let statisticsTab = document.getElementById('statisticsTab');
+        
+        for (let btn of btns) {
+            btn.onclick = () => {
+                for (let b of btns) b.classList.remove('active');
+                btn.classList.add('active');
+                let tab = btn.getAttribute('data-tab');
+                
+                tasksTab.classList.toggle('active', tab === 'tasks');
+                historyTab.classList.toggle('active', tab === 'history');
+                statisticsTab.classList.toggle('active', tab === 'statistics');
+                
+                if (tab === 'tasks') loadTasks();
+                if (tab === 'history') {
+                    let s = document.getElementById('historyStartDate')?.value || '';
+                    let e = document.getElementById('historyEndDate')?.value || '';
+                    loadHistory(s, e);
+                }
+                if (tab === 'statistics') loadStatistics();
+            };
+        }
+    }
+
+    window.setCurrentUser = function(id, login, role, name) {
+        currentEmployeeId = id;
+        currentEmployeeFullName = name || 'Слесарь';
+        document.getElementById('userName').innerHTML = currentEmployeeFullName;
+        loadTasks();
+        loadStatistics();
+        setDefaultDates();
+        let s = document.getElementById('historyStartDate')?.value || '';
+        let e = document.getElementById('historyEndDate')?.value || '';
+        loadHistory(s, e);
+        
+        setInterval(() => loadStatistics(), 30000);
     };
 
-    document.getElementById('confirmCompleteBtn').onclick = confirmComplete;
+    window.receiveFromCSharp = function(cmd, data) {
+        if (cmd === 'displayTasks') displayTasks(data);
+        else if (cmd === 'displayHistory') displayHistory(data);
+        else if (cmd === 'updateStatistics') updateStatistics(data);
+        else if (cmd === 'displaySpareParts') displaySpareParts(data);
+        else if (cmd === 'onNewTask') { showToast('📋 Новая задача', 'info'); loadTasks(); loadStatistics(); }
+        else if (cmd === 'onEmergency') { showToast('🚨 Авария!', 'error'); loadTasks(); loadStatistics(); }
+        else if (cmd === 'showSuccess') showToast(data, 'success');
+        else if (cmd === 'showError') showToast(data, 'error');
+    };
 
-    loadTasks('', '', true);
+    document.addEventListener('DOMContentLoaded', () => {
+        setupEvents();
+        setupTabs();
+        if (Notification.permission === 'default') Notification.requestPermission();
+    });
 </script>
 </body>
 </html>

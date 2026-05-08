@@ -18,7 +18,6 @@ namespace WindowsFormsApp1
         private int currentUserId;
         private WebView2 webView;
         private string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
-        private bool useRealDatabase = true;
 
         public FormPlansTO(string userConnectionString, int userId)
         {
@@ -44,6 +43,7 @@ namespace WindowsFormsApp1
 
                 await webView.EnsureCoreWebView2Async(null);
 
+                await webView.CoreWebView2.Profile.ClearBrowsingDataAsync();
                 webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
                 webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = true;
 
@@ -124,29 +124,21 @@ namespace WindowsFormsApp1
         {
             try
             {
-                if (useRealDatabase)
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    using (var conn = new NpgsqlConnection(connectionString))
-                    {
-                        conn.Open();
-                        var employees = GetEmployeesList(conn);
-                        var plans = GetPlansList(conn);
-                        var urgent = GetUrgentRemindersList(conn);
+                    conn.Open();
+                    var employees = GetEmployeesList(conn);
+                    var plans = GetPlansList(conn);
+                    var urgent = GetUrgentRemindersList(conn);
 
-                        var data = new { employees = employees, plans = plans, urgent = urgent };
-                        string jsonData = JsonSerializer.Serialize(data);
-                        SendToWebView("initialData", jsonData);
-                    }
-                }
-                else
-                {
-                    SendTestData();
+                    var data = new { employees = employees, plans = plans, urgent = urgent };
+                    string jsonData = JsonSerializer.Serialize(data);
+                    SendToWebView("initialData", jsonData);
                 }
             }
             catch (Exception ex)
             {
-                SendTestData();
-                SendToWebView("showError", $"Ошибка БД, загружены тестовые данные: {ex.Message}");
+                SendToWebView("showError", $"Ошибка загрузки данных: {ex.Message}");
             }
         }
 
@@ -154,24 +146,16 @@ namespace WindowsFormsApp1
         {
             try
             {
-                if (useRealDatabase)
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    using (var conn = new NpgsqlConnection(connectionString))
-                    {
-                        conn.Open();
-                        var employees = GetEmployeesList(conn);
-                        string jsonData = JsonSerializer.Serialize(employees);
-                        SendToWebView("employeesData", jsonData);
-                    }
-                }
-                else
-                {
-                    SendTestData();
+                    conn.Open();
+                    var employees = GetEmployeesList(conn);
+                    string jsonData = JsonSerializer.Serialize(employees);
+                    SendToWebView("employeesData", jsonData);
                 }
             }
             catch (Exception ex)
             {
-                SendTestData();
                 SendToWebView("showError", ex.Message);
             }
         }
@@ -184,24 +168,16 @@ namespace WindowsFormsApp1
                 string view = json.GetProperty("view").GetString();
                 int? employeeId = json.TryGetProperty("employeeId", out var empProp) ? empProp.GetInt32() : (int?)null;
 
-                if (useRealDatabase)
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    using (var conn = new NpgsqlConnection(connectionString))
-                    {
-                        conn.Open();
-                        var plans = GetPlansList(conn, startDate, view, employeeId);
-                        string jsonData = JsonSerializer.Serialize(plans);
-                        SendToWebView("plansData", jsonData);
-                    }
-                }
-                else
-                {
-                    SendTestData();
+                    conn.Open();
+                    var plans = GetPlansList(conn, startDate, view, employeeId);
+                    string jsonData = JsonSerializer.Serialize(plans);
+                    SendToWebView("plansData", jsonData);
                 }
             }
             catch (Exception ex)
             {
-                SendTestData();
                 SendToWebView("showError", ex.Message);
             }
         }
@@ -210,64 +186,18 @@ namespace WindowsFormsApp1
         {
             try
             {
-                if (useRealDatabase)
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    using (var conn = new NpgsqlConnection(connectionString))
-                    {
-                        conn.Open();
-                        var urgent = GetUrgentRemindersList(conn);
-                        string jsonData = JsonSerializer.Serialize(urgent);
-                        SendToWebView("urgentData", jsonData);
-                    }
-                }
-                else
-                {
-                    SendTestData();
+                    conn.Open();
+                    var urgent = GetUrgentRemindersList(conn);
+                    string jsonData = JsonSerializer.Serialize(urgent);
+                    SendToWebView("urgentData", jsonData);
                 }
             }
             catch (Exception ex)
             {
-                SendTestData();
                 SendToWebView("showError", ex.Message);
             }
-        }
-
-        private void SendTestData()
-        {
-            var today = DateTime.Now;
-            var yesterday = today.AddDays(-1);
-
-            var employees = new[]
-            {
-                new { id = 1, fio = "Агаев В.", tasks_count = 3 },
-                new { id = 2, fio = "Галушкин П.", tasks_count = 2 },
-                new { id = 3, fio = "Игорь Р.", tasks_count = 1 },
-                new { id = 4, fio = "Конюшин О. Г.", tasks_count = 2 },
-                new { id = -1, fio = "Без ответственного", tasks_count = 0 }
-            };
-
-            var plans = new[]
-            {
-                new { id = 1, equipment = "Котел КВ-ГМ-10", equipment_id = 1, tip = "Плановое ТО", tip_id = 1,
-                      start_date = today.ToString("yyyy-MM-dd"), end_date = today.ToString("yyyy-MM-dd"),
-                      responsible = "Агаев В.", responsible_id = 1, status = "В работе", cost = 15000, is_overdue = false, days_left = 0 },
-                new { id = 2, equipment = "Насос ЦНС-180", equipment_id = 2, tip = "Замена подшипников", tip_id = 2,
-                      start_date = today.ToString("yyyy-MM-dd"), end_date = today.ToString("yyyy-MM-dd"),
-                      responsible = "Галушкин П.", responsible_id = 2, status = "Запланирован", cost = 25000, is_overdue = false, days_left = 0 },
-                new { id = 3, equipment = "Дымосос ДН-15", equipment_id = 3, tip = "Ремонт", tip_id = 1,
-                      start_date = today.ToString("yyyy-MM-dd"), end_date = yesterday.ToString("yyyy-MM-dd"),
-                      responsible = "Игорь Р.", responsible_id = 3, status = "Просрочен", cost = 30000, is_overdue = true, days_left = -1 }
-            };
-
-            var urgent = new[]
-            {
-                new { id = 1, equipment = "Котел КВ-ГМ-10", tip = "Плановое ТО", end_date = today.ToString("yyyy-MM-dd"), days_left = 0, is_overdue = false },
-                new { id = 2, equipment = "Дымосос ДН-15", tip = "Ремонт", end_date = yesterday.ToString("yyyy-MM-dd"), days_left = -1, is_overdue = true }
-            };
-
-            var data = new { employees = employees, plans = plans, urgent = urgent };
-            string jsonData = JsonSerializer.Serialize(data);
-            SendToWebView("initialData", jsonData);
         }
 
         private void ExportToExcel()
@@ -292,9 +222,8 @@ namespace WindowsFormsApp1
                                 COALESCE(t.nazvanie, 'Не указан') AS Тип_ТО,
                                 p.data_nachala AS Дата_начала,
                                 p.data_okonchaniya AS Дата_окончания,
-                                COALESCE(s.familiya || ' ' || COALESCE(s.imya, '') || ' ' || COALESCE(s.otchestvo, ''), 'Не назначен') AS Ответственный,
-                                COALESCE(p.status, 'Не указан') AS Статус,
-                                COALESCE(p.stoimost, 0) AS Стоимость
+                                COALESCE(CONCAT(s.familiya, ' ', s.imya), 'Не назначен') AS Ответственный,
+                                COALESCE(p.status, 'Не указан') AS Статус
                             FROM plan_to p
                             LEFT JOIN oborudovanie o ON p.oborudovanie_id = o.id
                             LEFT JOIN tip_to t ON p.tip_to_id = t.id
@@ -305,7 +234,7 @@ namespace WindowsFormsApp1
                         using (var reader = cmd.ExecuteReader())
                         using (StreamWriter sw = new StreamWriter(save.FileName, false, Encoding.UTF8))
                         {
-                            sw.WriteLine("ID;Оборудование;Тип ТО;Дата начала;Дата окончания;Ответственный;Статус;Стоимость (руб.)");
+                            sw.WriteLine("ID;Оборудование;Тип ТО;Дата начала;Дата окончания;Ответственный;Статус");
 
                             while (reader.Read())
                             {
@@ -315,8 +244,7 @@ namespace WindowsFormsApp1
                                              $"{reader.GetDateTime(3):dd.MM.yyyy};" +
                                              $"{(reader.IsDBNull(4) ? "" : reader.GetDateTime(4).ToString("dd.MM.yyyy"))};" +
                                              $"{EscapeCsv(reader.GetString(5))};" +
-                                             $"{EscapeCsv(reader.GetString(6))};" +
-                                             $"{reader.GetDecimal(7):F2}";
+                                             $"{EscapeCsv(reader.GetString(6))}";
                                 sw.WriteLine(line);
                             }
                         }
@@ -346,7 +274,7 @@ namespace WindowsFormsApp1
         {
             var list = new List<object>();
 
-            // Получаем только слесарей с количеством активных задач
+            // Получаем только слесарей из базы данных
             string sql = @"
                 SELECT 
                     s.id, 
@@ -378,8 +306,16 @@ namespace WindowsFormsApp1
                 }
             }
 
-            // Добавляем "Без ответственного" в конец списка
-            list.Add(new { id = -1, fio = "Без ответственного", tasks_count = 0 });
+            // Добавляем "Без ответственного" только если есть задачи без ответственного
+            string checkSql = "SELECT COUNT(*) FROM plan_to WHERE otvetstvenniy_id IS NULL AND (status IS NULL OR status NOT IN ('Завершен', 'Отменен'))";
+            using (var cmd = new NpgsqlCommand(checkSql, conn))
+            {
+                int orphanTasks = Convert.ToInt32(cmd.ExecuteScalar());
+                if (orphanTasks > 0)
+                {
+                    list.Add(new { id = -1, fio = "Без ответственного", tasks_count = orphanTasks });
+                }
+            }
 
             return list;
         }
@@ -418,7 +354,7 @@ namespace WindowsFormsApp1
                 }
             }
 
-            string sql = "SELECT id, oborudovanie_id, tip_to_id, data_nachala, data_okonchaniya, otvetstvenniy_id, status, stoimost, is_overdue FROM plan_to";
+            string sql = "SELECT id, oborudovanie_id, tip_to_id, data_nachala, data_okonchaniya, otvetstvenniy_id, status, is_overdue FROM plan_to";
             using (var cmd = new NpgsqlCommand(sql, conn))
             using (var reader = cmd.ExecuteReader())
             {
@@ -431,15 +367,17 @@ namespace WindowsFormsApp1
                     DateTime? end = reader.IsDBNull(4) ? (DateTime?)null : reader.GetDateTime(4);
                     int? responsibleId = reader.IsDBNull(5) ? (int?)null : reader.GetInt32(5);
                     string status = reader.IsDBNull(6) ? "Не указан" : reader.GetString(6);
-                    decimal cost = reader.IsDBNull(7) ? 0 : reader.GetDecimal(7);
-                    bool isOverdueDb = reader.IsDBNull(8) ? false : reader.GetBoolean(8);
+                    bool isOverdueDb = reader.IsDBNull(7) ? false : reader.GetBoolean(7);
 
                     string equipmentName = equipmentDict.ContainsKey(oborudovanieId) ? equipmentDict[oborudovanieId] : "Неизвестно";
                     string tipName = (tipId.HasValue && tipDict.ContainsKey(tipId.Value)) ? tipDict[tipId.Value] : "Не указан";
                     string responsibleName = (responsibleId.HasValue && employeeDict.ContainsKey(responsibleId.Value)) ? employeeDict[responsibleId.Value] : "Не назначен";
 
                     int daysLeft = 999;
-                    if (end.HasValue) daysLeft = (int)(end.Value.Date - DateTime.Now.Date).TotalDays;
+                    if (end.HasValue)
+                    {
+                        daysLeft = (int)(end.Value.Date - DateTime.Now.Date).TotalDays;
+                    }
                     bool isOverdue = isOverdueDb || (daysLeft < 0 && status != "Завершен" && status != "Отменен");
 
                     list.Add(new
@@ -454,7 +392,6 @@ namespace WindowsFormsApp1
                         responsible = responsibleName,
                         responsible_id = responsibleId ?? 0,
                         status = status,
-                        cost = cost,
                         is_overdue = isOverdue,
                         days_left = daysLeft
                     });
@@ -473,7 +410,15 @@ namespace WindowsFormsApp1
                 while (reader.Read()) equipmentDict[reader.GetInt32(0)] = reader.GetString(1);
             }
 
-            string sql = "SELECT id, oborudovanie_id, data_okonchaniya, is_overdue FROM plan_to WHERE data_okonchaniya IS NOT NULL AND (status IS NULL OR status NOT IN ('Завершен', 'Отменен')) ORDER BY data_okonchaniya LIMIT 10";
+            string sql = @"
+                SELECT id, oborudovanie_id, data_okonchaniya, is_overdue 
+                FROM plan_to 
+                WHERE data_okonchaniya IS NOT NULL 
+                  AND (status IS NULL OR status NOT IN ('Завершен', 'Отменен'))
+                  AND data_okonchaniya <= CURRENT_DATE + INTERVAL '7 days'
+                ORDER BY data_okonchaniya 
+                LIMIT 20";
+
             using (var cmd = new NpgsqlCommand(sql, conn))
             using (var reader = cmd.ExecuteReader())
             {
@@ -482,14 +427,16 @@ namespace WindowsFormsApp1
                     int id = reader.GetInt32(0);
                     int oborudovanieId = reader.GetInt32(1);
                     DateTime endDate = reader.GetDateTime(2);
-                    bool isOverdue = reader.GetBoolean(3);
+                    bool isOverdue = reader.IsDBNull(3) ? false : reader.GetBoolean(3);
                     string equipmentName = equipmentDict.ContainsKey(oborudovanieId) ? equipmentDict[oborudovanieId] : "Неизвестно";
                     int daysLeft = (int)(endDate.Date - DateTime.Now.Date).TotalDays;
+
+                    string tip = "ТО";
                     list.Add(new
                     {
                         id = id,
                         equipment = equipmentName,
-                        tip = "ТО",
+                        tip = tip,
                         end_date = endDate.ToString("yyyy-MM-dd"),
                         days_left = daysLeft,
                         is_overdue = isOverdue || daysLeft < 0

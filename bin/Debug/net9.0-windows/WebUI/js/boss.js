@@ -1,520 +1,337 @@
-let selectedPlanId = -1;
-let selectedAvariyaId = -1;
-let currentTab = 'plans';
+let employees = [];
+let allPlans = [];
+let allAvariya = [];
+let allHistory = [];
+let currentEditPlanId = null;
 
-function switchStatsPanel(tab) {
-    const statsPlans = document.getElementById('statsPlans');
-    const statsAvariya = document.getElementById('statsAvariya');
-    const statsHistory = document.getElementById('statsHistory');
-    
-    if (statsPlans) statsPlans.style.display = 'none';
-    if (statsAvariya) statsAvariya.style.display = 'none';
-    if (statsHistory) statsHistory.style.display = 'none';
-    
-    if (tab === 'plans' && statsPlans) {
-        statsPlans.style.display = 'grid';
-        if (window.lastUncompletedCost) {
-            const plannedCostEl = document.getElementById('plannedCost');
-            if (plannedCostEl) plannedCostEl.innerText = window.lastUncompletedCost;
-        }
-    } else if (tab === 'avariya' && statsAvariya) {
-        statsAvariya.style.display = 'grid';
-    } else if (tab === 'history' && statsHistory) {
-        statsHistory.style.display = 'grid';
-        if (window.lastHistoryTotalCost) {
-            const historyTotalCostEl = document.getElementById('historyTotalCost');
-            if (historyTotalCostEl) historyTotalCostEl.innerText = window.lastHistoryTotalCost + ' руб.';
-        }
-        if (window.lastHistoryTotalCount) {
-            const historyTotalCountEl = document.getElementById('historyTotalCount');
-            if (historyTotalCountEl) historyTotalCountEl.innerText = window.lastHistoryTotalCount;
-        }
-    }
-}
-
-function el(id) {
-    return document.getElementById(id);
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('BOSS.JS загружен');
-    setDefaultDates();
-    setupEventListeners();
-    switchStatsPanel('plans');
-    
+function sendToCSharp(action, data = {}) {
+    const msg = JSON.stringify({ action: action, ...data });
     if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage('loadEquipment');
-        window.chrome.webview.postMessage('loadTipTypes');
-        window.chrome.webview.postMessage('loadResponsible');
-        window.chrome.webview.postMessage('loadStatistics');
+        window.chrome.webview.postMessage(msg);
+    } else {
+        console.log('WebView не доступен');
     }
-});
+}
 
 window.receiveFromCSharp = function(command, data) {
-    console.log('Получено от C#:', command);
-    try {
-        switch(command) {
-            case 'fillEquipment': fillEquipment(data); break;
-            case 'fillTipTypes': fillTipTypes(data); break;
-            case 'fillResponsible': fillResponsible(data); break;
-            case 'displayPlans': displayPlans(data); break;
-            case 'displayAvariya': displayAvariya(data); break;
-            case 'displayHistory': displayHistory(data); break;
-            case 'updateStatistics': updateStatistics(data); break;
-            case 'showSuccess': alert('✅ ' + data); break;
-            case 'showError': alert('❌ ' + data); break;
-            default: console.log('Неизвестная команда:', command);
-        }
-    } catch (error) { console.error('Ошибка:', error); }
+    console.log('Received:', command, data);
+    if (command === 'fillEquipment') {
+        const select = document.getElementById('planEquipment');
+        select.innerHTML = '<option value="">Выберите оборудование</option>';
+        const items = typeof data === 'string' ? JSON.parse(data) : data;
+        items.forEach(item => {
+            select.innerHTML += `<option value="${item.id}">${item.name}</option>`;
+        });
+    }
+    else if (command === 'fillTipTypes') {
+        const select = document.getElementById('planTip');
+        select.innerHTML = '<option value="">Выберите тип ТО</option>';
+        const items = typeof data === 'string' ? JSON.parse(data) : data;
+        items.forEach(item => {
+            select.innerHTML += `<option value="${item.id}">${item.name}</option>`;
+        });
+    }
+    else if (command === 'fillResponsible') {
+        const select = document.getElementById('planResponsible');
+        select.innerHTML = '<option value="">Выберите ответственного</option>';
+        const items = typeof data === 'string' ? JSON.parse(data) : data;
+        items.forEach(item => {
+            select.innerHTML += `<option value="${item.id}">${item.name}</option>`;
+        });
+    }
+    else if (command === 'displayPlans') {
+        const result = typeof data === 'string' ? JSON.parse(data) : data;
+        allPlans = result.plans || [];
+        renderPlansTable();
+    }
+    else if (command === 'displayAvariya') {
+        allAvariya = typeof data === 'string' ? JSON.parse(data) : data;
+        renderAvariyaTable();
+    }
+    else if (command === 'displayHistory') {
+        const result = typeof data === 'string' ? JSON.parse(data) : data;
+        allHistory = result.history || [];
+        renderHistoryTable();
+    }
+    else if (command === 'updateStatistics') {
+        const stats = typeof data === 'string' ? JSON.parse(data) : data;
+        document.getElementById('statEquipment').innerHTML = stats.totalEquipment || 0;
+        document.getElementById('statAvariya').innerHTML = stats.totalAvariya || 0;
+        document.getElementById('statPlans').innerHTML = stats.totalPlans || 0;
+        document.getElementById('statCompleted').innerHTML = stats.completedPlans || 0;
+        document.getElementById('statOverdue').innerHTML = stats.overduePlans || 0;
+        document.getElementById('statInProgress').innerHTML = stats.inProgressPlans || 0;
+    }
+    else if (command === 'showSuccess') {
+        showToast(data, 'success');
+    }
+    else if (command === 'showError') {
+        showToast(data, 'error');
+    }
 };
 
-function setDefaultDates() {
-    const today = new Date();
-    const monthAgo = new Date(); 
-    monthAgo.setMonth(monthAgo.getMonth() - 1);
-    const formatDate = (date) => date.toISOString().split('T')[0];
-    
-    const planStart = el('planStartDate');
-    const planEnd = el('planEndDate');
-    const avariyaStart = el('avariyaStartDate');
-    const avariyaEnd = el('avariyaEndDate');
-    const historyStart = el('historyStartDate');
-    const historyEnd = el('historyEndDate');
-    const start = el('startDate');
-    const end = el('endDate');
-    
-    if (planStart) planStart.value = formatDate(monthAgo);
-    if (planEnd) planEnd.value = formatDate(today);
-    if (avariyaStart) avariyaStart.value = formatDate(monthAgo);
-    if (avariyaEnd) avariyaEnd.value = formatDate(today);
-    if (historyStart) historyStart.value = formatDate(monthAgo);
-    if (historyEnd) historyEnd.value = formatDate(today);
-    if (start) start.value = formatDate(today);
-    
-    const nextWeek = new Date();
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    if (end) end.value = formatDate(nextWeek);
-}
-
-function setupEventListeners() {
-    // Переключение вкладок
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            this.classList.add('active');
-            const tabId = this.dataset.tab;
-            const tabElement = document.getElementById(`tab-${tabId}`);
-            if (tabElement) tabElement.classList.add('active');
-            currentTab = tabId;
-            switchStatsPanel(tabId);
-            
-            if (tabId === 'plans') {
-                loadPlans(el('planStartDate')?.value || '', el('planEndDate')?.value || '', el('showAllPlans')?.checked || false);
-            } else if (tabId === 'avariya') {
-                loadAvariya(el('avariyaStartDate')?.value || '', el('avariyaEndDate')?.value || '', el('showAllAvariya')?.checked || false);
-            } else if (tabId === 'history') {
-                loadHistory(el('historyStartDate')?.value || '', el('historyEndDate')?.value || '');
-            }
-        });
-    });
-    
-    // Фильтры
-    const applyPlanFilter = el('applyPlanFilter');
-    if (applyPlanFilter) applyPlanFilter.onclick = () => loadPlans(el('planStartDate')?.value, el('planEndDate')?.value, el('showAllPlans')?.checked);
-    
-    const applyAvariyaFilter = el('applyAvariyaFilter');
-    if (applyAvariyaFilter) applyAvariyaFilter.onclick = () => loadAvariya(el('avariyaStartDate')?.value, el('avariyaEndDate')?.value, el('showAllAvariya')?.checked);
-    
-    const applyHistoryFilter = el('applyHistoryFilter');
-    if (applyHistoryFilter) applyHistoryFilter.onclick = () => loadHistory(el('historyStartDate')?.value, el('historyEndDate')?.value);
-    
-    // CRUD кнопки
-    const addPlanBtn = el('addPlanBtn');
-    if (addPlanBtn) addPlanBtn.onclick = addPlan;
-    
-    const updatePlanBtn = el('updatePlanBtn');
-    if (updatePlanBtn) updatePlanBtn.onclick = updatePlan;
-    
-    const deletePlanBtn = el('deletePlanBtn');
-    if (deletePlanBtn) deletePlanBtn.onclick = deletePlan;
-    
-    const clearFormBtn = el('clearFormBtn');
-    if (clearFormBtn) clearFormBtn.onclick = clearForm;
-    
-    // Создание плана из аварии
-    const createFromAvariya = el('createPlanFromAvariya');
-    if (createFromAvariya) {
-        createFromAvariya.onclick = () => {
-            if (selectedAvariyaId === -1) { alert('Выберите аварию!'); return; }
-            if (window.chrome?.webview) window.chrome.webview.postMessage(JSON.stringify({ action: 'createPlanFromAvariya', id: selectedAvariyaId }));
-        };
+function renderPlansTable() {
+    const tbody = document.getElementById('plansTableBody');
+    if (!allPlans.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="loading">Нет данных</td></tr>';
+        return;
     }
     
-    // Отчеты
-    const exportExcelBtn = el('exportExcelBtn');
-    if (exportExcelBtn) exportExcelBtn.onclick = () => window.chrome.webview.postMessage(JSON.stringify({ action: 'exportToExcel' }));
-    
-    const exportWordBtn = el('exportWordBtn');
-    if (exportWordBtn) exportWordBtn.onclick = () => window.chrome.webview.postMessage(JSON.stringify({ action: 'exportToWord' }));
-    
-    const previewReportBtn = el('previewReportBtn');
-    if (previewReportBtn) previewReportBtn.onclick = () => window.chrome.webview.postMessage(JSON.stringify({ action: 'previewReport' }));
-    
-    // Чекбоксы
-    const showAllPlans = el('showAllPlans');
-    if (showAllPlans) {
-        showAllPlans.onchange = (e) => {
-            const start = el('planStartDate');
-            const end = el('planEndDate');
-            if (start) start.disabled = e.target.checked;
-            if (end) end.disabled = e.target.checked;
-            loadPlans(start?.value || '', end?.value || '', e.target.checked);
-        };
+    let html = '';
+    for (let plan of allPlans) {
+        let statusClass = '';
+        if (plan.status === 'Просрочен') statusClass = 'critical';
+        if (plan.status === 'Завершен') statusClass = 'completed';
+        
+        html += `<tr>
+            <td>${plan.id}</td>
+            <td>${escapeHtml(plan.equipment)}</td>
+            <td>${escapeHtml(plan.tip)}</td>
+            <td>${plan.start_date}</td>
+            <td>${plan.end_date}</td>
+            <td>${escapeHtml(plan.responsible)}</td>
+            <td class="${statusClass}">${plan.status}</td>
+            <td>${plan.has_avariya}</td>
+            <td>
+                <button class="edit-btn" onclick="editPlan(${plan.id})">✏️</button>
+                <button class="delete-btn" onclick="deletePlan(${plan.id})">🗑️</button>
+            </td>
+        </tr>`;
+    }
+    tbody.innerHTML = html;
+}
+
+function renderAvariyaTable() {
+    const tbody = document.getElementById('avariyaTableBody');
+    if (!allAvariya.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="loading">Нет данных</td></tr>';
+        return;
     }
     
-    const showAllAvariya = el('showAllAvariya');
-    if (showAllAvariya) {
-        showAllAvariya.onchange = (e) => {
-            const start = el('avariyaStartDate');
-            const end = el('avariyaEndDate');
-            if (start) start.disabled = e.target.checked;
-            if (end) end.disabled = e.target.checked;
-            loadAvariya(start?.value || '', end?.value || '', e.target.checked);
-        };
+    let html = '';
+    for (let av of allAvariya) {
+        html += `<tr>
+            <td>${av.id}</td>
+            <td>${escapeHtml(av.equipment)}</td>
+            <td>${av.date}</td>
+            <td>${escapeHtml(av.description)}</td>
+            <td>${escapeHtml(av.consequences)}</td>
+            <td>${escapeHtml(av.status)}</td>
+            <td>${av.has_plan}</td>
+            <td>
+                <button class="create-plan-btn" onclick="createPlanFromAvariya(${av.id})">Создать план</button>
+            </td>
+        </tr>`;
     }
+    tbody.innerHTML = html;
 }
 
-function loadPlans(startDate, endDate, showAll) {
-    if (window.chrome?.webview) window.chrome.webview.postMessage(JSON.stringify({ action: 'loadPlans', startDate: startDate || '', endDate: endDate || '', showAll: showAll || false }));
-}
-
-function loadAvariya(startDate, endDate, showAll) {
-    if (window.chrome?.webview) window.chrome.webview.postMessage(JSON.stringify({ action: 'loadAvariya', startDate: startDate || '', endDate: endDate || '', showAll: showAll || false }));
-}
-
-function loadHistory(startDate, endDate) {
-    if (window.chrome?.webview) window.chrome.webview.postMessage(JSON.stringify({ action: 'loadHistory', startDate: startDate || '', endDate: endDate || '' }));
-}
-
-function fillEquipment(data) {
-    const select = el('equipmentSelect');
-    if (!select) return;
-    let items = typeof data === 'string' ? JSON.parse(data) : data;
-    let html = '<option value="">Выберите оборудование</option>';
-    if (Array.isArray(items)) {
-        items.forEach(item => {
-            html += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
-        });
+function renderHistoryTable() {
+    const tbody = document.getElementById('historyTableBody');
+    if (!allHistory.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">Нет данных</td></tr>';
+        return;
     }
-    select.innerHTML = html;
-}
-
-function fillTipTypes(data) {
-    const select = el('tipSelect');
-    if (!select) return;
-    let items = typeof data === 'string' ? JSON.parse(data) : data;
-    let html = '<option value="">Выберите тип ТО</option>';
-    if (Array.isArray(items)) {
-        items.forEach(item => {
-            html += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
-        });
+    
+    let html = '';
+    for (let h of allHistory) {
+        html += `<tr>
+            <td>${escapeHtml(h.equipment_name)}</td>
+            <td>${escapeHtml(h.tip_name)}</td>
+            <td>${h.plan_date}</td>
+            <td>${h.completed_date}</td>
+            <td>${escapeHtml(h.sotrudnik_name)}</td>
+            <td>${escapeHtml(h.opisanie)}</td>
+        </tr>`;
     }
-    select.innerHTML = html;
+    tbody.innerHTML = html;
 }
 
-function fillResponsible(data) {
-    const select = el('responsibleSelect');
-    if (!select) return;
-    let items = typeof data === 'string' ? JSON.parse(data) : data;
-    let html = '<option value="">Выберите ответственного</option>';
-    if (Array.isArray(items)) {
-        items.forEach(item => {
-            html += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
-        });
-    }
-    select.innerHTML = html;
-}
-
-function displayPlans(data) {
-    const tbody = el('plansTableBody');
-    if (!tbody) return;
-    try {
-        let response = typeof data === 'string' ? JSON.parse(data) : data;
-        let items = response.plans || [];
-        let uncompletedCost = response.uncompletedCost || '0.00';
-        window.lastUncompletedCost = uncompletedCost;
-        
-        const plannedCostEl = el('plannedCost');
-        if (plannedCostEl) plannedCostEl.innerText = uncompletedCost;
-        
-        if (!items.length) { 
-            tbody.innerHTML = '<tr><td colspan="9" class="loading">Нет данных</td></tr>'; 
-            return; 
-        }
-        
-        items.sort((a,b) => {
-            if (a.responsible !== b.responsible) return a.responsible.localeCompare(b.responsible);
-            return new Date(a.start_date.split('.').reverse().join('-')) - new Date(b.start_date.split('.').reverse().join('-'));
-        });
-        
-        let html = '';
-        let lastResponsible = '';
-        let taskIndex = 0;
-        
-        for (let row of items) {
-            const isCompleted = (row.status === '✅ Завершен' || row.status === 'Завершен');
-            const rowClass = isCompleted ? 'completed-row' : '';
-            if (lastResponsible !== row.responsible) { 
-                lastResponsible = row.responsible; 
-                taskIndex = 0; 
-            }
-            const indent = taskIndex * 20;
-            html += `<tr onclick="selectPlan(${row.id})" class="${rowClass}" style="cursor:pointer;">`;
-            html += `<td style="padding-left:${indent}px;">${row.id}</td>`;
-            html += `<td>${escapeHtml(row.equipment)}</td>`;
-            html += `<td>${escapeHtml(row.tip)}</td>`;
-            html += `<td>${row.start_date}</td>`;
-            html += `<td>${row.end_date}</td>`;
-            html += `<td>${escapeHtml(row.responsible)}</td>`;
-            html += `<td>${row.status}</td>`;
-            html += `<td>${row.avariya_id > 0 ? row.avariya_id : '-'}</td>`;
-            html += `<td>${row.cost}</td>`;
-            html += `</tr>`;
-            taskIndex++;
-        }
-        tbody.innerHTML = html;
-    } catch(e) { 
-        console.error(e); 
-        tbody.innerHTML = '<tr><td colspan="9" class="loading">Ошибка загрузки</td></tr>'; 
-    }
-}
-
-function displayAvariya(data) {
-    const tbody = el('avariyaTableBody');
-    if (!tbody) return;
-    try {
-        let items = typeof data === 'string' ? JSON.parse(data) : data;
-        if (!items.length) { 
-            tbody.innerHTML = '<tr><td colspan="7" class="loading">Нет данных</td></tr>'; 
-            return; 
-        }
-        let html = '';
-        for (let row of items) {
-            html += `<tr onclick="selectAvariya(${row.id})" style="cursor:pointer;${row.has_plan === '✅' ? 'background:#e8f5e8' : ''}">`;
-            html += `<td>${row.id}</td>`;
-            html += `<td>${escapeHtml(row.equipment)}</td>`;
-            html += `<td>${row.date}</td>`;
-            html += `<td>${escapeHtml(row.description)}</td>`;
-            html += `<td>${escapeHtml(row.consequences)}</td>`;
-            html += `<td>${row.status}</td>`;
-            html += `<td>${row.has_plan}</td>`;
-            html += `</tr>`;
-        }
-        tbody.innerHTML = html;
-    } catch(e) { 
-        console.error(e); 
-        tbody.innerHTML = '<tr><td colspan="7" class="loading">Ошибка загрузки</td></tr>'; 
-    }
-}
-
-function displayHistory(data) {
-    const tbody = el('historyTableBody');
-    if (!tbody) return;
-    try {
-        let response = typeof data === 'string' ? JSON.parse(data) : data;
-        let items = response.history || [];
-        let totalCost = response.totalCost || '0.00';
-        let totalCount = response.totalCount || 0;
-        
-        window.lastHistoryTotalCost = totalCost;
-        window.lastHistoryTotalCount = totalCount;
-        
-        const historyTotalCostEl = el('historyTotalCost');
-        if (historyTotalCostEl) historyTotalCostEl.innerText = totalCost + ' руб.';
-        
-        const historyTotalCountEl = el('historyTotalCount');
-        if (historyTotalCountEl) historyTotalCountEl.innerText = totalCount;
-        
-        if (!items.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="loading">Нет записей в истории</td></tr>';
-            return;
-        }
-        let html = '';
-        for (let row of items) {
-            html += `<tr>`;
-            html += `<td>${escapeHtml(row.equipment_name || '')}</td>`;
-            html += `<td>${escapeHtml(row.tip_name || '')}</td>`;
-            html += `<td>${row.plan_date || ''}</td>`;
-            html += `<td>${row.completed_date || ''}</td>`;
-            html += `<td>${escapeHtml(row.sotrudnik_name || '')}</td>`;
-            html += `<td>${escapeHtml(row.opisanie || '')}</td>`;
-            html += `<td>${row.cost || '0.00'} руб.</td>`;
-            html += `</tr>`;
-        }
-        tbody.innerHTML = html;
-    } catch(e) { 
-        console.error(e); 
-        tbody.innerHTML = '<tr><td colspan="7" class="loading">Ошибка загрузки данных</td></tr>'; 
-    }
-}
-
-function updateStatistics(data) {
-    try {
-        let stats = typeof data === 'string' ? JSON.parse(data) : data;
-        const totalEquipment = el('totalEquipment');
-        const totalPlans = el('totalPlans');
-        const completedPlans = el('completedPlans');
-        const overduePlans = el('overduePlans');
-        const inProgressPlans = el('inProgressPlans');
-        const totalCost = el('totalCost');
-        const totalAvariya = el('totalAvariya');
-        const inProgressAvariya = el('inProgressAvariya');
-        const completedAvariya = el('completedAvariya');
-        const needPlanAvariya = el('needPlanAvariya');
-        
-        if (totalEquipment) totalEquipment.innerText = stats.totalEquipment || 0;
-        if (totalPlans) totalPlans.innerText = stats.totalPlans || 0;
-        if (completedPlans) completedPlans.innerText = stats.completedPlans || 0;
-        if (overduePlans) overduePlans.innerText = stats.overduePlans || 0;
-        if (inProgressPlans) inProgressPlans.innerText = stats.inProgressPlans || 0;
-        if (totalCost) totalCost.innerText = stats.totalCost || '0.00';
-        if (totalAvariya) totalAvariya.innerText = stats.totalAvariya || 0;
-        if (inProgressAvariya) inProgressAvariya.innerText = stats.inProgressAvariya || 0;
-        if (completedAvariya) completedAvariya.innerText = stats.completedAvariya || 0;
-        if (needPlanAvariya) needPlanAvariya.innerText = stats.needPlanAvariya || 0;
-    } catch(e) { console.error(e); }
-}
-
-function selectPlan(id) { 
-    selectedPlanId = id; 
-    // Визуальное выделение строки
-    document.querySelectorAll('#plansTable tbody tr').forEach(tr => tr.classList.remove('selected'));
-    if (event && event.currentTarget) event.currentTarget.classList.add('selected');
-}
-
-function selectAvariya(id) { 
-    selectedAvariyaId = id; 
-    document.querySelectorAll('#avariyaTable tbody tr').forEach(tr => tr.classList.remove('selected'));
-    if (event && event.currentTarget) event.currentTarget.classList.add('selected');
-}
-
-function selectEquipmentById(id) { 
-    const select = el('equipmentSelect'); 
-    if (select) { 
-        for (let i = 0; i < select.options.length; i++) { 
-            if (select.options[i].value == id) { 
-                select.selectedIndex = i; 
-                break; 
-            } 
-        } 
-    } 
-}
-
-function switchToPlansTab() { 
-    const tab = document.querySelector('[data-tab="plans"]'); 
-    if (tab) tab.click(); 
-}
+function loadEquipment() { sendToCSharp('loadEquipment'); }
+function loadTipTypes() { sendToCSharp('loadTipTypes'); }
+function loadResponsible() { sendToCSharp('loadResponsible'); }
+function loadPlans() { sendToCSharp('loadPlans', {}); }
+function loadAvariya() { sendToCSharp('loadAvariya', {}); }
+function loadHistory() { sendToCSharp('loadHistory', {}); }
+function loadStatistics() { sendToCSharp('loadStatistics'); }
 
 function addPlan() {
-    const eq = el('equipmentSelect')?.value;
-    const tip = el('tipSelect')?.value;
-    const start = el('startDate')?.value;
-    const end = el('endDate')?.value;
-    const resp = el('responsibleSelect')?.value;
-    const status = el('statusSelect')?.value;
-    const cost = el('cost')?.value;
+    const equipment = document.getElementById('planEquipment').value;
+    const tip = document.getElementById('planTip').value;
+    const startDate = document.getElementById('planStartDate').value;
+    const endDate = document.getElementById('planEndDate').value;
+    const responsible = document.getElementById('planResponsible').value;
+    const status = document.getElementById('planStatus').value;
     
-    if (!eq || !tip || !resp || !start || !end || !cost) { 
-        alert('Заполните все поля!'); 
-        return; 
+    if (!equipment || !tip || !startDate || !endDate || !responsible) {
+        showToast('Заполните все поля!', 'error');
+        return;
     }
-    if (new Date(start) > new Date(end)) { 
-        alert('Дата начала не может быть позже даты окончания!'); 
-        return; 
-    }
-    if (isNaN(parseFloat(cost)) || parseFloat(cost) <= 0) { 
-        alert('Введите корректную стоимость!'); 
-        return; 
-    }
-    if (window.chrome?.webview) {
-        window.chrome.webview.postMessage(JSON.stringify({ 
-            action: 'addPlan', 
-            equipment: parseInt(eq), 
-            tip: parseInt(tip), 
-            startDate: start, 
-            endDate: end, 
-            responsible: parseInt(resp), 
-            status: status, 
-            cost: parseFloat(cost) 
-        }));
-    }
+    
+    sendToCSharp('addPlan', {
+        equipment: parseInt(equipment),
+        tip: parseInt(tip),
+        startDate: startDate,
+        endDate: endDate,
+        responsible: parseInt(responsible),
+        status: status
+    });
+    closeModal('planModal');
+}
+
+function editPlan(id) {
+    const plan = allPlans.find(p => p.id === id);
+    if (!plan) return;
+    
+    currentEditPlanId = id;
+    document.getElementById('planModalTitle').innerText = 'Редактирование плана';
+    
+    document.getElementById('planEquipment').value = plan.equipment_id || '';
+    document.getElementById('planTip').value = plan.tip_id || '';
+    document.getElementById('planStartDate').value = plan.start_date;
+    document.getElementById('planEndDate').value = plan.end_date;
+    document.getElementById('planResponsible').value = plan.responsible_id || '';
+    document.getElementById('planStatus').value = plan.status;
+    
+    document.getElementById('planModal').style.display = 'flex';
 }
 
 function updatePlan() {
-    if (selectedPlanId === -1) { 
-        alert('Выберите план для обновления!'); 
-        return; 
-    }
-    if (!confirm('Обновить выбранный план?')) return;
+    const equipment = document.getElementById('planEquipment').value;
+    const tip = document.getElementById('planTip').value;
+    const startDate = document.getElementById('planStartDate').value;
+    const endDate = document.getElementById('planEndDate').value;
+    const responsible = document.getElementById('planResponsible').value;
+    const status = document.getElementById('planStatus').value;
     
-    const eq = el('equipmentSelect')?.value;
-    const tip = el('tipSelect')?.value;
-    const start = el('startDate')?.value;
-    const end = el('endDate')?.value;
-    const resp = el('responsibleSelect')?.value;
-    const status = el('statusSelect')?.value;
-    const cost = el('cost')?.value;
-    
-    if (window.chrome?.webview) {
-        window.chrome.webview.postMessage(JSON.stringify({ 
-            action: 'updatePlan', 
-            id: selectedPlanId, 
-            equipment: parseInt(eq), 
-            tip: parseInt(tip), 
-            startDate: start, 
-            endDate: end, 
-            responsible: parseInt(resp), 
-            status: status, 
-            cost: parseFloat(cost) 
-        }));
+    sendToCSharp('updatePlan', {
+        id: currentEditPlanId,
+        equipment: parseInt(equipment),
+        tip: parseInt(tip),
+        startDate: startDate,
+        endDate: endDate,
+        responsible: parseInt(responsible),
+        status: status
+    });
+    closeModal('planModal');
+}
+
+function deletePlan(id) {
+    if (confirm('Удалить план?')) {
+        sendToCSharp('deletePlan', { id: id });
     }
 }
 
-function deletePlan() {
-    if (selectedPlanId === -1) { 
-        alert('Выберите план для удаления!'); 
-        return; 
-    }
-    if (!confirm('Удалить выбранный план?')) return;
-    if (window.chrome?.webview) {
-        window.chrome.webview.postMessage(JSON.stringify({ action: 'deletePlan', id: selectedPlanId }));
-    }
+function createPlanFromAvariya(id) {
+    sendToCSharp('createPlanFromAvariya', { id: id });
 }
 
-function clearForm() {
-    selectedPlanId = -1;
-    const equipment = el('equipmentSelect');
-    const tip = el('tipSelect');
-    const responsible = el('responsibleSelect');
-    const status = el('statusSelect');
-    const cost = el('cost');
+function exportToExcel() { sendToCSharp('exportToExcel'); }
+function exportToWord() { sendToCSharp('exportToWord'); }
+function previewReport() { sendToCSharp('previewReport'); }
+
+function setDefaultDates() {
+    const today = new Date();
+    const monthAgo = new Date();
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
     
-    if (equipment) equipment.selectedIndex = 0;
-    if (tip) tip.selectedIndex = 0;
-    if (responsible) responsible.selectedIndex = 0;
-    if (status) status.selectedIndex = 0;
-    if (cost) cost.value = '';
+    const startDateFilter = document.getElementById('startDateFilter');
+    const endDateFilter = document.getElementById('endDateFilter');
+    const avariyaStartDate = document.getElementById('avariyaStartDate');
+    const avariyaEndDate = document.getElementById('avariyaEndDate');
+    const historyStartDate = document.getElementById('historyStartDate');
+    const historyEndDate = document.getElementById('historyEndDate');
+    
+    if (startDateFilter) startDateFilter.value = monthAgo.toISOString().split('T')[0];
+    if (endDateFilter) endDateFilter.value = today.toISOString().split('T')[0];
+    if (avariyaStartDate) avariyaStartDate.value = monthAgo.toISOString().split('T')[0];
+    if (avariyaEndDate) avariyaEndDate.value = today.toISOString().split('T')[0];
+    if (historyStartDate) historyStartDate.value = monthAgo.toISOString().split('T')[0];
+    if (historyEndDate) historyEndDate.value = today.toISOString().split('T')[0];
+}
+
+function setupTabs() {
+    const tabs = document.querySelectorAll('.tab-btn');
+    const contents = document.querySelectorAll('.tab-content');
+    
+    tabs.forEach(btn => {
+        btn.onclick = () => {
+            tabs.forEach(b => b.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            const tabName = btn.dataset.tab;
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+            
+            if (tabName === 'plans') loadPlans();
+            if (tabName === 'avariya') loadAvariya();
+            if (tabName === 'history') loadHistory();
+            if (tabName === 'statistics') loadStatistics();
+        };
+    });
+}
+
+function setupEventListeners() {
+    document.getElementById('logoutBtn').onclick = () => sendToCSharp('logout');
+    document.getElementById('applyFilterBtn').onclick = () => loadPlans();
+    document.getElementById('applyAvariyaFilterBtn').onclick = () => loadAvariya();
+    document.getElementById('applyHistoryFilterBtn').onclick = () => loadHistory();
+    document.getElementById('addPlanBtn').onclick = () => {
+        currentEditPlanId = null;
+        document.getElementById('planModalTitle').innerText = 'Добавление плана';
+        document.getElementById('planEquipment').value = '';
+        document.getElementById('planTip').value = '';
+        document.getElementById('planStartDate').value = '';
+        document.getElementById('planEndDate').value = '';
+        document.getElementById('planResponsible').value = '';
+        document.getElementById('planStatus').value = 'Назначена';
+        document.getElementById('planModal').style.display = 'flex';
+    };
+    document.getElementById('savePlanBtn').onclick = () => {
+        if (currentEditPlanId) {
+            updatePlan();
+        } else {
+            addPlan();
+        }
+    };
+    document.getElementById('exportToExcelBtn').onclick = () => exportToExcel();
+    document.getElementById('exportToWordBtn').onclick = () => exportToWord();
+    document.getElementById('previewReportBtn').onclick = () => previewReport();
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = `toast ${type}`;
+    toast.style.display = 'block';
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, 3000);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setupTabs();
+    setupEventListeners();
     setDefaultDates();
-    document.querySelectorAll('#plansTable tbody tr').forEach(tr => tr.classList.remove('selected'));
-}
-
-function escapeHtml(s) { 
-    if (!s) return ''; 
-    return s.replace(/[&<>]/g, function(m) { 
-        if (m === '&') return '&amp;'; 
-        if (m === '<') return '&lt;'; 
-        if (m === '>') return '&gt;'; 
-        return m; 
-    }); 
-}
+    
+    loadEquipment();
+    loadTipTypes();
+    loadResponsible();
+    loadPlans();
+    loadAvariya();
+    loadHistory();
+    loadStatistics();
+});

@@ -5,147 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Панель начальника</title>
     <link rel="stylesheet" href="css/boss.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="boss-container">
-        <!-- Панель статистики для ПЛАНОВ -->
-        <div class="stats-header" id="statsPlans">
-            <div class="stat-card">
-                <div class="stat-icon">🔧</div>
-                <div class="stat-info">
-                    <span class="stat-value" id="totalEquipment">0</span>
-                    <span class="stat-label">Оборудования</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📅</div>
-                <div class="stat-info">
-                    <span class="stat-value" id="totalPlans">0</span>
-                    <span class="stat-label">Планы ТО</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">✅</div>
-                <div class="stat-info">
-                    <span class="stat-value" id="completedPlans">0</span>
-                    <span class="stat-label">Выполнено</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">⏰</div>
-                <div class="stat-info">
-                    <span class="stat-value" id="overduePlans">0</span>
-                    <span class="stat-label">Просрочено</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">⚙️</div>
-                <div class="stat-info">
-                    <span class="stat-value" id="inProgressPlans">0</span>
-                    <span class="stat-label">В работе</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">💰</div>
-                <div class="stat-info">
-                    <span class="stat-value" id="totalCost">0</span>
-                    <span class="stat-label">Общая стоимость</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📊</div>
-                <div class="stat-info">
-                    <span class="stat-value" id="plannedCost">0</span>
-                    <span class="stat-label">Стоимость запланированных</span>
-                </div>
+    <div class="app-container">
+        <!-- Шапка -->
+        <div class="top-bar">
+            <h2>Панель начальника - Управление ремонтами</h2>
+            <div class="user-info">
+                <span id="userName">Начальник</span>
+                <button class="logout-btn" id="logoutBtn">Выход</button>
             </div>
         </div>
 
-        <!-- Панель статистики для АВАРИЙ -->
-        <div class="stats-header" id="statsAvariya" style="display: none;">
-            <div class="stat-card">
-                <div class="stat-icon">⚠️</div>
-                <div class="stat-info">
-                    <span class="stat-value" id="totalAvariya">0</span>
-                    <span class="stat-label">Всего аварий</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">⚙️</div>
-                <div class="stat-info">
-                    <span class="stat-value" id="inProgressAvariya">0</span>
-                    <span class="stat-label">В работе</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">✅</div>
-                <div class="stat-info">
-                    <span class="stat-value" id="completedAvariya">0</span>
-                    <span class="stat-label">Завершено</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">🔧</div>
-                <div class="stat-info">
-                    <span class="stat-value" id="needPlanAvariya">0</span>
-                    <span class="stat-label">Требуют ремонта</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Панель статистики для ИСТОРИИ -->
-        <div class="stats-header" id="statsHistory" style="display: none;">
-    <div class="stat-card">
-        <div class="stat-icon">📋</div>
-        <div class="stat-info">
-            <span class="stat-value" id="historyTotalCount">0</span>
-            <span class="stat-label">Выполнено работ</span>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon">💰</div>
-        <div class="stat-info">
-            <span class="stat-value" id="historyTotalCost">0 руб.</span>
-            <span class="stat-label">Общая стоимость</span>
-        </div>
-    </div>
-</div>
-
-        <!-- Табы -->
+        <!-- Вкладки -->
         <div class="tabs">
-            <button class="tab-btn active" data-tab="plans">📋 Планы ремонтов</button>
-            <button class="tab-btn" data-tab="avariya">⚠️ Аварии</button>
-            <button class="tab-btn" data-tab="history">📜 История ремонтов</button>
-            <button class="tab-btn" data-tab="reports">📊 Отчеты</button>
+            <button class="tab-btn active" data-tab="plans">Планы ТО</button>
+            <button class="tab-btn" data-tab="avariya">Аварии</button>
+            <button class="tab-btn" data-tab="history">История ремонтов</button>
+            <button class="tab-btn" data-tab="statistics">Статистика</button>
         </div>
 
-        <!-- Вкладка Планы -->
-        <div class="tab-content active" id="tab-plans">
-            <div class="filters-section">
+        <!-- Вкладка "Планы ТО" -->
+        <div id="plansTab" class="tab-content active">
+            <div class="filters-bar">
                 <div class="filter-group">
-                    <label>Период:</label>
-                    <div class="date-range">
-                        <input type="date" id="planStartDate" class="date-input">
-                        <span class="date-separator">—</span>
-                        <input type="date" id="planEndDate" class="date-input">
-                    </div>
+                    <label>Оборудование</label>
+                    <select id="equipmentFilter">
+                        <option value="">Все</option>
+                    </select>
                 </div>
                 <div class="filter-group">
-                    <label class="checkbox">
-                        <input type="checkbox" id="showAllPlans">
-                        <span class="checkmark"></span>
-                        Все записи
-                    </label>
+                    <label>Статус</label>
+                    <select id="statusFilter">
+                        <option value="">Все</option>
+                        <option value="В работе">В работе</option>
+                        <option value="Просрочен">Просрочен</option>
+                        <option value="Назначена">Назначена</option>
+                    </select>
                 </div>
-                <button class="btn-primary" id="applyPlanFilter">
-                    <span class="btn-icon">🔍</span>
-                    Применить фильтр
-                </button>
+                <div class="filter-group">
+                    <label>С</label>
+                    <input type="date" id="startDateFilter">
+                </div>
+                <div class="filter-group">
+                    <label>По</label>
+                    <input type="date" id="endDateFilter">
+                </div>
+                <button class="btn-primary" id="applyFilterBtn">Применить</button>
+                <button class="btn-add" id="addPlanBtn">+ Добавить план</button>
+                <button class="btn-export" id="exportToExcelBtn">Excel</button>
+                <button class="btn-export" id="exportToWordBtn">Word</button>
+                <button class="btn-preview" id="previewReportBtn">Предпросмотр</button>
             </div>
 
             <div class="table-container">
-                <table class="data-table" id="plansTable">
+                <table id="plansTable">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -155,109 +69,162 @@
                             <th>Дата окончания</th>
                             <th>Ответственный</th>
                             <th>Статус</th>
-                            <th>ID Аварии</th>
-                            <th>Стоимость (руб)</th>
-                        </thead>
+                            <th>Авария</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
                     <tbody id="plansTableBody">
                         <tr><td colspan="9" class="loading">Загрузка...</td></tr>
                     </tbody>
                 </table>
             </div>
-
-            <div class="edit-form">
-                <h3 class="form-title"><span class="form-icon">✏️</span> Планирование нового ремонта</h3>
-                <div class="form-grid">
-                    <div class="form-group"><label>Оборудование:</label><select id="equipmentSelect" class="form-select"><option value="">Загрузка...</option></select></div>
-                    <div class="form-group"><label>Тип ТО:</label><select id="tipSelect" class="form-select"><option value="">Загрузка...</option></select></div>
-                    <div class="form-group"><label>Дата начала:</label><input type="date" id="startDate" class="form-input"></div>
-                    <div class="form-group"><label>Дата окончания:</label><input type="date" id="endDate" class="form-input"></div>
-                    <div class="form-group"><label>Ответственный:</label><select id="responsibleSelect" class="form-select"><option value="">Загрузка...</option></select></div>
-                    <div class="form-group"><label>Статус ТО:</label><select id="statusSelect" class="form-select"><option value="Запланирован">📋 Запланирован</option><option value="В работе">⚙️ В работе</option><option value="Завершен">✅ Завершен</option><option value="Отменен">❌ Отменен</option></select></div>
-                    <div class="form-group"><label>Стоимость (руб):</label><input type="number" id="cost" step="0.01" class="form-input" placeholder="0.00"></div>
-                </div>
-                <div class="form-actions">
-                    <button class="btn-success" id="addPlanBtn"><span class="btn-icon">➕</span> Добавить</button>
-                    <button class="btn-warning" id="updatePlanBtn"><span class="btn-icon">🔄</span> Обновить</button>
-                    <button class="btn-danger" id="deletePlanBtn"><span class="btn-icon">🗑️</span> Удалить</button>
-                    <button class="btn-secondary" id="clearFormBtn"><span class="btn-icon">🧹</span> Очистить</button>
-                </div>
-            </div>
         </div>
 
-        <!-- Вкладка Аварии -->
-        <div class="tab-content" id="tab-avariya">
-            <div class="filters-section">
+        <!-- Вкладка "Аварии" -->
+        <div id="avariyaTab" class="tab-content">
+            <div class="filters-bar">
                 <div class="filter-group">
-                    <label>Период:</label>
-                    <div class="date-range">
-                        <input type="date" id="avariyaStartDate" class="date-input">
-                        <span class="date-separator">—</span>
-                        <input type="date" id="avariyaEndDate" class="date-input">
-                    </div>
+                    <label>С</label>
+                    <input type="date" id="avariyaStartDate">
                 </div>
                 <div class="filter-group">
-                    <label class="checkbox">
-                        <input type="checkbox" id="showAllAvariya">
-                        <span class="checkmark"></span>
-                        Все записи
-                    </label>
+                    <label>По</label>
+                    <input type="date" id="avariyaEndDate">
                 </div>
-                <button class="btn-primary" id="applyAvariyaFilter"><span class="btn-icon">🔍</span> Применить фильтр</button>
-            </div>
-
-            <div class="table-container">
-                <table class="data-table" id="avariyaTable">
-                    <thead><tr><th>ID</th><th>Оборудование</th><th>Дата</th><th>Описание</th><th>Последствия</th><th>Статус</th><th>План</th></tr></thead>
-                    <tbody id="avariyaTableBody"><tr><td colspan="7" class="loading">Загрузка...</td></tr></tbody>
-                </table>
-            </div>
-            <div class="action-bar"><button class="btn-orange" id="createPlanFromAvariya"><span class="btn-icon">📋</span> Создать план из аварии</button></div>
-        </div>
-
-        <!-- Вкладка История -->
-        <div class="tab-content" id="tab-history">
-            <div class="filters-section">
-                <div class="filter-group">
-                    <label>Период:</label>
-                    <div class="date-range">
-                        <input type="date" id="historyStartDate" class="date-input">
-                        <span class="date-separator">—</span>
-                        <input type="date" id="historyEndDate" class="date-input">  
-                    </div>
-                </div>
-                <button class="btn-primary" id="applyHistoryFilter"><span class="btn-icon">🔍</span> Применить фильтр</button>
+                <button class="btn-primary" id="applyAvariyaFilterBtn">Применить</button>
             </div>
             <div class="table-container">
-                <table class="data-table" id="historyTable">
-                    <thead><tr><th>Оборудование</th><th>Тип ТО</th><th>Плановая дата</th><th>Дата выполнения</th><th>Исполнитель</th><th>Описание работ</th><th>Стоимость</th></tr></thead>
-                    <tbody id="historyTableBody"><tr><td colspan="7" class="loading">Загрузка...</td></tr></tbody>
+                <table id="avariyaTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Оборудование</th>
+                            <th>Дата аварии</th>
+                            <th>Описание</th>
+                            <th>Последствия</th>
+                            <th>Статус</th>
+                            <th>План</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="avariyaTableBody">
+                        <tr><td colspan="8" class="loading">Загрузка...</td></tr>
+                    </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Вкладка Отчеты -->
-        <div class="tab-content" id="tab-reports">
-            <div class="reports-section">
-                <h3 class="form-title">Экспорт отчетов</h3>
-                <div class="form-group" style="margin-bottom:20px;width:300px;">
-                    <label>Тип отчета:</label>
-                    <select id="reportTypeSelect" class="form-select">
-                        <option value="all">Все планы</option>
-                        <option value="inprogress">В работе</option>
-                        <option value="completed">Завершенные</option>
-                        <option value="overdue">Просроченные</option>
-                        <option value="history">История ремонтов</option>
-                        <option value="avariya">Аварии</option>
-                    </select>
+        <!-- Вкладка "История ремонтов" -->
+        <div id="historyTab" class="tab-content">
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <label>С</label>
+                    <input type="date" id="historyStartDate">
                 </div>
-                <div class="report-actions">
-                    <button class="btn-success" id="exportExcelBtn"><span class="btn-icon">📊</span> Экспорт в EXCEL</button>
-                    <button class="btn-primary" id="exportWordBtn"><span class="btn-icon">📝</span> Экспорт в WORD</button>
-                    <button class="btn-info" id="previewReportBtn"><span class="btn-icon">👁️</span> Предпросмотр</button>
+                <div class="filter-group">
+                    <label>По</label>
+                    <input type="date" id="historyEndDate">
+                </div>
+                <button class="btn-primary" id="applyHistoryFilterBtn">Применить</button>
+            </div>
+            <div class="table-container">
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Оборудование</th>
+                            <th>Тип ТО</th>
+                            <th>Плановая дата</th>
+                            <th>Дата выполнения</th>
+                            <th>Исполнитель</th>
+                            <th>Описание работ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <tr><td colspan="6" class="loading">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Вкладка "Статистика" -->
+        <div id="statisticsTab" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statEquipment">0</div>
+                    <div class="stat-label">Единиц оборудования</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statAvariya">0</div>
+                    <div class="stat-label">Аварий всего</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statPlans">0</div>
+                    <div class="stat-label">Активных планов</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statCompleted">0</div>
+                    <div class="stat-label">Выполнено</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value critical" id="statOverdue">0</div>
+                    <div class="stat-label">Просрочено</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statInProgress">0</div>
+                    <div class="stat-label">В работе</div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Модальное окно для плана -->
+    <div id="planModal" class="modal" style="display:none">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="planModalTitle">Добавление плана</h3>
+                <span class="close" onclick="closeModal('planModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="planId">
+                <div class="form-group">
+                    <label>Оборудование *</label>
+                    <select id="planEquipment" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Тип ТО *</label>
+                    <select id="planTip" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Дата начала *</label>
+                    <input type="date" id="planStartDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Дата окончания *</label>
+                    <input type="date" id="planEndDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Ответственный *</label>
+                    <select id="planResponsible" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Статус *</label>
+                    <select id="planStatus">
+                        <option value="Назначена">Назначена</option>
+                        <option value="В работе">В работе</option>
+                        <option value="Завершен">Завершен</option>
+                        <option value="Просрочен">Просрочен</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" id="savePlanBtn">Сохранить</button>
+                <button class="btn-secondary" onclick="closeModal('planModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
     <script src="js/boss.js"></script>
 </body>
 </html>

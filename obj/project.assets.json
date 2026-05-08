@@ -5379,6 +5379,7 @@
       },
       "frameworks": {
         "net9.0-windows7.0": {
+          "framework": "net9.0-windows7.0",
           "targetAlias": "net9.0-windows",
           "projectReferences": {}
         }
@@ -5393,10 +5394,11 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "10.0.100"
+      "SdkAnalysisLevel": "10.0.200"
     },
     "frameworks": {
       "net9.0-windows7.0": {
+        "framework": "net9.0-windows7.0",
         "targetAlias": "net9.0-windows",
         "dependencies": {
           "Jenga.NET": {
@@ -5438,19 +5440,19 @@
         "downloadDependencies": [
           {
             "name": "Microsoft.AspNetCore.App.Ref",
-            "version": "[9.0.12, 9.0.12]"
+            "version": "[9.0.15, 9.0.15]"
           },
           {
             "name": "Microsoft.NETCore.App.Host.win-x64",
-            "version": "[9.0.12, 9.0.12]"
+            "version": "[9.0.15, 9.0.15]"
           },
           {
             "name": "Microsoft.NETCore.App.Ref",
-            "version": "[9.0.12, 9.0.12]"
+            "version": "[9.0.15, 9.0.15]"
           },
           {
             "name": "Microsoft.WindowsDesktop.App.Ref",
-            "version": "[9.0.12, 9.0.12]"
+            "version": "[9.0.15, 9.0.15]"
           }
         ],
         "frameworkReferences": {
@@ -5461,7 +5463,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json"
       }
     }
   },
@@ -5473,7 +5475,7 @@
       "message": "Пакет \"Bunifu.Charts.WinForms 1.1.5\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Bunifu.Charts.WinForms",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -5483,7 +5485,7 @@
       "message": "Пакет \"Bunifu.UI.WinForms 5.3.0\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Bunifu.UI.WinForms",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -5493,7 +5495,7 @@
       "message": "Пакет \"Bunifu.Utils 1.0.6\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Bunifu.Utils",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -5503,7 +5505,7 @@
       "message": "Пакет \"GumroadLicensing 2.0.2\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "GumroadLicensing",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -5513,7 +5515,7 @@
       "message": "Пакет \"Jenga.NET 4.0.0\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Jenga.NET",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -5523,7 +5525,7 @@
       "message": "Пакет \"Kimtoo.BindingProvider 1.2.7\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Kimtoo.BindingProvider",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -5533,7 +5535,7 @@
       "message": "Пакет \"Kimtoo.ButtonGroup 1.0.1\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Kimtoo.ButtonGroup",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -5543,7 +5545,7 @@
       "message": "Пакет \"Kimtoo.DbManager 1.0.8\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Kimtoo.DbManager",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -5553,7 +5555,7 @@
       "message": "Пакет \"Kimtoo.NavigationMenu 1.0.2\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Kimtoo.NavigationMenu",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     },
     {
@@ -5563,7 +5565,7 @@
       "message": "Пакет \"Kimtoo.ValidationProvider 1.0.8\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net9.0-windows7.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
       "libraryId": "Kimtoo.ValidationProvider",
       "targetGraphs": [
-        "net9.0-windows7.0"
+        "net9.0-windows"
       ]
     }
   ]
