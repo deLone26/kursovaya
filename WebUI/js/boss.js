@@ -1,43 +1,60 @@
-let employees = [];
 let allPlans = [];
 let allAvariya = [];
 let allHistory = [];
 let currentEditPlanId = null;
+let currentFilters = { equipmentFilter: '0', statusFilter: '', startDate: '', endDate: '' };
 
 function sendToCSharp(action, data = {}) {
     const msg = JSON.stringify({ action: action, ...data });
     if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage(msg);
-    } else {
-        console.log('WebView не доступен');
     }
 }
 
 window.receiveFromCSharp = function(command, data) {
     console.log('Received:', command, data);
+    
     if (command === 'fillEquipment') {
-        const select = document.getElementById('planEquipment');
-        select.innerHTML = '<option value="">Выберите оборудование</option>';
+        const select = document.getElementById('equipmentFilter');
+        const planSelect = document.getElementById('planEquipment');
         const items = typeof data === 'string' ? JSON.parse(data) : data;
-        items.forEach(item => {
-            select.innerHTML += `<option value="${item.id}">${item.name}</option>`;
-        });
+        
+        if (select) {
+            select.innerHTML = '<option value="0">Все оборудование</option>';
+            items.forEach(item => {
+                if (item.id !== 0) {
+                    select.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
+                }
+            });
+        }
+        if (planSelect) {
+            planSelect.innerHTML = '<option value="">Выберите оборудование</option>';
+            items.forEach(item => {
+                if (item.id !== 0) {
+                    planSelect.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
+                }
+            });
+        }
     }
     else if (command === 'fillTipTypes') {
         const select = document.getElementById('planTip');
-        select.innerHTML = '<option value="">Выберите тип ТО</option>';
         const items = typeof data === 'string' ? JSON.parse(data) : data;
-        items.forEach(item => {
-            select.innerHTML += `<option value="${item.id}">${item.name}</option>`;
-        });
+        if (select) {
+            select.innerHTML = '<option value="">Выберите тип ТО</option>';
+            items.forEach(item => {
+                select.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
+            });
+        }
     }
     else if (command === 'fillResponsible') {
         const select = document.getElementById('planResponsible');
-        select.innerHTML = '<option value="">Выберите ответственного</option>';
         const items = typeof data === 'string' ? JSON.parse(data) : data;
-        items.forEach(item => {
-            select.innerHTML += `<option value="${item.id}">${item.name}</option>`;
-        });
+        if (select) {
+            select.innerHTML = '<option value="">Выберите ответственного</option>';
+            items.forEach(item => {
+                select.innerHTML += `<option value="${item.id}">${escapeHtml(item.name)}</option>`;
+            });
+        }
     }
     else if (command === 'displayPlans') {
         const result = typeof data === 'string' ? JSON.parse(data) : data;
@@ -61,6 +78,20 @@ window.receiveFromCSharp = function(command, data) {
         document.getElementById('statCompleted').innerHTML = stats.completedPlans || 0;
         document.getElementById('statOverdue').innerHTML = stats.overduePlans || 0;
         document.getElementById('statInProgress').innerHTML = stats.inProgressPlans || 0;
+    }
+    else if (command === 'showNewAvariya') {
+        const av = typeof data === 'string' ? JSON.parse(data) : data;
+        showToast(`🚨 НОВАЯ АВАРИЯ!\nОборудование: ${av.equipment}\nДата: ${av.date}`, 'error');
+        // Обновляем список аварий и статистику
+        loadAvariya();
+        loadStatistics();
+        // Всплывающее уведомление браузера
+        if (Notification.permission === 'granted') {
+            new Notification('Новая авария', {
+                body: `Оборудование: ${av.equipment}\nДата: ${av.date}`,
+                icon: 'https://cdn-icons-png.flaticon.com/512/190/190411.png'
+            });
+        }
     }
     else if (command === 'showSuccess') {
         showToast(data, 'success');
@@ -110,6 +141,11 @@ function renderAvariyaTable() {
     
     let html = '';
     for (let av of allAvariya) {
+        const hasPlan = av.has_plan === 'Да';
+        const actionButton = !hasPlan 
+            ? `<button class="create-plan-btn" onclick="createPlanFromAvariya(${av.id})">Запланировать ремонт</button>` 
+            : '<span style="color: #10b981;">✅ План создан</span>';
+        
         html += `<tr>
             <td>${av.id}</td>
             <td>${escapeHtml(av.equipment)}</td>
@@ -118,9 +154,7 @@ function renderAvariyaTable() {
             <td>${escapeHtml(av.consequences)}</td>
             <td>${escapeHtml(av.status)}</td>
             <td>${av.has_plan}</td>
-            <td>
-                <button class="create-plan-btn" onclick="createPlanFromAvariya(${av.id})">Создать план</button>
-            </td>
+            <td>${actionButton}</td>
         </tr>`;
     }
     tbody.innerHTML = html;
@@ -147,13 +181,35 @@ function renderHistoryTable() {
     tbody.innerHTML = html;
 }
 
-function loadEquipment() { sendToCSharp('loadEquipment'); }
-function loadTipTypes() { sendToCSharp('loadTipTypes'); }
-function loadResponsible() { sendToCSharp('loadResponsible'); }
-function loadPlans() { sendToCSharp('loadPlans', {}); }
-function loadAvariya() { sendToCSharp('loadAvariya', {}); }
-function loadHistory() { sendToCSharp('loadHistory', {}); }
-function loadStatistics() { sendToCSharp('loadStatistics'); }
+function loadPlans() {
+    sendToCSharp('loadPlans', currentFilters);
+}
+
+function loadAvariya() {
+    const startDate = document.getElementById('avariyaStartDate').value;
+    const endDate = document.getElementById('avariyaEndDate').value;
+    sendToCSharp('loadAvariya', { startDate, endDate });
+}
+
+function loadHistory() {
+    const startDate = document.getElementById('historyStartDate').value;
+    const endDate = document.getElementById('historyEndDate').value;
+    sendToCSharp('loadHistory', { startDate, endDate });
+}
+
+function loadStatistics() {
+    sendToCSharp('loadStatistics');
+}
+
+function applyFilters() {
+    currentFilters = {
+        equipmentFilter: document.getElementById('equipmentFilter').value,
+        statusFilter: document.getElementById('statusFilter').value,
+        startDate: document.getElementById('startDateFilter').value,
+        endDate: document.getElementById('endDateFilter').value
+    };
+    loadPlans();
+}
 
 function addPlan() {
     const equipment = document.getElementById('planEquipment').value;
@@ -161,7 +217,6 @@ function addPlan() {
     const startDate = document.getElementById('planStartDate').value;
     const endDate = document.getElementById('planEndDate').value;
     const responsible = document.getElementById('planResponsible').value;
-    const status = document.getElementById('planStatus').value;
     
     if (!equipment || !tip || !startDate || !endDate || !responsible) {
         showToast('Заполните все поля!', 'error');
@@ -173,8 +228,7 @@ function addPlan() {
         tip: parseInt(tip),
         startDate: startDate,
         endDate: endDate,
-        responsible: parseInt(responsible),
-        status: status
+        responsible: parseInt(responsible)
     });
     closeModal('planModal');
 }
@@ -185,14 +239,12 @@ function editPlan(id) {
     
     currentEditPlanId = id;
     document.getElementById('planModalTitle').innerText = 'Редактирование плана';
-    
-    document.getElementById('planEquipment').value = plan.equipment_id || '';
-    document.getElementById('planTip').value = plan.tip_id || '';
-    document.getElementById('planStartDate').value = plan.start_date;
-    document.getElementById('planEndDate').value = plan.end_date;
-    document.getElementById('planResponsible').value = plan.responsible_id || '';
+    document.getElementById('planEquipment').value = plan.equipment_id;
+    document.getElementById('planTip').value = plan.tip_id;
+    document.getElementById('planStartDate').value = plan.start_date.split('.').reverse().join('-');
+    document.getElementById('planEndDate').value = plan.end_date.split('.').reverse().join('-');
+    document.getElementById('planResponsible').value = plan.responsible_id;
     document.getElementById('planStatus').value = plan.status;
-    
     document.getElementById('planModal').style.display = 'flex';
 }
 
@@ -224,30 +276,44 @@ function deletePlan(id) {
 
 function createPlanFromAvariya(id) {
     sendToCSharp('createPlanFromAvariya', { id: id });
+    setTimeout(() => {
+        switchToPlansTab();
+    }, 500);
 }
 
-function exportToExcel() { sendToCSharp('exportToExcel'); }
-function exportToWord() { sendToCSharp('exportToWord'); }
-function previewReport() { sendToCSharp('previewReport'); }
+function switchToPlansTab() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.tab === 'plans') btn.click();
+    });
+}
+
+function exportToExcel() {
+    const reportType = document.getElementById('reportTypeSelect').value;
+    sendToCSharp('exportToExcel', { reportType: reportType });
+}
+
+function exportToWord() {
+    const reportType = document.getElementById('reportTypeSelect').value;
+    sendToCSharp('exportToWord', { reportType: reportType });
+}
+
+function previewReport() {
+    sendToCSharp('previewReport');
+}
 
 function setDefaultDates() {
     const today = new Date();
     const monthAgo = new Date();
     monthAgo.setMonth(monthAgo.getMonth() - 1);
     
-    const startDateFilter = document.getElementById('startDateFilter');
-    const endDateFilter = document.getElementById('endDateFilter');
-    const avariyaStartDate = document.getElementById('avariyaStartDate');
-    const avariyaEndDate = document.getElementById('avariyaEndDate');
-    const historyStartDate = document.getElementById('historyStartDate');
-    const historyEndDate = document.getElementById('historyEndDate');
+    const formatDate = (date) => date.toISOString().split('T')[0];
     
-    if (startDateFilter) startDateFilter.value = monthAgo.toISOString().split('T')[0];
-    if (endDateFilter) endDateFilter.value = today.toISOString().split('T')[0];
-    if (avariyaStartDate) avariyaStartDate.value = monthAgo.toISOString().split('T')[0];
-    if (avariyaEndDate) avariyaEndDate.value = today.toISOString().split('T')[0];
-    if (historyStartDate) historyStartDate.value = monthAgo.toISOString().split('T')[0];
-    if (historyEndDate) historyEndDate.value = today.toISOString().split('T')[0];
+    document.getElementById('startDateFilter').value = formatDate(monthAgo);
+    document.getElementById('endDateFilter').value = formatDate(today);
+    document.getElementById('avariyaStartDate').value = formatDate(monthAgo);
+    document.getElementById('avariyaEndDate').value = formatDate(today);
+    document.getElementById('historyStartDate').value = formatDate(monthAgo);
+    document.getElementById('historyEndDate').value = formatDate(today);
 }
 
 function setupTabs() {
@@ -271,8 +337,7 @@ function setupTabs() {
 }
 
 function setupEventListeners() {
-    document.getElementById('logoutBtn').onclick = () => sendToCSharp('logout');
-    document.getElementById('applyFilterBtn').onclick = () => loadPlans();
+    document.getElementById('applyFilterBtn').onclick = () => applyFilters();
     document.getElementById('applyAvariyaFilterBtn').onclick = () => loadAvariya();
     document.getElementById('applyHistoryFilterBtn').onclick = () => loadHistory();
     document.getElementById('addPlanBtn').onclick = () => {
@@ -283,7 +348,6 @@ function setupEventListeners() {
         document.getElementById('planStartDate').value = '';
         document.getElementById('planEndDate').value = '';
         document.getElementById('planResponsible').value = '';
-        document.getElementById('planStatus').value = 'Назначена';
         document.getElementById('planModal').style.display = 'flex';
     };
     document.getElementById('savePlanBtn').onclick = () => {
@@ -293,8 +357,8 @@ function setupEventListeners() {
             addPlan();
         }
     };
-    document.getElementById('exportToExcelBtn').onclick = () => exportToExcel();
-    document.getElementById('exportToWordBtn').onclick = () => exportToWord();
+    document.getElementById('exportExcelBtn').onclick = () => exportToExcel();
+    document.getElementById('exportWordBtn').onclick = () => exportToWord();
     document.getElementById('previewReportBtn').onclick = () => previewReport();
 }
 
@@ -322,15 +386,23 @@ function escapeHtml(text) {
     });
 }
 
+// Запрос разрешения на уведомления
+if (Notification.permission === 'default') {
+    Notification.requestPermission();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     setupTabs();
     setupEventListeners();
     setDefaultDates();
     
-    loadEquipment();
-    loadTipTypes();
-    loadResponsible();
-    loadPlans();
+    // Загружаем все необходимые данные
+    sendToCSharp('loadEquipment');
+    sendToCSharp('loadTipTypes');
+    sendToCSharp('loadResponsible');
+    
+    // Устанавливаем фильтры по умолчанию и загружаем данные
+    applyFilters();
     loadAvariya();
     loadHistory();
     loadStatistics();

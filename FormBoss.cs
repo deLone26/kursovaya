@@ -2,7 +2,6 @@
 using Microsoft.Web.WebView2.Core;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -14,24 +13,82 @@ namespace WindowsFormsApp1
 {
     public partial class FormBoss : Form
     {
-        private string connectionString;
-        private int currentUserId;
         private WebView2 webView;
-        private int selectedPlanId = -1;
+        private readonly string connectionString;
+        private int currentUserId;
         private int selectedAvariyaId = -1;
+        private Timer notificationTimer;
+        private HashSet<int> notifiedAvariyaIds = new HashSet<int>();
 
-        private readonly string connString = "Host=localhost;Port=5432;Database=boiler_system;Username=postgres;Password=43898362Dd+-;Include Error Detail=true";
-
-        public FormBoss(string userConnectionString, int userId)
+        public FormBoss(string connString, int userId)
         {
-            this.connectionString = userConnectionString;
+            this.connectionString = connString;
             this.currentUserId = userId;
-
             InitializeComponent();
-            this.WindowState = FormWindowState.Maximized;
-            this.Text = "Панель начальника - Планирование ремонтов";
-
+            SetupForm();
             InitializeWebView();
+            StartNotificationTimer();
+        }
+
+        private void SetupForm()
+        {
+            this.Text = "Панель начальника";
+            this.WindowState = FormWindowState.Maximized;
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.Controls.Clear();
+        }
+
+        private void StartNotificationTimer()
+        {
+            notificationTimer = new Timer();
+            notificationTimer.Interval = 15000;
+            notificationTimer.Tick += async (s, e) => await CheckNewAvariya();
+            notificationTimer.Start();
+        }
+
+        private async Task CheckNewAvariya()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+                    string sql = @"
+                        SELECT a.id, o.nazvanie AS equipment, a.data_avarii, COALESCE(a.opisanie, '') as description
+                        FROM avariya a
+                        JOIN oborudovanie o ON a.oborudovanie_id = o.id
+                        WHERE a.data_avarii > NOW() - INTERVAL '1 minute'
+                        ORDER BY a.data_avarii DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            int id = reader.GetInt32(0);
+                            if (!notifiedAvariyaIds.Contains(id))
+                            {
+                                notifiedAvariyaIds.Add(id);
+                                string equipment = reader.GetString(1);
+                                DateTime date = reader.GetDateTime(2);
+                                string description = reader.GetString(3);
+
+                                await ExecuteJsFunction("showNewAvariya", JsonSerializer.Serialize(new
+                                {
+                                    id = id,
+                                    equipment = equipment,
+                                    date = date.ToString("dd.MM.yyyy HH:mm"),
+                                    description = description
+                                }));
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка проверки аварий: {ex.Message}");
+            }
         }
 
         private async void InitializeWebView()
@@ -44,8 +101,10 @@ namespace WindowsFormsApp1
 
                 await webView.EnsureCoreWebView2Async(null);
 
-                webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-                webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = true;
+                webView.CoreWebView2.Settings.IsScriptEnabled = true;
+                webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+                webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+                webView.CoreWebView2.OpenDevToolsWindow();
 
                 string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
                 string htmlPath = Path.Combine(webUIPath, "boss.html");
@@ -57,15 +116,7 @@ namespace WindowsFormsApp1
                 else
                 {
                     MessageBox.Show($"Файл не найден: {htmlPath}");
-                    return;
                 }
-
-                webView.CoreWebView2.WebMessageReceived += HandleWebMessage;
-                webView.CoreWebView2.NavigationCompleted += async (s, e) =>
-                {
-                    await Task.Delay(500);
-                    LoadInitialData();
-                };
             }
             catch (Exception ex)
             {
@@ -73,38 +124,71 @@ namespace WindowsFormsApp1
             }
         }
 
-        private void HandleWebMessage(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        private async void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             string message = e.TryGetWebMessageAsString();
+            System.Diagnostics.Debug.WriteLine($"Получено: {message}");
+
             try
             {
-                if (message.StartsWith("{"))
+                using (JsonDocument doc = JsonDocument.Parse(message))
                 {
-                    var json = JsonDocument.Parse(message).RootElement;
-                    string action = json.GetProperty("action").GetString();
+                    JsonElement root = doc.RootElement;
+                    string action = root.GetProperty("action").GetString();
 
                     switch (action)
                     {
-                        case "loadPlans": LoadPlans(json); break;
-                        case "loadAvariya": LoadAvariya(json); break;
-                        case "loadHistory": LoadRepairHistory(json); break;
-                        case "addPlan": AddPlan(json); break;
-                        case "updatePlan": UpdatePlan(json); break;
-                        case "deletePlan": DeletePlan(json); break;
-                        case "createPlanFromAvariya": CreatePlanFromAvariya(json); break;
-                        case "exportToExcel": ExportToExcel(); break;
-                        case "exportToWord": ExportToWord(); break;
-                        case "previewReport": PreviewReport(); break;
-                    }
-                }
-                else
-                {
-                    switch (message)
-                    {
-                        case "loadEquipment": LoadEquipment(); break;
-                        case "loadTipTypes": LoadTipTypes(); break;
-                        case "loadResponsible": LoadResponsible(); break;
-                        case "loadStatistics": LoadStatistics(); break;
+                        case "loadEquipment":
+                            await LoadEquipment();
+                            break;
+                        case "loadTipTypes":
+                            await LoadTipTypes();
+                            break;
+                        case "loadResponsible":
+                            await LoadResponsible();
+                            break;
+                        case "loadPlans":
+                            await LoadPlans(root);
+                            break;
+                        case "loadAvariya":
+                            await LoadAvariya(root);
+                            break;
+                        case "loadHistory":
+                            await LoadHistory(root);
+                            break;
+                        case "loadStatistics":
+                            await LoadStatistics();
+                            break;
+                        case "addPlan":
+                            await AddPlan(root);
+                            break;
+                        case "updatePlan":
+                            await UpdatePlan(root);
+                            break;
+                        case "deletePlan":
+                            await DeletePlan(root);
+                            break;
+                        case "createPlanFromAvariya":
+                            await CreatePlanFromAvariya(root);
+                            break;
+                        case "exportToExcel":
+                            await ExportToExcel(root);
+                            break;
+                        case "exportToWord":
+                            await ExportToWord(root);
+                            break;
+                        case "previewReport":
+                            await PreviewReport();
+                            break;
+                        case "logout":
+                            this.Invoke(new Action(() =>
+                            {
+                                notificationTimer?.Stop();
+                                var loginForm = new LoginForm();
+                                loginForm.Show();
+                                this.Close();
+                            }));
+                            break;
                     }
                 }
             }
@@ -114,91 +198,129 @@ namespace WindowsFormsApp1
             }
         }
 
-        private void LoadInitialData()
+        private async Task ExecuteJsFunction(string function, string data = null)
         {
-            LoadEquipment();
-            LoadTipTypes();
-            LoadResponsible();
-            LoadPlans();
-            LoadAvariya();
-            LoadStatistics();
-            LoadRepairHistory();
+            if (webView?.CoreWebView2 != null)
+            {
+                string js;
+                if (string.IsNullOrEmpty(data))
+                    js = $"if(window.receiveFromCSharp) window.receiveFromCSharp('{function}', null);";
+                else
+                {
+                    string escapedData = data.Replace("\\", "\\\\").Replace("'", "\\'");
+                    js = $"if(window.receiveFromCSharp) window.receiveFromCSharp('{function}', '{escapedData}');";
+                }
+                await webView.CoreWebView2.ExecuteScriptAsync(js);
+            }
         }
 
-        private void LoadEquipment()
+        private async Task LoadEquipment()
         {
             try
             {
-                using (var conn = new NpgsqlConnection(connString))
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     string sql = "SELECT id, nazvanie FROM oborudovanie ORDER BY nazvanie";
                     using (var cmd = new NpgsqlCommand(sql, conn))
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         var list = new List<object>();
-                        while (reader.Read())
+                        list.Add(new { id = 0, name = "Все оборудование" });
+                        while (await reader.ReadAsync())
+                        {
                             list.Add(new { id = reader.GetInt32(0), name = reader.GetString(1) });
-                        SendToWebView("fillEquipment", JsonSerializer.Serialize(list));
+                        }
+                        string json = JsonSerializer.Serialize(list);
+                        await ExecuteJsFunction("fillEquipment", json);
                     }
                 }
             }
-            catch (Exception ex) { ShowError("Ошибка загрузки оборудования: " + ex.Message); }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", $"Ошибка загрузки оборудования: {ex.Message}");
+            }
         }
 
-        private void LoadTipTypes()
+        private async Task LoadTipTypes()
         {
             try
             {
-                using (var conn = new NpgsqlConnection(connString))
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     string sql = "SELECT id, nazvanie FROM tip_to ORDER BY nazvanie";
                     using (var cmd = new NpgsqlCommand(sql, conn))
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         var list = new List<object>();
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
+                        {
                             list.Add(new { id = reader.GetInt32(0), name = reader.GetString(1) });
-                        SendToWebView("fillTipTypes", JsonSerializer.Serialize(list));
+                        }
+                        string json = JsonSerializer.Serialize(list);
+                        await ExecuteJsFunction("fillTipTypes", json);
                     }
                 }
             }
-            catch (Exception ex) { ShowError("Ошибка загрузки типов ТО: " + ex.Message); }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", $"Ошибка загрузки типов ТО: {ex.Message}");
+            }
         }
 
-        private void LoadResponsible()
+        private async Task LoadResponsible()
         {
             try
             {
-                using (var conn = new NpgsqlConnection(connString))
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     string sql = @"
                         SELECT id, familiya || ' ' || imya || ' ' || otchestvo AS fio 
                         FROM sotrudniki 
                         WHERE dolzhnost ILIKE '%слесар%' 
                         ORDER BY familiya";
                     using (var cmd = new NpgsqlCommand(sql, conn))
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         var list = new List<object>();
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
+                        {
                             list.Add(new { id = reader.GetInt32(0), name = reader.GetString(1) });
-                        SendToWebView("fillResponsible", JsonSerializer.Serialize(list));
+                        }
+                        string json = JsonSerializer.Serialize(list);
+                        await ExecuteJsFunction("fillResponsible", json);
                     }
                 }
             }
-            catch (Exception ex) { ShowError("Ошибка загрузки ответственных: " + ex.Message); }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", $"Ошибка загрузки ответственных: {ex.Message}");
+            }
         }
 
-        private void LoadPlans(JsonElement json = default)
+        private async Task LoadPlans(JsonElement json)
         {
             try
             {
-                using (var conn = new NpgsqlConnection(connString))
+                string equipmentFilter = "";
+                string statusFilter = "";
+                string startDate = "";
+                string endDate = "";
+
+                if (json.TryGetProperty("equipmentFilter", out var eq))
+                    equipmentFilter = eq.GetString() ?? "";
+                if (json.TryGetProperty("statusFilter", out var st))
+                    statusFilter = st.GetString() ?? "";
+                if (json.TryGetProperty("startDate", out var sd))
+                    startDate = sd.GetString() ?? "";
+                if (json.TryGetProperty("endDate", out var ed))
+                    endDate = ed.GetString() ?? "";
+
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     var sql = new StringBuilder(@"
                         SELECT 
                             p.id, 
@@ -207,38 +329,33 @@ namespace WindowsFormsApp1
                             TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as start_date,
                             TO_CHAR(p.data_okonchaniya, 'DD.MM.YYYY') as end_date,
                             COALESCE(s.familiya || ' ' || s.imya || ' ' || s.otchestvo, 'Не назначен') AS responsible,
-                            CASE 
-                                WHEN p.status = 'Просрочен' THEN 'Просрочен'
-                                WHEN p.status = 'Завершен' THEN 'Завершен'
-                                WHEN p.status = 'В работе' THEN 'В работе'
-                                ELSE COALESCE(p.status, 'Не указан')
-                            END AS status,
+                            COALESCE(p.status, 'Не указан') AS status,
                             CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_avariya,
-                            COALESCE(p.avariya_id, 0) AS avariya_id,
-                            p.is_overdue
+                            p.oborudovanie_id as equipment_id,
+                            COALESCE(p.tip_to_id, 0) as tip_id,
+                            COALESCE(p.otvetstvenniy_id, 0) as responsible_id
                         FROM plan_to p
                         JOIN oborudovanie o ON p.oborudovanie_id = o.id
                         LEFT JOIN tip_to t ON p.tip_to_id = t.id
                         LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
-                        WHERE p.status != 'Завершен'");
+                        WHERE 1=1");
 
-                    if (json.ValueKind != JsonValueKind.Undefined)
-                    {
-                        bool showAll = json.GetProperty("showAll").GetBoolean();
-                        if (!showAll && json.TryGetProperty("startDate", out var s) && json.TryGetProperty("endDate", out var e))
-                        {
-                            string start = s.GetString(), end = e.GetString();
-                            if (!string.IsNullOrEmpty(start) && !string.IsNullOrEmpty(end))
-                                sql.Append($" AND DATE(p.data_nachala) BETWEEN '{start}' AND '{end}'");
-                        }
-                    }
+                    if (!string.IsNullOrEmpty(equipmentFilter) && equipmentFilter != "0")
+                        sql.Append($" AND p.oborudovanie_id = {equipmentFilter}");
+                    if (!string.IsNullOrEmpty(statusFilter))
+                        sql.Append($" AND p.status = '{statusFilter}'");
+                    if (!string.IsNullOrEmpty(startDate))
+                        sql.Append($" AND p.data_nachala >= '{startDate}'");
+                    if (!string.IsNullOrEmpty(endDate))
+                        sql.Append($" AND p.data_nachala <= '{endDate}'");
+
                     sql.Append(" ORDER BY p.data_nachala DESC");
 
                     using (var cmd = new NpgsqlCommand(sql.ToString(), conn))
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         var list = new List<object>();
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
                         {
                             list.Add(new
                             {
@@ -250,25 +367,38 @@ namespace WindowsFormsApp1
                                 responsible = reader.GetString(5),
                                 status = reader.GetString(6),
                                 has_avariya = reader.GetString(7),
-                                avariya_id = reader.GetInt32(8),
-                                is_overdue = reader.GetBoolean(9)
+                                equipment_id = reader.GetInt32(8),
+                                tip_id = reader.GetInt32(9),
+                                responsible_id = reader.GetInt32(10)
                             });
                         }
                         var result = new { plans = list };
-                        SendToWebView("displayPlans", JsonSerializer.Serialize(result));
+                        string jsonResult = JsonSerializer.Serialize(result);
+                        await ExecuteJsFunction("displayPlans", jsonResult);
                     }
                 }
             }
-            catch (Exception ex) { ShowError("Ошибка загрузки планов: " + ex.Message); }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", $"Ошибка загрузки планов: {ex.Message}");
+            }
         }
 
-        private void LoadAvariya(JsonElement json = default)
+        private async Task LoadAvariya(JsonElement json)
         {
             try
             {
-                using (var conn = new NpgsqlConnection(connString))
+                string startDate = "";
+                string endDate = "";
+
+                if (json.TryGetProperty("startDate", out var sd))
+                    startDate = sd.GetString() ?? "";
+                if (json.TryGetProperty("endDate", out var ed))
+                    endDate = ed.GetString() ?? "";
+
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     var sql = new StringBuilder(@"
                         SELECT a.id, o.nazvanie AS equipment, a.data_avarii AS date,
                                COALESCE(a.opisanie, '') AS description,
@@ -277,25 +407,21 @@ namespace WindowsFormsApp1
                                CASE WHEN p.id IS NOT NULL THEN 'Да' ELSE 'Нет' END AS has_plan
                         FROM avariya a
                         JOIN oborudovanie o ON a.oborudovanie_id = o.id
-                        LEFT JOIN plan_to p ON a.id = p.avariya_id");
+                        LEFT JOIN plan_to p ON a.id = p.avariya_id
+                        WHERE 1=1");
 
-                    if (json.ValueKind != JsonValueKind.Undefined)
-                    {
-                        bool showAll = json.GetProperty("showAll").GetBoolean();
-                        if (!showAll && json.TryGetProperty("startDate", out var s) && json.TryGetProperty("endDate", out var e))
-                        {
-                            string start = s.GetString(), end = e.GetString();
-                            if (!string.IsNullOrEmpty(start) && !string.IsNullOrEmpty(end))
-                                sql.Append($" WHERE DATE(a.data_avarii) BETWEEN '{start}' AND '{end}'");
-                        }
-                    }
+                    if (!string.IsNullOrEmpty(startDate))
+                        sql.Append($" AND a.data_avarii >= '{startDate}'");
+                    if (!string.IsNullOrEmpty(endDate))
+                        sql.Append($" AND a.data_avarii <= '{endDate}'");
+
                     sql.Append(" ORDER BY a.data_avarii DESC");
 
                     using (var cmd = new NpgsqlCommand(sql.ToString(), conn))
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         var list = new List<object>();
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
                         {
                             list.Add(new
                             {
@@ -308,18 +434,30 @@ namespace WindowsFormsApp1
                                 has_plan = reader.GetString(6)
                             });
                         }
-                        SendToWebView("displayAvariya", JsonSerializer.Serialize(list));
+                        string jsonResult = JsonSerializer.Serialize(list);
+                        await ExecuteJsFunction("displayAvariya", jsonResult);
                     }
                 }
             }
-            catch (Exception ex) { ShowError("Ошибка загрузки аварий: " + ex.Message); }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", $"Ошибка загрузки аварий: {ex.Message}");
+            }
         }
 
-        private async Task LoadRepairHistory(JsonElement json = default)
+        private async Task LoadHistory(JsonElement json)
         {
             try
             {
-                using (var conn = new NpgsqlConnection(connString))
+                string startDate = "";
+                string endDate = "";
+
+                if (json.TryGetProperty("startDate", out var sd))
+                    startDate = sd.GetString() ?? "";
+                if (json.TryGetProperty("endDate", out var ed))
+                    endDate = ed.GetString() ?? "";
+
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
                     await conn.OpenAsync();
                     var sql = new StringBuilder(@"
@@ -337,12 +475,11 @@ namespace WindowsFormsApp1
                         JOIN sotrudniki s ON r.sotrudnik_id = s.id
                         WHERE 1=1");
 
-                    if (json.ValueKind != JsonValueKind.Undefined && json.TryGetProperty("startDate", out var s) && json.TryGetProperty("endDate", out var e))
-                    {
-                        string start = s.GetString(), end = e.GetString();
-                        if (!string.IsNullOrEmpty(start) && !string.IsNullOrEmpty(end))
-                            sql.Append($" AND DATE(r.data_okonchaniya) BETWEEN '{start}' AND '{end}'");
-                    }
+                    if (!string.IsNullOrEmpty(startDate))
+                        sql.Append($" AND r.data_okonchaniya >= '{startDate}'");
+                    if (!string.IsNullOrEmpty(endDate))
+                        sql.Append($" AND r.data_okonchaniya <= '{endDate}'");
+
                     sql.Append(" ORDER BY r.data_okonchaniya DESC");
 
                     using (var cmd = new NpgsqlCommand(sql.ToString(), conn))
@@ -362,32 +499,36 @@ namespace WindowsFormsApp1
                             });
                         }
                         var result = new { history = list };
-                        SendToWebView("displayHistory", JsonSerializer.Serialize(result));
+                        string jsonResult = JsonSerializer.Serialize(result);
+                        await ExecuteJsFunction("displayHistory", jsonResult);
                     }
                 }
             }
-            catch (Exception ex) { ShowError("Ошибка загрузки истории: " + ex.Message); }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", $"Ошибка загрузки истории: {ex.Message}");
+            }
         }
 
-        private void LoadStatistics()
+        private async Task LoadStatistics()
         {
             try
             {
-                using (var conn = new NpgsqlConnection(connString))
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     string sql = @"
                         SELECT 
                             (SELECT COUNT(*) FROM oborudovanie) as total_equipment,
                             (SELECT COUNT(*) FROM avariya) as total_avariya,
-                            (SELECT COUNT(*) FROM plan_to WHERE status != 'Завершен') as total_plans,
+                            (SELECT COUNT(*) FROM plan_to WHERE status NOT IN ('Завершен', 'Отменен')) as total_plans,
                             (SELECT COUNT(*) FROM plan_to WHERE status = 'Завершен') as completed_plans,
                             (SELECT COUNT(*) FROM plan_to WHERE status = 'Просрочен') as overdue_plans,
                             (SELECT COUNT(*) FROM plan_to WHERE status = 'В работе') as in_progress_plans";
                     using (var cmd = new NpgsqlCommand(sql, conn))
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        if (reader.Read())
+                        if (await reader.ReadAsync())
                         {
                             var stats = new
                             {
@@ -398,15 +539,19 @@ namespace WindowsFormsApp1
                                 overduePlans = reader.GetInt32(4),
                                 inProgressPlans = reader.GetInt32(5)
                             };
-                            SendToWebView("updateStatistics", JsonSerializer.Serialize(stats));
+                            string json = JsonSerializer.Serialize(stats);
+                            await ExecuteJsFunction("updateStatistics", json);
                         }
                     }
                 }
             }
-            catch (Exception ex) { Console.WriteLine("Ошибка статистики: " + ex.Message); }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка статистики: {ex.Message}");
+            }
         }
 
-        private void AddPlan(JsonElement json)
+        private async Task AddPlan(JsonElement json)
         {
             try
             {
@@ -415,14 +560,13 @@ namespace WindowsFormsApp1
                 string startDate = json.GetProperty("startDate").GetString();
                 string endDate = json.GetProperty("endDate").GetString();
                 int responsible = json.GetProperty("responsible").GetInt32();
-                string status = json.GetProperty("status").GetString();
 
-                using (var conn = new NpgsqlConnection(connString))
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     string sql = @"
                         INSERT INTO plan_to (oborudovanie_id, tip_to_id, data_nachala, data_okonchaniya, otvetstvenniy_id, status, avariya_id)
-                        VALUES (@oborudovanie_id, @tip_to_id, @data_nachala, @data_okonchaniya, @otvetstvenniy_id, @status, @avariya_id)";
+                        VALUES (@oborudovanie_id, @tip_to_id, @data_nachala, @data_okonchaniya, @otvetstvenniy_id, 'В работе', @avariya_id)";
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@oborudovanie_id", equipment);
@@ -430,20 +574,22 @@ namespace WindowsFormsApp1
                         cmd.Parameters.AddWithValue("@data_nachala", DateTime.Parse(startDate));
                         cmd.Parameters.AddWithValue("@data_okonchaniya", DateTime.Parse(endDate));
                         cmd.Parameters.AddWithValue("@otvetstvenniy_id", responsible);
-                        cmd.Parameters.AddWithValue("@status", status);
                         cmd.Parameters.AddWithValue("@avariya_id", selectedAvariyaId != -1 ? (object)selectedAvariyaId : DBNull.Value);
-                        cmd.ExecuteNonQuery();
+                        await cmd.ExecuteNonQueryAsync();
                     }
                 }
-                ShowSuccess("План успешно добавлен!");
-                LoadPlans();
-                LoadStatistics();
+                await ExecuteJsFunction("showSuccess", "План успешно добавлен!");
+                await LoadPlans(JsonDocument.Parse("{}").RootElement);
+                await LoadStatistics();
                 selectedAvariyaId = -1;
             }
-            catch (Exception ex) { ShowError("Ошибка добавления: " + ex.Message); }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", $"Ошибка добавления: {ex.Message}");
+            }
         }
 
-        private void UpdatePlan(JsonElement json)
+        private async Task UpdatePlan(JsonElement json)
         {
             try
             {
@@ -455,9 +601,9 @@ namespace WindowsFormsApp1
                 int responsible = json.GetProperty("responsible").GetInt32();
                 string status = json.GetProperty("status").GetString();
 
-                using (var conn = new NpgsqlConnection(connString))
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     string sql = @"UPDATE plan_to SET oborudovanie_id=@oborudovanie_id, tip_to_id=@tip_to_id, data_nachala=@data_nachala, data_okonchaniya=@data_okonchaniya, otvetstvenniy_id=@otvetstvenniy_id, status=@status WHERE id=@id";
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -468,327 +614,423 @@ namespace WindowsFormsApp1
                         cmd.Parameters.AddWithValue("@data_okonchaniya", DateTime.Parse(endDate));
                         cmd.Parameters.AddWithValue("@otvetstvenniy_id", responsible);
                         cmd.Parameters.AddWithValue("@status", status);
-                        cmd.ExecuteNonQuery();
+                        await cmd.ExecuteNonQueryAsync();
                     }
                 }
-                ShowSuccess("План успешно обновлен!");
-                LoadPlans();
-                LoadStatistics();
+                await ExecuteJsFunction("showSuccess", "План успешно обновлен!");
+                await LoadPlans(JsonDocument.Parse("{}").RootElement);
+                await LoadStatistics();
             }
-            catch (Exception ex) { ShowError("Ошибка обновления: " + ex.Message); }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", $"Ошибка обновления: {ex.Message}");
+            }
         }
 
-        private void DeletePlan(JsonElement json)
+        private async Task DeletePlan(JsonElement json)
         {
             try
             {
                 int id = json.GetProperty("id").GetInt32();
-                using (var conn = new NpgsqlConnection(connString))
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     using (var cmd = new NpgsqlCommand("DELETE FROM plan_to WHERE id=@id", conn))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
-                        cmd.ExecuteNonQuery();
+                        await cmd.ExecuteNonQueryAsync();
                     }
                 }
-                ShowSuccess("План успешно удален!");
-                LoadPlans();
-                LoadStatistics();
+                await ExecuteJsFunction("showSuccess", "План успешно удален!");
+                await LoadPlans(JsonDocument.Parse("{}").RootElement);
+                await LoadStatistics();
             }
-            catch (Exception ex) { ShowError("Ошибка удаления: " + ex.Message); }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", $"Ошибка удаления: {ex.Message}");
+            }
         }
 
-        private void CreatePlanFromAvariya(JsonElement json)
+        private async Task CreatePlanFromAvariya(JsonElement json)
         {
             int avariyaId = json.GetProperty("id").GetInt32();
             try
             {
-                using (var conn = new NpgsqlConnection(connString))
+                using (var conn = new NpgsqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     string sql = "SELECT oborudovanie_id FROM avariya WHERE id=@id";
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@id", avariyaId);
-                        var result = cmd.ExecuteScalar();
+                        var result = await cmd.ExecuteScalarAsync();
                         if (result != null)
                         {
                             selectedAvariyaId = avariyaId;
-                            string js = $"selectEquipmentById({Convert.ToInt32(result)}); switchToPlansTab();";
-                            webView.CoreWebView2.ExecuteScriptAsync(js);
+                            await webView.CoreWebView2.ExecuteScriptAsync("switchToPlansTab();");
                         }
                     }
                 }
             }
-            catch (Exception ex) { ShowError("Ошибка создания плана: " + ex.Message); }
-        }
-
-        private string GetReportTypeFromSelect()
-        {
-            if (webView?.CoreWebView2 != null)
+            catch (Exception ex)
             {
-                try
-                {
-                    string script = "document.getElementById('reportTypeSelect')?.value || 'all'";
-                    var task = webView.CoreWebView2.ExecuteScriptAsync(script);
-                    task.Wait();
-                    string value = task.Result?.Trim('"') ?? "all";
-                    switch (value)
-                    {
-                        case "all": return "Все планы";
-                        case "inprogress": return "В работе";
-                        case "completed": return "Завершенные";
-                        case "overdue": return "Просроченные";
-                        case "history": return "История ремонтов";
-                        case "avariya": return "Аварии";
-                        default: return "Все планы";
-                    }
-                }
-                catch { return "Все планы"; }
+                await ExecuteJsFunction("showError", $"Ошибка создания плана: {ex.Message}");
             }
-            return "Все планы";
         }
 
-        private void ExportToExcel()
+        private async Task ExportToExcel(JsonElement json)
         {
             try
             {
-                string reportType = GetReportTypeFromSelect();
-                var save = new SaveFileDialog { Filter = "CSV files (*.csv)|*.csv", RestoreDirectory = true };
-                string fileName = "", sql = "";
+                string reportType = json.GetProperty("reportType").GetString();
+                string sql = "";
+                string fileName = $"Отчет_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
                 string[] headers = null;
 
                 switch (reportType)
                 {
-                    case "Аварии":
-                        fileName = $"Отчет_об_авариях_{DateTime.Now:dd-MM-yyyy}.csv";
+                    case "avariya":
+                        fileName = $"Отчет_об_авариях_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
                         sql = @"SELECT a.id, o.nazvanie, a.data_avarii, COALESCE(a.opisanie,''), COALESCE(a.posledstviya,''), COALESCE(a.status,''), CASE WHEN p.id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM avariya a JOIN oborudovanie o ON a.oborudovanie_id=o.id LEFT JOIN plan_to p ON a.id=p.avariya_id ORDER BY a.data_avarii DESC";
                         headers = new[] { "ID", "Оборудование", "Дата аварии", "Описание", "Последствия", "Статус", "Наличие плана" };
                         break;
-                    case "История ремонтов":
-                        fileName = $"Отчет_об_истории_ремонтов_{DateTime.Now:dd-MM-yyyy}.csv";
+                    case "history":
+                        fileName = $"Отчет_об_истории_ремонтов_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
                         sql = @"SELECT COALESCE(r.equipment_name,o.nazvanie), COALESCE(r.tip_name,COALESCE(t.nazvanie,'Не указан')), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(r.data_okonchaniya,'DD.MM.YYYY'), COALESCE(r.sotrudnik_name,CONCAT(s.familiya,' ',LEFT(s.imya,1),'.',LEFT(s.otchestvo,1),'.')), COALESCE(r.opisanie,'') FROM remont r JOIN plan_to p ON r.plan_id=p.id JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id JOIN sotrudniki s ON r.sotrudnik_id=s.id ORDER BY r.data_okonchaniya DESC";
                         headers = new[] { "Оборудование", "Тип ТО", "Плановая дата", "Дата выполнения", "Исполнитель", "Описание работ" };
                         break;
-                    case "Завершенные":
-                        fileName = $"Отчет_о_завершенных_планах_{DateTime.Now:dd-MM-yyyy}.csv";
+                    case "completed":
+                        fileName = $"Отчет_о_завершенных_планах_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
                         sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Завершен' ORDER BY p.data_okonchaniya DESC";
                         headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
                         break;
-                    case "В работе":
-                        fileName = $"Отчет_о_планах_в_работе_{DateTime.Now:dd-MM-yyyy}.csv";
+                    case "inprogress":
+                        fileName = $"Отчет_о_планах_в_работе_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
                         sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='В работе' ORDER BY p.data_nachala ASC";
                         headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
                         break;
-                    case "Просроченные":
-                        fileName = $"Отчет_о_просроченных_планах_{DateTime.Now:dd-MM-yyyy}.csv";
+                    case "overdue":
+                        fileName = $"Отчет_о_просроченных_планах_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
                         sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Просрочен' ORDER BY p.data_okonchaniya ASC";
                         headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
                         break;
                     default:
-                        fileName = $"Отчет_о_планах_ремонтов_{DateTime.Now:dd-MM-yyyy}.csv";
+                        fileName = $"Отчет_о_планах_ремонтов_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
                         sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id ORDER BY p.data_nachala DESC";
                         headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
                         break;
                 }
 
+                SaveFileDialog save = new SaveFileDialog();
+                save.Filter = "CSV файлы (*.csv)|*.csv";
                 save.FileName = fileName;
+
                 if (save.ShowDialog() == DialogResult.OK)
                 {
-                    using (var conn = new NpgsqlConnection(connString))
+                    using (var conn = new NpgsqlConnection(connectionString))
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        conn.Open();
-                        using (var reader = cmd.ExecuteReader())
+                        await conn.OpenAsync();
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         using (var sw = new StreamWriter(save.FileName, false, Encoding.UTF8))
                         {
-                            sw.WriteLine($"Отчет: {reportType}");
-                            sw.WriteLine($"Дата формирования: {DateTime.Now:dd.MM.yyyy HH:mm}");
-                            sw.WriteLine();
                             sw.WriteLine(string.Join(";", headers));
-                            int count = 0;
-                            while (reader.Read())
+                            while (await reader.ReadAsync())
                             {
+                                var values = new List<string>();
                                 for (int i = 0; i < reader.FieldCount; i++)
                                 {
-                                    if (i > 0) sw.Write(";");
-                                    sw.Write(reader[i]?.ToString() ?? "");
+                                    string val = reader[i]?.ToString() ?? "";
+                                    if (val.Contains(";") || val.Contains("\""))
+                                        val = $"\"{val.Replace("\"", "\"\"")}\"";
+                                    values.Add(val);
                                 }
-                                sw.WriteLine();
-                                count++;
+                                sw.WriteLine(string.Join(";", values));
                             }
-                            sw.WriteLine();
-                            sw.WriteLine($"Всего записей: {count}");
                         }
                     }
-                    MessageBox.Show($"Отчет сохранен", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    await ExecuteJsFunction("showSuccess", "Отчет успешно сохранен!");
                 }
             }
-            catch (Exception ex) { ShowError("Ошибка экспорта: " + ex.Message); }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", $"Ошибка экспорта: {ex.Message}");
+            }
         }
 
-        private void ExportToWord()
+        private async Task ExportToWord(JsonElement json)
         {
             try
             {
-                string reportType = GetReportTypeFromSelect();
-                var save = new SaveFileDialog { Filter = "Rich Text Format (*.rtf)|*.rtf", RestoreDirectory = true };
-                string fileName = $"Отчет_о_планах_ремонтов_{DateTime.Now:dd-MM-yyyy}.rtf";
-                string sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id ORDER BY p.data_nachala DESC";
-                string[] headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
+                string reportType = json.GetProperty("reportType").GetString();
+                string fileName = $"Отчет_{DateTime.Now:yyyy-MM-dd_HH-mm}.rtf";
+                string title = "";
+                string sql = "";
+                string[] headers = null;
 
-                if (reportType == "Завершенные")
+                switch (reportType)
                 {
-                    fileName = $"Отчет_о_завершенных_планах_{DateTime.Now:dd-MM-yyyy}.rtf";
-                    sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Завершен' ORDER BY p.data_okonchaniya DESC";
-                }
-                else if (reportType == "В работе")
-                {
-                    fileName = $"Отчет_о_планах_в_работе_{DateTime.Now:dd-MM-yyyy}.rtf";
-                    sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='В работе' ORDER BY p.data_nachala ASC";
-                }
-                else if (reportType == "Просроченные")
-                {
-                    fileName = $"Отчет_о_просроченных_планах_{DateTime.Now:dd-MM-yyyy}.rtf";
-                    sql = @"SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status, CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM plan_to p JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id LEFT JOIN sotrudniki s ON p.otvetstvenniy_id=s.id WHERE p.status='Просрочен' ORDER BY p.data_okonchaniya ASC";
-                }
-                else if (reportType == "Аварии")
-                {
-                    fileName = $"Отчет_об_авариях_{DateTime.Now:dd-MM-yyyy}.rtf";
-                    sql = @"SELECT a.id, o.nazvanie, a.data_avarii, COALESCE(a.opisanie,''), COALESCE(a.posledstviya,''), COALESCE(a.status,''), CASE WHEN p.id IS NOT NULL THEN 'Да' ELSE 'Нет' END FROM avariya a JOIN oborudovanie o ON a.oborudovanie_id=o.id LEFT JOIN plan_to p ON a.id=p.avariya_id ORDER BY a.data_avarii DESC";
-                    headers = new[] { "ID", "Оборудование", "Дата аварии", "Описание", "Последствия", "Статус", "Наличие плана" };
-                }
-                else if (reportType == "История ремонтов")
-                {
-                    fileName = $"Отчет_об_истории_ремонтов_{DateTime.Now:dd-MM-yyyy}.rtf";
-                    sql = @"SELECT COALESCE(r.equipment_name,o.nazvanie), COALESCE(r.tip_name,COALESCE(t.nazvanie,'Не указан')), TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(r.data_okonchaniya,'DD.MM.YYYY'), COALESCE(r.sotrudnik_name,CONCAT(s.familiya,' ',LEFT(s.imya,1),'.',LEFT(s.otchestvo,1),'.')), COALESCE(r.opisanie,'') FROM remont r JOIN plan_to p ON r.plan_id=p.id JOIN oborudovanie o ON p.oborudovanie_id=o.id LEFT JOIN tip_to t ON p.tip_to_id=t.id JOIN sotrudniki s ON r.sotrudnik_id=s.id ORDER BY r.data_okonchaniya DESC";
-                    headers = new[] { "Оборудование", "Тип ТО", "Плановая дата", "Дата выполнения", "Исполнитель", "Описание работ" };
+                    case "avariya":
+                        title = "Отчет об авариях";
+                        fileName = $"Отчет_об_авариях_{DateTime.Now:yyyy-MM-dd_HH-mm}.rtf";
+                        sql = @"
+                    SELECT a.id, o.nazvanie, a.data_avarii, COALESCE(a.opisanie,''), COALESCE(a.posledstviya,''), COALESCE(a.status,''), 
+                           CASE WHEN p.id IS NOT NULL THEN 'Да' ELSE 'Нет' END 
+                    FROM avariya a 
+                    JOIN oborudovanie o ON a.oborudovanie_id = o.id 
+                    LEFT JOIN plan_to p ON a.id = p.avariya_id 
+                    ORDER BY a.data_avarii DESC";
+                        headers = new[] { "ID", "Оборудование", "Дата аварии", "Описание", "Последствия", "Статус", "Наличие плана" };
+                        break;
+                    case "history":
+                        title = "Отчет об истории ремонтов";
+                        fileName = $"Отчет_об_истории_ремонтов_{DateTime.Now:yyyy-MM-dd_HH-mm}.rtf";
+                        sql = @"
+                    SELECT COALESCE(r.equipment_name, o.nazvanie) as equipment_name,
+                           COALESCE(r.tip_name, COALESCE(t.nazvanie, 'Не указан')) as tip_name,
+                           TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as plan_date,
+                           TO_CHAR(r.data_okonchaniya, 'DD.MM.YYYY') as completed_date,
+                           COALESCE(r.sotrudnik_name, CONCAT(s.familiya, ' ', LEFT(s.imya, 1), '.', LEFT(s.otchestvo, 1), '.')) as sotrudnik_name,
+                           COALESCE(r.opisanie, '') as opisanie,
+                           COALESCE(r.zamennaya_detal, '') as spare_part
+                    FROM remont r
+                    JOIN plan_to p ON r.plan_id = p.id
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    JOIN sotrudniki s ON r.sotrudnik_id = s.id
+                    ORDER BY r.data_okonchaniya DESC";
+                        headers = new[] { "Оборудование", "Тип ТО", "Плановая дата", "Дата выполнения", "Исполнитель", "Описание работ", "Замененная деталь" };
+                        break;
+                    case "completed":
+                        title = "Отчет о завершенных планах";
+                        fileName = $"Отчет_о_завершенных_планах_{DateTime.Now:yyyy-MM-dd_HH-mm}.rtf";
+                        sql = @"
+                    SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), 
+                           TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), 
+                           COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status,
+                           CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END
+                    FROM plan_to p
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                    WHERE p.status = 'Завершен'
+                    ORDER BY p.data_okonchaniya DESC";
+                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
+                        break;
+                    case "inprogress":
+                        title = "Отчет о планах в работе";
+                        fileName = $"Отчет_о_планах_в_работе_{DateTime.Now:yyyy-MM-dd_HH-mm}.rtf";
+                        sql = @"
+                    SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), 
+                           TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), 
+                           COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status,
+                           CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END
+                    FROM plan_to p
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                    WHERE p.status = 'В работе'
+                    ORDER BY p.data_nachala ASC";
+                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
+                        break;
+                    case "overdue":
+                        title = "Отчет о просроченных планах";
+                        fileName = $"Отчет_о_просроченных_планах_{DateTime.Now:yyyy-MM-dd_HH-mm}.rtf";
+                        sql = @"
+                    SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), 
+                           TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), 
+                           COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status,
+                           CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END
+                    FROM plan_to p
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                    WHERE p.status = 'Просрочен'
+                    ORDER BY p.data_okonchaniya ASC";
+                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
+                        break;
+                    default:
+                        title = "Отчет о планах ремонтов";
+                        fileName = $"Отчет_о_планах_ремонтов_{DateTime.Now:yyyy-MM-dd_HH-mm}.rtf";
+                        sql = @"
+                    SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), 
+                           TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), 
+                           COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status,
+                           CASE WHEN p.avariya_id IS NOT NULL THEN 'Да' ELSE 'Нет' END
+                    FROM plan_to p
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id
+                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
+                    ORDER BY p.data_nachala DESC";
+                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус", "Связь с аварией" };
+                        break;
                 }
 
+                SaveFileDialog save = new SaveFileDialog();
+                save.Filter = "RTF файлы (*.rtf)|*.rtf";
                 save.FileName = fileName;
+                save.Title = title;
+
                 if (save.ShowDialog() == DialogResult.OK)
                 {
-                    using (var conn = new NpgsqlConnection(connString))
+                    using (var conn = new NpgsqlConnection(connectionString))
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     using (var sw = new StreamWriter(save.FileName, false, Encoding.UTF8))
                     {
-                        conn.Open();
-                        using (var reader = cmd.ExecuteReader())
+                        await conn.OpenAsync();
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            sw.WriteLine(@"{\rtf1\ansi\deff0{\fonttbl{\f0 Times New Roman;}}\f0\fs24");
-                            sw.WriteLine(@"\pard\qc\b\fs32 Отчет: " + reportType + @"\b0\fs24\par");
-                            sw.WriteLine(@"\pard\qc\fs20 Дата формирования: " + DateTime.Now.ToString("dd.MM.yyyy HH:mm") + @"\par\par");
+                            // Начало RTF документа
+                            sw.WriteLine(@"{\rtf1\ansi\deff0");
+                            sw.WriteLine(@"{\fonttbl {\f0 Times New Roman;}{\f1 Arial;}}");
+                            sw.WriteLine(@"\f0\fs24");
 
+                            // Заголовок
+                            sw.WriteLine($@"\pard\qc\b\fs36 {title}\b0\par");
+                            sw.WriteLine($@"\pard\qc\fs20 Дата формирования: {DateTime.Now:dd.MM.yyyy HH:mm}\par\par");
+
+                            // Статистика
+                            sw.WriteLine($@"\pard\fs22\b Общая информация:\b0\par");
+                            sw.WriteLine($@"\pard\fs20 Всего записей: {await GetTotalCount(conn, sql)}\par");
+                            sw.WriteLine($@"\pard\qc\b\fs20\par\b0\par");
+
+                            // Таблица
                             int colCount = headers.Length;
+
+                            // Настройка ширины колонок
+                            int baseWidth = 15000 / colCount;
                             sw.WriteLine(@"\trowd");
-                            for (int i = 0; i < colCount; i++) sw.WriteLine(@"\cellx" + ((i + 1) * 2000));
-                            sw.WriteLine(@"\clbrdrt\brdrw10\brdrs\clbrdrl\brdrw10\brdrs\clbrdrb\brdrw10\brdrs\clbrdrr\brdrw10\brdrs\clcbpat8\cell\intbl\b\fs20 ");
-                            foreach (var h in headers) sw.Write(h + @" \cell ");
+                            for (int i = 0; i < colCount; i++)
+                                sw.WriteLine($@"\cellx{(i + 1) * baseWidth}");
+
+                            // Строка заголовков
+                            sw.WriteLine(@"\clbrdrt\brdrw10\brdrs\clbrdrl\brdrw10\brdrs\clbrdrb\brdrw10\brdrs\clbrdrr\brdrw10\brdrs\clcbpat8\cell\intbl\b ");
+                            foreach (var h in headers)
+                                sw.Write($@"\pard\intbl\qc {h}\cell ");
                             sw.WriteLine(@"\row\b0");
 
-                            int count = 0;
-                            while (reader.Read())
+                            // Данные
+                            int rowNum = 0;
+                            while (await reader.ReadAsync())
                             {
                                 sw.WriteLine(@"\trowd");
-                                for (int i = 0; i < colCount; i++) sw.WriteLine(@"\cellx" + ((i + 1) * 2000));
-                                sw.WriteLine(@"\clbrdrt\brdrw10\brdrs\clbrdrl\brdrw10\brdrs\clbrdrb\brdrw10\brdrs\clbrdrr\brdrw10\brdrs");
-                                if (count % 2 == 0) sw.WriteLine(@"\clcbpat1");
-                                sw.WriteLine(@"\cell\intbl\fs20 ");
-                                for (int i = 0; i < reader.FieldCount; i++) sw.Write(reader[i]?.ToString() + @" \cell ");
+                                for (int i = 0; i < colCount; i++)
+                                    sw.WriteLine($@"\cellx{(i + 1) * baseWidth}");
+
+                                int bgColor = (rowNum % 2 == 0) ? 7 : 16;
+                                sw.WriteLine($@"\clbrdrt\brdrw10\brdrs\clbrdrl\brdrw10\brdrs\clbrdrb\brdrw10\brdrs\clbrdrr\brdrw10\brdrs\clcbpat{bgColor}\cell\intbl\fs18 ");
+
+                                for (int i = 0; i < colCount; i++)
+                                {
+                                    string val = reader[i]?.ToString() ?? "";
+                                    val = val.Replace("\\", "\\\\").Replace("{", "\\{").Replace("}", "\\}");
+                                    sw.Write($@"\pard\intbl {val}\cell ");
+                                }
                                 sw.WriteLine(@"\row");
-                                count++;
+                                rowNum++;
                             }
-                            sw.WriteLine(@"\pard\qr\fs20 Всего записей: " + count + @"\par}");
                         }
+
+                        // Конец RTF документа
+                        sw.WriteLine(@"\pard\par");
+                        sw.WriteLine(@"}");
                     }
-                    MessageBox.Show($"Отчет сохранен", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    await ExecuteJsFunction("showSuccess", "Отчет успешно сохранен!");
                 }
             }
-            catch (Exception ex) { ShowError("Ошибка экспорта: " + ex.Message); }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", $"Ошибка экспорта: {ex.Message}");
+            }
         }
 
-        private void PreviewReport()
+        private async Task<int> GetTotalCount(NpgsqlConnection conn, string sql)
         {
             try
             {
-                using (var conn = new NpgsqlConnection(connString))
+                string countSql = $"SELECT COUNT(*) FROM ({sql}) as subquery";
+                using (var cmd = new NpgsqlCommand(countSql, conn))
                 {
-                    conn.Open();
-                    string sqlPlans = "SELECT COUNT(*) as total, COUNT(CASE WHEN status='Завершен' THEN 1 END) as completed, COUNT(CASE WHEN status='В работе' THEN 1 END) as in_progress, COUNT(CASE WHEN status='Просрочен' THEN 1 END) as overdue FROM plan_to";
-                    int totalPlans = 0, completed = 0, inProgress = 0, overdue = 0;
-                    using (var cmd = new NpgsqlCommand(sqlPlans, conn))
-                    using (var reader = cmd.ExecuteReader())
+                    var result = await cmd.ExecuteScalarAsync();
+                    return result != null ? Convert.ToInt32(result) : 0;
+                }
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private string GetReportTitle(string reportType)
+        {
+            switch (reportType)
+            {
+                case "avariya": return "Аварии";
+                case "history": return "История ремонтов";
+                case "completed": return "Завершенные планы";
+                case "inprogress": return "Планы в работе";
+                case "overdue": return "Просроченные планы";
+                default: return "Все планы";
+            }
+        }
+
+        private async Task PreviewReport()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+                    string sql = @"
+                        SELECT 
+                            COUNT(*) as total,
+                            COUNT(CASE WHEN status = 'Завершен' THEN 1 END) as completed,
+                            COUNT(CASE WHEN status = 'В работе' THEN 1 END) as in_progress,
+                            COUNT(CASE WHEN status = 'Просрочен' THEN 1 END) as overdue
+                        FROM plan_to";
+
+                    int total = 0, completed = 0, inProgress = 0, overdue = 0;
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        if (reader.Read())
+                        if (await reader.ReadAsync())
                         {
-                            totalPlans = reader.GetInt32(0);
+                            total = reader.GetInt32(0);
                             completed = reader.GetInt32(1);
                             inProgress = reader.GetInt32(2);
                             overdue = reader.GetInt32(3);
                         }
                     }
 
-                    string sqlAvariya = "SELECT COUNT(*) as total, COUNT(CASE WHEN p.id IS NOT NULL THEN 1 END) as with_plan FROM avariya a LEFT JOIN plan_to p ON a.id=p.avariya_id";
-                    int totalAvariya = 0, withPlan = 0;
-                    using (var cmd = new NpgsqlCommand(sqlAvariya, conn))
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            totalAvariya = reader.GetInt32(0);
-                            withPlan = reader.GetInt32(1);
-                        }
-                    }
+                    string message = $"═══════════════════════════════════════\n" +
+                                     $"          ПРЕДПРОСМОТР ОТЧЕТА\n" +
+                                     $"═══════════════════════════════════════\n" +
+                                     $"Дата: {DateTime.Now:dd.MM.yyyy HH:mm}\n" +
+                                     $"\n" +
+                                     $"Всего планов: {total}\n" +
+                                     $"├─ Выполнено: {completed}\n" +
+                                     $"├─ В работе: {inProgress}\n" +
+                                     $"└─ Просрочено: {overdue}\n" +
+                                     $"\n" +
+                                     $"Процент выполнения: {(total > 0 ? completed * 100 / total : 0)}%\n" +
+                                     $"═══════════════════════════════════════";
 
-                    string sqlHistory = "SELECT COUNT(*) FROM remont";
-                    int historyCount = 0;
-                    using (var cmd = new NpgsqlCommand(sqlHistory, conn))
-                        historyCount = Convert.ToInt32(cmd.ExecuteScalar());
-
-                    int percent = totalPlans > 0 ? completed * 100 / totalPlans : 0;
-                    string msg = $"╔══════════════════════════════════════════════════════════╗\n" +
-                                 $"║           ПРЕДПРОСМОТР ОТЧЕТА                           ║\n" +
-                                 $"╠══════════════════════════════════════════════════════════╣\n" +
-                                 $"║ Проект: Котельная                                        ║\n" +
-                                 $"║ Дата: {DateTime.Now:dd.MM.yyyy HH:mm}                              ║\n" +
-                                 $"╟──────────────────────────────────────────────────────────╢\n" +
-                                 $"║ СТАТИСТИКА:                                              ║\n" +
-                                 $"║ Всего планов: {totalPlans,-38} ║\n" +
-                                 $"║ ├─ Выполнено: {completed,-38} ║\n" +
-                                 $"║ ├─ В работе: {inProgress,-39} ║\n" +
-                                 $"║ └─ Просрочено: {overdue,-38} ║\n" +
-                                 $"║ Процент выполнения: {percent,-3}%                                     ║\n" +
-                                 $"╟──────────────────────────────────────────────────────────╢\n" +
-                                 $"║ АВАРИИ:                                                  ║\n" +
-                                 $"║ Всего аварий: {totalAvariya,-39} ║\n" +
-                                 $"║ С планом: {withPlan,-42} ║\n" +
-                                 $"║ Без плана: {totalAvariya - withPlan,-41} ║\n" +
-                                 $"╟──────────────────────────────────────────────────────────╢\n" +
-                                 $"║ ИСТОРИЯ РЕМОНТОВ:                                        ║\n" +
-                                 $"║ Выполненных ремонтов: {historyCount,-33} ║\n" +
-                                 $"╚══════════════════════════════════════════════════════════╝";
-                    MessageBox.Show(msg, "Предпросмотр отчета", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(message, "Предпросмотр отчета", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
-            catch (Exception ex) { ShowError("Ошибка предпросмотра: " + ex.Message); }
-        }
-
-        private void SendToWebView(string command, string data)
-        {
-            if (webView?.CoreWebView2 != null)
+            catch (Exception ex)
             {
-                try
-                {
-                    string js = $"window.receiveFromCSharp('{command}', {data})";
-                    webView.CoreWebView2.ExecuteScriptAsync(js);
-                }
-                catch { }
+                await ExecuteJsFunction("showError", $"Ошибка предпросмотра: {ex.Message}");
             }
         }
 
-        private void ShowSuccess(string msg) => SendToWebView("showSuccess", $"'{msg}'");
-        private void ShowError(string msg) => SendToWebView("showError", $"'{msg}'");
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            notificationTimer?.Stop();
+            notificationTimer?.Dispose();
+            webView?.Dispose();
+            base.OnFormClosing(e);
+        }
     }
 }
 

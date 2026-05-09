@@ -8,16 +8,10 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Шапка -->
         <div class="top-bar">
             <h2>Панель начальника - Управление ремонтами</h2>
-            <div class="user-info">
-                <span id="userName">Начальник</span>
-                <button class="logout-btn" id="logoutBtn">Выход</button>
-            </div>
         </div>
 
-        <!-- Вкладки -->
         <div class="tabs">
             <button class="tab-btn active" data-tab="plans">Планы ТО</button>
             <button class="tab-btn" data-tab="avariya">Аварии</button>
@@ -31,7 +25,7 @@
                 <div class="filter-group">
                     <label>Оборудование</label>
                     <select id="equipmentFilter">
-                        <option value="">Все</option>
+                        <option value="0">Все оборудование</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -39,8 +33,9 @@
                     <select id="statusFilter">
                         <option value="">Все</option>
                         <option value="В работе">В работе</option>
+                        <option value="Зарегистрирован">Зарегистрирован</option>
+                        <option value="Завершен">Завершен</option>
                         <option value="Просрочен">Просрочен</option>
-                        <option value="Назначена">Назначена</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -53,8 +48,22 @@
                 </div>
                 <button class="btn-primary" id="applyFilterBtn">Применить</button>
                 <button class="btn-add" id="addPlanBtn">+ Добавить план</button>
-                <button class="btn-export" id="exportToExcelBtn">Excel</button>
-                <button class="btn-export" id="exportToWordBtn">Word</button>
+            </div>
+
+            <div class="export-panel">
+                <div class="filter-group">
+                    <label>Тип отчета</label>
+                    <select id="reportTypeSelect">
+                        <option value="all">Все планы</option>
+                        <option value="inprogress">В работе</option>
+                        <option value="completed">Завершенные</option>
+                        <option value="overdue">Просроченные</option>
+                        <option value="history">История ремонтов</option>
+                        <option value="avariya">Аварии</option>
+                    </select>
+                </div>
+                <button class="btn-export" id="exportExcelBtn">Excel</button>
+                <button class="btn-export" id="exportWordBtn">Word</button>
                 <button class="btn-preview" id="previewReportBtn">Предпросмотр</button>
             </div>
 
@@ -149,30 +158,12 @@
         <!-- Вкладка "Статистика" -->
         <div id="statisticsTab" class="tab-content">
             <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" id="statEquipment">0</div>
-                    <div class="stat-label">Единиц оборудования</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statAvariya">0</div>
-                    <div class="stat-label">Аварий всего</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statPlans">0</div>
-                    <div class="stat-label">Активных планов</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statCompleted">0</div>
-                    <div class="stat-label">Выполнено</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value critical" id="statOverdue">0</div>
-                    <div class="stat-label">Просрочено</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statInProgress">0</div>
-                    <div class="stat-label">В работе</div>
-                </div>
+                <div class="stat-card"><div class="stat-value" id="statEquipment">0</div><div class="stat-label">Единиц оборудования</div></div>
+                <div class="stat-card"><div class="stat-value" id="statAvariya">0</div><div class="stat-label">Аварий всего</div></div>
+                <div class="stat-card"><div class="stat-value" id="statPlans">0</div><div class="stat-label">Активных планов</div></div>
+                <div class="stat-card"><div class="stat-value" id="statCompleted">0</div><div class="stat-label">Выполнено</div></div>
+                <div class="stat-card"><div class="stat-value critical" id="statOverdue">0</div><div class="stat-label">Просрочено</div></div>
+                <div class="stat-card"><div class="stat-value" id="statInProgress">0</div><div class="stat-label">В работе</div></div>
             </div>
         </div>
     </div>
@@ -207,13 +198,8 @@
                     <select id="planResponsible" required></select>
                 </div>
                 <div class="form-group">
-                    <label>Статус *</label>
-                    <select id="planStatus">
-                        <option value="Назначена">Назначена</option>
-                        <option value="В работе">В работе</option>
-                        <option value="Завершен">Завершен</option>
-                        <option value="Просрочен">Просрочен</option>
-                    </select>
+                    <label>Статус</label>
+                    <input type="text" id="planStatus" value="Передан в работу" readonly style="background:#f1f5f9;">
                 </div>
             </div>
             <div class="modal-footer">

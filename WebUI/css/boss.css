@@ -35,26 +35,6 @@ body {
     color: #1e293b;
 }
 
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.logout-btn {
-    background: #ef4444;
-    color: white;
-    border: none;
-    padding: 5px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.logout-btn:hover {
-    background: #dc2626;
-}
-
 .tabs {
     display: flex;
     background: white;
@@ -100,6 +80,17 @@ body {
     margin-bottom: 20px;
     align-items: flex-end;
     flex-wrap: wrap;
+}
+
+.export-panel {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    padding: 12px 15px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
 }
 
 .filter-group {
