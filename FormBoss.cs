@@ -104,7 +104,7 @@ namespace WindowsFormsApp1
                 webView.CoreWebView2.Settings.IsScriptEnabled = true;
                 webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
                 webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
-                webView.CoreWebView2.OpenDevToolsWindow();
+                
 
                 string webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
                 string htmlPath = Path.Combine(webUIPath, "boss.html");
@@ -123,6 +123,7 @@ namespace WindowsFormsApp1
                 MessageBox.Show($"Ошибка WebView2: {ex.Message}");
             }
         }
+
 
         private async void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {

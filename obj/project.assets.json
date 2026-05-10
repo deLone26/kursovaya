@@ -5379,6 +5379,7 @@
       },
       "frameworks": {
         "net9.0-windows7.0": {
+          "framework": "net9.0-windows7.0",
           "targetAlias": "net9.0-windows",
           "projectReferences": {}
         }
@@ -5397,6 +5398,7 @@
     },
     "frameworks": {
       "net9.0-windows7.0": {
+        "framework": "net9.0-windows7.0",
         "targetAlias": "net9.0-windows",
         "dependencies": {
           "Jenga.NET": {
@@ -5435,6 +5437,24 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[9.0.15, 9.0.15]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Host.win-x64",
+            "version": "[9.0.15, 9.0.15]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[9.0.15, 9.0.15]"
+          },
+          {
+            "name": "Microsoft.WindowsDesktop.App.Ref",
+            "version": "[9.0.15, 9.0.15]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
@@ -5443,7 +5463,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.200-preview.0.26103.119/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json"
       }
     }
   },

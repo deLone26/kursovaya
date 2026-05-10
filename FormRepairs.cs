@@ -1,20 +1,20 @@
-﻿using Microsoft.Web.WebView2.WinForms;
-using Microsoft.Web.WebView2.Core;
+﻿using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
+using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Npgsql;
-using System.Text.Json.Serialization;
-using System.Linq;
 
 namespace WindowsFormsApp1
 {
     public partial class FormRepairs : Form
     {
         private readonly string connectionString;
+
         private int currentEmployeeId;
         private string currentUserLogin;
         private string currentUserRole;
@@ -22,27 +22,46 @@ namespace WindowsFormsApp1
 
         private WebView2 webView;
         private string webUIPath;
-        private HashSet<int> notifiedTasks = new HashSet<int>();
+
+        private bool isWebViewInitialized = false;
+
         private Timer notificationTimer;
 
-        public FormRepairs(string connString, int userId, string userLogin, string userRole, int employeeId)
+        private HashSet<int> notifiedTasks = new HashSet<int>();
+
+        public FormRepairs(
+            string connString,
+            int userId,
+            string userLogin,
+            string userRole,
+            int employeeId)
         {
-            this.connectionString = connString;
-            this.currentEmployeeId = employeeId;
-            this.currentUserLogin = userLogin;
-            this.currentUserRole = userRole;
-            this.currentEmployeeFullName = GetFullName(employeeId);
+            connectionString = connString;
+
+            currentEmployeeId = employeeId;
+            currentUserLogin = userLogin;
+            currentUserRole = userRole;
+
+            currentEmployeeFullName = GetFullName(employeeId);
 
             InitializeComponent();
-            this.Text = "Мои задания - Слесарь";
-            this.WindowState = FormWindowState.Maximized;
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.Controls.Clear();
 
-            webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
+            SetupForm();
 
             InitializeWebView();
+
             StartNotificationTimer();
+        }
+
+        private void SetupForm()
+        {
+            Text = "Рабочее место слесаря";
+
+            WindowState = FormWindowState.Maximized;
+
+            StartPosition = FormStartPosition.CenterScreen;
+
+            Controls.Clear();
         }
 
         private string GetFullName(int employeeId)
@@ -52,11 +71,24 @@ namespace WindowsFormsApp1
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     conn.Open();
-                    string sql = "SELECT CONCAT(familiya, ' ', LEFT(imya, 1), '.', LEFT(otchestvo, 1), '.') FROM sotrudniki WHERE id = @id";
+
+                    string sql = @"
+                        SELECT CONCAT(
+                            familiya,
+                            ' ',
+                            LEFT(imya,1),
+                            '.',
+                            LEFT(COALESCE(otchestvo,''),1),
+                            '.')
+                        FROM sotrudniki
+                        WHERE id = @id";
+
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@id", employeeId);
+
                         var result = cmd.ExecuteScalar();
+
                         return result?.ToString() ?? "Слесарь";
                     }
                 }
@@ -70,8 +102,16 @@ namespace WindowsFormsApp1
         private void StartNotificationTimer()
         {
             notificationTimer = new Timer();
-            notificationTimer.Interval = 15000;
-            notificationTimer.Tick += async (s, e) => await CheckNewTasks();
+
+            notificationTimer.Interval = 30000;
+
+            notificationTimer.Tick += async (s, e) =>
+            {
+                await CheckNewTasks();
+                await CheckOverdueTasks();
+                await LoadNotifications();
+            };
+
             notificationTimer.Start();
         }
 
@@ -80,105 +120,122 @@ namespace WindowsFormsApp1
             try
             {
                 webView = new WebView2();
+
                 webView.Dock = DockStyle.Fill;
-                this.Controls.Add(webView);
 
-                await webView.EnsureCoreWebView2Async(null);
+                Controls.Add(webView);
 
-                webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-                webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = true;
+                string userDataFolder =
+                    Path.Combine(
+                        Path.GetTempPath(),
+                        "WebView2Repairs_" + DateTime.Now.Ticks);
 
-                string htmlPath = Path.Combine(webUIPath, "repairs.html");
+                var env =
+                    await CoreWebView2Environment.CreateAsync(
+                        null,
+                        userDataFolder);
 
-                if (File.Exists(htmlPath))
+                await webView.EnsureCoreWebView2Async(env);
+
+                webView.CoreWebView2.Settings.IsScriptEnabled = true;
+
+                webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+
+                webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+
+                webUIPath =
+                    @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
+
+                string htmlPath =
+                    Path.Combine(webUIPath, "repairs.html");
+
+                if (!File.Exists(htmlPath))
                 {
-                    webView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
-                }
-                else
-                {
-                    MessageBox.Show($"Файл не найден: {htmlPath}");
+                    MessageBox.Show("Файл repairs.html не найден");
                     return;
                 }
 
-                webView.CoreWebView2.WebMessageReceived += HandleWebMessage;
+                webView.Source = new Uri(htmlPath);
+
+                isWebViewInitialized = true;
+
                 webView.CoreWebView2.NavigationCompleted += async (s, e) =>
                 {
-                    await Task.Delay(500);
-                    await LoadInitialData();
+                    if (e.IsSuccess)
+                    {
+                        await Task.Delay(1000);
+
+                        await SetCurrentUser();
+
+                        await LoadTasks();
+
+                        await LoadHistory("", "");
+
+                        await LoadAccidentHistory();
+
+                        await LoadStatistics();
+
+                        await LoadNotifications();
+
+                        await ShowTodayTasksNotification();
+
+                        await CheckNewTasks();
+
+                        await LoadAccidents();
+                    }
                 };
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка WebView2: {ex.Message}");
+                MessageBox.Show(ex.Message);
             }
         }
 
-        private async Task LoadInitialData()
+        private async Task SetCurrentUser()
         {
-            await SetCurrentUserInWebView();
-            await LoadTasks();
-            await LoadStatistics();
-            await LoadHistory("", "");
-        }
+            string script =
+                $"setCurrentUser(" +
+                $"{currentEmployeeId}," +
+                $"'{currentUserLogin}'," +
+                $"'{currentUserRole}'," +
+                $"'{currentEmployeeFullName}');";
 
-        private async Task SetCurrentUserInWebView()
-        {
-            string script = $"setCurrentUser({currentEmployeeId}, '{currentUserLogin}', '{currentUserRole}', '{currentEmployeeFullName}');";
             await webView.CoreWebView2.ExecuteScriptAsync(script);
         }
 
-        private async void HandleWebMessage(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        private async Task ExecuteJsFunction(
+            string function,
+            string data = null)
         {
-            string message = e.TryGetWebMessageAsString();
-            System.Diagnostics.Debug.WriteLine($"Получено: {message}");
+            if (!isWebViewInitialized) return;
 
             try
             {
-                if (message.StartsWith("{"))
-                {
-                    var json = JsonDocument.Parse(message).RootElement;
-                    string action = json.GetProperty("action").GetString();
+                string js;
 
-                    switch (action)
-                    {
-                        case "loadTasks":
-                            await LoadTasks();
-                            break;
-                        case "loadHistory":
-                            string startDate = json.TryGetProperty("startDate", out var s) ? s.GetString() : "";
-                            string endDate = json.TryGetProperty("endDate", out var ed) ? ed.GetString() : "";
-                            await LoadHistory(startDate, endDate);
-                            break;
-                        case "loadStatistics":
-                            await LoadStatistics();
-                            break;
-                        case "loadSpareParts":
-                            int equipmentId = json.GetProperty("equipmentId").GetInt32();
-                            await LoadSpareParts(equipmentId);
-                            break;
-                        case "submitReport":
-                            int taskId = json.GetProperty("taskId").GetInt32();
-                            int sparePartId = json.GetProperty("sparePartId").GetInt32();
-                            string description = json.GetProperty("description").GetString();
-                            string reportStartDate = json.GetProperty("startDate").GetString();
-                            string reportEndDate = json.GetProperty("endDate").GetString();
-                            await SubmitReport(taskId, sparePartId, description, reportStartDate, reportEndDate);
-                            break;
-                        case "logout":
-                            this.Invoke(new Action(() =>
-                            {
-                                notificationTimer?.Stop();
-                                var loginForm = new LoginForm();
-                                loginForm.Show();
-                                this.Close();
-                            }));
-                            break;
-                    }
+                if (string.IsNullOrEmpty(data))
+                {
+                    js =
+                        $"window.receiveFromCSharp('{function}', null);";
                 }
+                else
+                {
+                    string escaped =
+                        data
+                        .Replace("\\", "\\\\")
+                        .Replace("'", "\\'")
+                        .Replace("\r", "")
+                        .Replace("\n", "\\n");
+
+                    js =
+                        $"window.receiveFromCSharp('{function}', '{escaped}');";
+                }
+
+                await webView.CoreWebView2.ExecuteScriptAsync(js);
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Debug.WriteLine($"Ошибка: {ex.Message}");
+
             }
         }
 
@@ -193,22 +250,31 @@ namespace WindowsFormsApp1
                     await conn.OpenAsync();
 
                     string sql = @"
-                        SELECT 
-                            p.id,
-                            o.nazvanie AS equipment_name,
-                            o.id AS equipment_id,
-                            COALESCE(p.opisanie, '') AS description,
-                            TO_CHAR(p.data_nachala, 'YYYY-MM-DD') as due_date,
-                            p.status
-                        FROM plan_to p
-                        JOIN oborudovanie o ON p.oborudovanie_id = o.id
-                        WHERE p.otvetstvenniy_id = @employee_id
-                          AND p.status IN ('В работе', 'Назначена', 'Просрочен')
-                        ORDER BY p.data_nachala ASC";
+    SELECT
+        p.id,
+        o.nazvanie,
+        o.id,
+        COALESCE(p.opisanie,''),
+        TO_CHAR(p.data_nachala,'DD.MM.YYYY'),
+        p.status,
+        COALESCE(p.is_urgent,false),
+        CASE
+            WHEN p.avariya_id IS NULL THEN false
+            ELSE true
+        END,
+        TO_CHAR(p.data_nachala,'YYYY-MM-DD""T""HH24:MI')
+    FROM plan_to p
+    JOIN oborudovanie o
+        ON p.oborudovanie_id = o.id
+    WHERE p.otvetstvenniy_id = @emp
+      AND p.status <> 'Завершен'
+    ORDER BY
+        p.is_urgent DESC,
+        p.data_nachala ASC";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@employee_id", currentEmployeeId);
+                        cmd.Parameters.AddWithValue("@emp", currentEmployeeId);
 
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
@@ -217,11 +283,32 @@ namespace WindowsFormsApp1
                                 tasks.Add(new
                                 {
                                     id = reader.GetInt32(0),
-                                    equipment_name = reader.GetString(1),
-                                    equipment_id = reader.GetInt32(2),
-                                    description = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                                    due_date = reader.IsDBNull(4) ? "" : reader.GetString(4),
-                                    status = reader.GetString(5)
+
+                                    equipment_name =
+        reader.GetString(1),
+
+                                    equipment_id =
+        reader.GetInt32(2),
+
+                                    description =
+        reader.GetString(3),
+
+                                    due_date =
+        reader.GetString(4),
+
+                                    status =
+        reader.GetString(5),
+
+                                    is_urgent =
+        reader.GetBoolean(6),
+
+                                    is_accident =
+        reader.GetBoolean(7),
+
+                                    start_work_date =
+        reader.IsDBNull(8)
+        ? ""
+        : reader.GetString(8)
                                 });
                             }
                         }
@@ -229,15 +316,20 @@ namespace WindowsFormsApp1
                 }
 
                 string json = JsonSerializer.Serialize(tasks);
-                await webView.CoreWebView2.ExecuteScriptAsync($"displayTasks('{json.Replace("'", "\\'")}')");
+
+                await ExecuteJsFunction("displayTasks", json);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"LoadTasks error: {ex.Message}");
+                await ExecuteJsFunction(
+                    "showError",
+                    ex.Message);
             }
         }
 
-        private async Task LoadHistory(string startDate = "", string endDate = "")
+        private async Task LoadHistory(
+            string startDate,
+            string endDate)
         {
             try
             {
@@ -248,34 +340,41 @@ namespace WindowsFormsApp1
                     await conn.OpenAsync();
 
                     string sql = @"
-                        SELECT 
-                            TO_CHAR(p.data_okonchaniya, 'DD.MM.YYYY') as completion_date,
-                            o.nazvanie as equipment,
-                            COALESCE(p.opisanie, '') as description,
-                            COALESCE(r.zamennaya_detal, '') as replaced_part,
-                            CONCAT(s.familiya, ' ', LEFT(s.imya, 1), '.') as employee_name
-                        FROM plan_to p
-                        JOIN oborudovanie o ON p.oborudovanie_id = o.id
-                        JOIN sotrudniki s ON p.otvetstvenniy_id = s.id
-                        LEFT JOIN remont r ON p.id = r.plan_id
-                        WHERE p.otvetstvenniy_id = @employee_id
-                          AND p.status = 'Завершен'";
+    SELECT
+        TO_CHAR(r.data_okonchaniya,'DD.MM.YYYY'),
+        o.nazvanie,
+        COALESCE(r.opisanie,''),
+        COALESCE(r.zamennaya_detal,''),
+        r.data_okonchaniya
+    FROM remont r
+    JOIN oborudovanie o
+        ON r.oborudovanie_id = o.id
+    WHERE r.sotrudnik_id = @emp";
 
-                    if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
+                    if (!string.IsNullOrEmpty(startDate)
+                        && !string.IsNullOrEmpty(endDate))
                     {
-                        sql += " AND DATE(p.data_okonchaniya) BETWEEN @start AND @end";
+                        sql +=
+                            @" AND DATE(r.data_okonchaniya)
+                               BETWEEN @start AND @end";
                     }
 
-                    sql += " ORDER BY p.data_okonchaniya DESC";
+                    sql += " ORDER BY r.data_okonchaniya DESC";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@employee_id", currentEmployeeId);
+                        cmd.Parameters.AddWithValue("@emp", currentEmployeeId);
 
-                        if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
+                        if (!string.IsNullOrEmpty(startDate)
+                            && !string.IsNullOrEmpty(endDate))
                         {
-                            cmd.Parameters.AddWithValue("@start", DateTime.Parse(startDate).Date);
-                            cmd.Parameters.AddWithValue("@end", DateTime.Parse(endDate).Date);
+                            cmd.Parameters.AddWithValue(
+                                "@start",
+                                DateTime.Parse(startDate));
+
+                            cmd.Parameters.AddWithValue(
+                                "@end",
+                                DateTime.Parse(endDate));
                         }
 
                         using (var reader = await cmd.ExecuteReaderAsync())
@@ -284,11 +383,20 @@ namespace WindowsFormsApp1
                             {
                                 history.Add(new
                                 {
-                                    completion_date = reader.GetString(0),
-                                    equipment = reader.GetString(1),
-                                    description = reader.GetString(2),
-                                    replaced_part = reader.GetString(3),
-                                    employee_name = reader.GetString(4)
+                                    completion_date =
+        reader.GetString(0),
+
+                                    equipment =
+        reader.GetString(1),
+
+                                    description =
+        reader.GetString(2),
+
+                                    replaced_part =
+        reader.GetString(3),
+
+                                    sort_date =
+        reader.GetDateTime(4)
                                 });
                             }
                         }
@@ -296,11 +404,76 @@ namespace WindowsFormsApp1
                 }
 
                 string json = JsonSerializer.Serialize(history);
-                await webView.CoreWebView2.ExecuteScriptAsync($"displayHistory('{json.Replace("'", "\\'")}')");
+
+                await ExecuteJsFunction(
+                    "displayHistory",
+                    json);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"LoadHistory error: {ex.Message}");
+                await ExecuteJsFunction(
+                    "showError",
+                    ex.Message);
+            }
+        }
+
+        private async Task LoadAccidentHistory()
+        {
+            try
+            {
+                var accidents = new List<object>();
+
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string sql = @"
+                        SELECT
+                            TO_CHAR(a.data_avarii,'DD.MM.YYYY HH24:MI'),
+                            o.nazvanie,
+                            COALESCE(a.opisanie,''),
+                            a.status
+                        FROM avariya a
+                        JOIN oborudovanie o
+                            ON a.oborudovanie_id = o.id
+                        ORDER BY a.data_avarii DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                accidents.Add(new
+                                {
+                                    date =
+                                        reader.GetString(0),
+
+                                    equipment =
+                                        reader.GetString(1),
+
+                                    description =
+                                        reader.GetString(2),
+
+                                    status =
+                                        reader.GetString(3)
+                                });
+                            }
+                        }
+                    }
+                }
+
+                string json = JsonSerializer.Serialize(accidents);
+
+                await ExecuteJsFunction(
+                    "displayAccidents",
+                    json);
+            }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction(
+                    "showError",
+                    ex.Message);
             }
         }
 
@@ -308,249 +481,186 @@ namespace WindowsFormsApp1
         {
             try
             {
+                object stats;
+
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     await conn.OpenAsync();
 
-                    // 1. Аварии за месяц
-                    int emergencyCount = 0;
-                    string sqlEmergency = @"
-                SELECT COUNT(*) 
-                FROM avariya a
-                JOIN plan_to p ON a.id = p.avariya_id
-                WHERE p.otvetstvenniy_id = @employee_id
-                  AND a.data_avarii > NOW() - INTERVAL '30 days'";
+                    string sql = @"
+                SELECT
+                    (SELECT COUNT(*) FROM plan_to WHERE otvetstvenniy_id = @emp) AS total,
+                    (SELECT COUNT(*) FROM plan_to WHERE otvetstvenniy_id = @emp AND status = 'Завершен') AS completed,
+                    (SELECT COUNT(*) FROM plan_to WHERE otvetstvenniy_id = @emp AND status = 'В работе') AS inwork,
+                    (SELECT COUNT(*) FROM plan_to WHERE otvetstvenniy_id = @emp AND status <> 'Завершен' AND data_nachala < CURRENT_DATE) AS overdue,
+                    (SELECT COUNT(*) FROM plan_to WHERE otvetstvenniy_id = @emp AND is_urgent = true AND status <> 'Завершен') AS urgent,
+                    (SELECT COUNT(*) FROM plan_to WHERE otvetstvenniy_id = @emp AND DATE(data_nachala) = CURRENT_DATE AND status <> 'Завершен') AS today";
 
-                    using (var cmd = new NpgsqlCommand(sqlEmergency, conn))
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@employee_id", currentEmployeeId);
-                        var result = await cmd.ExecuteScalarAsync();
-                        emergencyCount = result != null ? Convert.ToInt32(result) : 0;
-                    }
+                        cmd.Parameters.AddWithValue("@emp", currentEmployeeId);
 
-                    // 2. Аварии за год
-                    int yearEmergencyCount = 0;
-                    string sqlYearEmergency = @"
-                SELECT COUNT(*) 
-                FROM avariya a
-                JOIN plan_to p ON a.id = p.avariya_id
-                WHERE p.otvetstvenniy_id = @employee_id
-                  AND a.data_avarii > NOW() - INTERVAL '1 year'";
-
-                    using (var cmd = new NpgsqlCommand(sqlYearEmergency, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@employee_id", currentEmployeeId);
-                        var result = await cmd.ExecuteScalarAsync();
-                        yearEmergencyCount = result != null ? Convert.ToInt32(result) : 0;
-                    }
-
-                    // 3. Основная статистика по задачам
-                    int totalTasks = 0;
-                    int completedTasks = 0;
-                    int inProgressTasks = 0;
-                    int overdueTasks = 0;
-                    int completionRate = 0;
-
-                    string sqlStats = @"
-                SELECT 
-                    COUNT(*) as total,
-                    COUNT(CASE WHEN status = 'Завершен' THEN 1 END) as completed,
-                    COUNT(CASE WHEN status = 'В работе' THEN 1 END) as in_progress,
-                    COUNT(CASE WHEN status = 'Просрочен' THEN 1 END) as overdue
-                FROM plan_to
-                WHERE otvetstvenniy_id = @employee_id";
-
-                    using (var cmd = new NpgsqlCommand(sqlStats, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@employee_id", currentEmployeeId);
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            if (await reader.ReadAsync())
+                            await reader.ReadAsync();
+
+                            int total = reader.GetInt32(0);
+                            int completed = reader.GetInt32(1);
+                            int inwork = reader.GetInt32(2);
+                            int overdue = reader.GetInt32(3);
+                            int urgent = reader.GetInt32(4);
+                            int today = reader.GetInt32(5);
+                            double percent = total > 0 ? Math.Round((double)completed / total * 100, 1) : 0;
+
+                            // ВЫЗЫВАЕМ МЕТОД для расчёта среднего времени ремонта
+                            double avgHours = await GetAverageRepairTime(conn);
+
+                            stats = new
                             {
-                                totalTasks = reader.GetInt32(0);
-                                completedTasks = reader.GetInt32(1);
-                                inProgressTasks = reader.GetInt32(2);
-                                overdueTasks = reader.GetInt32(3);
-                                if (totalTasks > 0) completionRate = (completedTasks * 100) / totalTasks;
-                            }
+                                total = total,
+                                completed = completed,
+                                inwork = inwork,
+                                overdue = overdue,
+                                urgent = urgent,
+                                today = today,
+                                percent = percent,
+                                avg = avgHours
+                            };
                         }
                     }
-
-                    // 4. Заменённые запчасти
-                    int partsReplaced = 0;
-                    string sqlParts = @"
-                SELECT COUNT(*) 
-                FROM remont
-                WHERE sotrudnik_id = @employee_id
-                  AND zamennaya_detal IS NOT NULL
-                  AND zamennaya_detal != ''";
-
-                    using (var cmd = new NpgsqlCommand(sqlParts, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@employee_id", currentEmployeeId);
-                        var result = await cmd.ExecuteScalarAsync();
-                        partsReplaced = result != null ? Convert.ToInt32(result) : 0;
-                    }
-
-                    // 5. Самая часто заменяемая деталь
-                    string topPart = "—";
-                    string sqlTopPart = @"
-                SELECT zamennaya_detal, COUNT(*) as cnt 
-                FROM remont 
-                WHERE sotrudnik_id = @employee_id 
-                  AND zamennaya_detal IS NOT NULL 
-                  AND zamennaya_detal != ''
-                GROUP BY zamennaya_detal 
-                ORDER BY cnt DESC 
-                LIMIT 1";
-
-                    using (var cmd = new NpgsqlCommand(sqlTopPart, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@employee_id", currentEmployeeId);
-                        var result = await cmd.ExecuteScalarAsync();
-                        if (result != null && result != DBNull.Value) topPart = result.ToString();
-                    }
-
-                    // 6. Временные показатели (вычисляем в C#, а не в SQL, чтобы избежать ошибок)
-                    int avgCompletionDays = 0;
-                    int minCompletionDays = 0;
-                    int maxCompletionDays = 0;
-                    int avgFixTime = 0;
-
-                    // Получаем все завершённые задачи
-                    string sqlTasksData = @"
-                SELECT 
-                    data_nachala,
-                    data_okonchaniya
-                FROM plan_to
-                WHERE otvetstvenniy_id = @employee_id
-                  AND status = 'Завершен'
-                  AND data_okonchaniya IS NOT NULL
-                  AND data_nachala IS NOT NULL";
-
-                    var taskDurations = new List<int>();
-                    using (var cmd = new NpgsqlCommand(sqlTasksData, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@employee_id", currentEmployeeId);
-                        using (var reader = await cmd.ExecuteReaderAsync())
-                        {
-                            while (await reader.ReadAsync())
-                            {
-                                DateTime start = reader.GetDateTime(0);
-                                DateTime end = reader.GetDateTime(1);
-                                int workDays = CalculateWorkingDays(start, end);
-                                taskDurations.Add(workDays);
-                            }
-                        }
-                    }
-
-                    if (taskDurations.Count > 0)
-                    {
-                        avgCompletionDays = (int)Math.Round(taskDurations.Average());
-                        minCompletionDays = taskDurations.Min();
-                        maxCompletionDays = taskDurations.Max();
-                    }
-
-                    // 7. Среднее время устранения аварий (вычисляем в C#)
-                    string sqlAvariyaData = @"
-                SELECT 
-                    a.data_avarii,
-                    p.data_okonchaniya
-                FROM avariya a
-                JOIN plan_to p ON a.id = p.avariya_id
-                WHERE p.otvetstvenniy_id = @employee_id
-                  AND p.status = 'Завершен'
-                  AND p.data_okonchaniya IS NOT NULL
-                  AND a.data_avarii IS NOT NULL";
-
-                    var fixDurations = new List<int>();
-                    using (var cmd = new NpgsqlCommand(sqlAvariyaData, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@employee_id", currentEmployeeId);
-                        using (var reader = await cmd.ExecuteReaderAsync())
-                        {
-                            while (await reader.ReadAsync())
-                            {
-                                DateTime avariyaDate = reader.GetDateTime(0);
-                                DateTime completionDate = reader.GetDateTime(1);
-                                int workDays = CalculateWorkingDays(avariyaDate, completionDate);
-                                fixDurations.Add(workDays);
-                            }
-                        }
-                    }
-
-                    if (fixDurations.Count > 0)
-                    {
-                        avgFixTime = (int)Math.Round(fixDurations.Average());
-                    }
-
-                    // Формируем объект со всеми данными
-                    var stats = new
-                    {
-                        emergencyCount = emergencyCount,
-                        yearEmergencyCount = yearEmergencyCount,
-                        totalTasks = totalTasks,
-                        completedTasks = completedTasks,
-                        inProgressTasks = inProgressTasks,
-                        overdueTasks = overdueTasks,
-                        completionRate = completionRate,
-                        avgCompletionDays = avgCompletionDays,
-                        minCompletionDays = minCompletionDays,
-                        maxCompletionDays = maxCompletionDays,
-                        partsReplaced = partsReplaced,
-                        topPart = topPart,
-                        avgFixTime = avgFixTime
-                    };
-
-                    string json = JsonSerializer.Serialize(stats);
-                    System.Diagnostics.Debug.WriteLine($"Статистика: {json}");
-                    await webView.CoreWebView2.ExecuteScriptAsync($"updateStatistics('{json.Replace("'", "\\'")}')");
                 }
+
+                string json = JsonSerializer.Serialize(stats);
+                await ExecuteJsFunction("displayStats", json);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"LoadStatistics error: {ex.Message}");
-                var emptyStats = new
-                {
-                    emergencyCount = 0,
-                    yearEmergencyCount = 0,
-                    totalTasks = 0,
-                    completedTasks = 0,
-                    inProgressTasks = 0,
-                    overdueTasks = 0,
-                    completionRate = 0,
-                    avgCompletionDays = 0,
-                    minCompletionDays = 0,
-                    maxCompletionDays = 0,
-                    partsReplaced = 0,
-                    topPart = "—",
-                    avgFixTime = 0
-                };
-                string json = JsonSerializer.Serialize(emptyStats);
-                await webView.CoreWebView2.ExecuteScriptAsync($"updateStatistics('{json.Replace("'", "\\'")}')");
+                await ExecuteJsFunction("showError", ex.Message);
             }
         }
 
-        // Функция для подсчёта рабочих дней (без выходных)
-        private int CalculateWorkingDays(DateTime startDate, DateTime endDate)
+        private async Task LoadNotifications()
         {
-            if (startDate > endDate) return 0;
-
-            int workingDays = 0;
-            DateTime current = startDate.Date;
-            DateTime end = endDate.Date;
-
-            while (current <= end)
+            try
             {
-                // Понедельник = 1, Воскресенье = 7
-                if (current.DayOfWeek != DayOfWeek.Saturday && current.DayOfWeek != DayOfWeek.Sunday)
-                {
-                    workingDays++;
-                }
-                current = current.AddDays(1);
-            }
+                var notifications = new List<object>();
 
-            return workingDays;
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string sql = @"
+                        SELECT
+                            p.id,
+                            o.nazvanie,
+                            COALESCE(p.opisanie,''),
+                            COALESCE(p.is_urgent,false),
+                            CASE
+                                WHEN p.avariya_id IS NULL THEN 'ТО'
+                                ELSE 'Авария'
+                            END
+                        FROM plan_to p
+                        JOIN oborudovanie o
+                            ON p.oborudovanie_id=o.id
+                        WHERE p.otvetstvenniy_id=@emp
+                          AND p.status<>'Завершен'
+                        ORDER BY
+                            p.is_urgent DESC,
+                            p.id DESC
+                        LIMIT 10";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@emp", currentEmployeeId);
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                notifications.Add(new
+                                {
+                                    id = reader.GetInt32(0),
+                                    equipment = reader.GetString(1),
+                                    description = reader.GetString(2),
+                                    urgent = reader.GetBoolean(3),
+                                    type = reader.GetString(4)
+                                });
+                            }
+                        }
+                    }
+                }
+
+                string json = JsonSerializer.Serialize(notifications);
+
+                await ExecuteJsFunction(
+                    "displayNotifications",
+                    json);
+            }
+            catch
+            {
+
+            }
+        }
+
+        private async Task ChangeStatus(int taskId)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string checkSql =
+                        @"SELECT status
+                  FROM plan_to
+                  WHERE id=@id";
+
+                    string currentStatus = "";
+
+                    using (var cmd = new NpgsqlCommand(checkSql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", taskId);
+
+                        var result = await cmd.ExecuteScalarAsync();
+
+                        currentStatus = result?.ToString() ?? "";
+                    }
+
+                    if (currentStatus == "Зарегистрирован")
+                    {
+                        string sql = @"
+                    UPDATE plan_to
+                    SET status = 'В работе',
+                        data_nachala = NOW()
+                    WHERE id = @id";
+
+                        using (var cmd = new NpgsqlCommand(sql, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@id", taskId);
+
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        await ExecuteJsFunction(
+                            "showSuccess",
+                            "Задача переведена в работу");
+                    }
+                    else
+                    {
+                        await ExecuteJsFunction(
+                            "showError",
+                            "Задача уже находится в работе");
+                    }
+                }
+
+                await LoadTasks();
+            }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction(
+                    "showError",
+                    ex.Message);
+            }
         }
 
         private async Task LoadSpareParts(int equipmentId)
@@ -564,14 +674,14 @@ namespace WindowsFormsApp1
                     await conn.OpenAsync();
 
                     string sql = @"
-                        SELECT DISTINCT
-                            sp.id,
-                            sp.name
-                        FROM spare_parts sp
-                        LEFT JOIN equipment_spare_parts esp ON sp.id = esp.spare_part_id
-                        WHERE sp.is_common = true
-                           OR esp.equipment_id = @equipment_id
-                        ORDER BY sp.name";
+                SELECT DISTINCT
+                    sp.id_zp as id,
+                    sp.naimenovanie as name
+                FROM spare_parts sp
+                LEFT JOIN equipment_spare_parts esp ON sp.id_zp = esp.id_zp
+                WHERE sp.obshaya = true
+                   OR esp.id_oborudovaniya = @equipment_id
+                ORDER BY sp.naimenovanie";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -592,93 +702,15 @@ namespace WindowsFormsApp1
                 }
 
                 string json = JsonSerializer.Serialize(parts);
-                await webView.CoreWebView2.ExecuteScriptAsync($"displaySpareParts('{json.Replace("'", "\\'")}')");
+                await ExecuteJsFunction("displaySpareParts", json);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"LoadSpareParts error: {ex.Message}");
-                await webView.CoreWebView2.ExecuteScriptAsync($"displaySpareParts('[]')");
+                await ExecuteJsFunction("showError", ex.Message);
             }
         }
 
-        private async Task SubmitReport(int taskId, int sparePartId, string description, string startDate, string endDate)
-        {
-            try
-            {
-                string sparePartName = "";
-                using (var conn = new NpgsqlConnection(connectionString))
-                {
-                    await conn.OpenAsync();
-                    string sqlPart = "SELECT name FROM spare_parts WHERE id = @id";
-                    using (var cmd = new NpgsqlCommand(sqlPart, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@id", sparePartId);
-                        var result = await cmd.ExecuteScalarAsync();
-                        if (result != null) sparePartName = result.ToString();
-                    }
-                }
-
-                using (var conn = new NpgsqlConnection(connectionString))
-                {
-                    await conn.OpenAsync();
-                    using (var transaction = await conn.BeginTransactionAsync())
-                    {
-                        // Получаем оборудование
-                        int equipmentId = 0;
-                        string sqlGetEquipment = "SELECT oborudovanie_id FROM plan_to WHERE id = @task_id";
-                        using (var cmd = new NpgsqlCommand(sqlGetEquipment, conn, transaction))
-                        {
-                            cmd.Parameters.AddWithValue("@task_id", taskId);
-                            var result = await cmd.ExecuteScalarAsync();
-                            if (result != null) equipmentId = Convert.ToInt32(result);
-                        }
-
-                        // Обновляем статус задачи
-                        string sqlUpdateTask = "UPDATE plan_to SET status = 'Завершен', data_okonchaniya = @end_date WHERE id = @task_id";
-                        using (var cmd = new NpgsqlCommand(sqlUpdateTask, conn, transaction))
-                        {
-                            cmd.Parameters.AddWithValue("@task_id", taskId);
-                            cmd.Parameters.AddWithValue("@end_date", string.IsNullOrEmpty(endDate) ? DateTime.Now : DateTime.Parse(endDate));
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        // Добавляем запись в ремонт
-                        string sqlInsertRemont = @"
-                            INSERT INTO remont (oborudovanie_id, sotrudnik_id, data_nachala, data_okonchaniya, opisanie, plan_id, zamennaya_detal)
-                            VALUES (@equipment_id, @sotrudnik_id, @start_date, @end_date, @description, @plan_id, @spare_part)";
-
-                        using (var cmd = new NpgsqlCommand(sqlInsertRemont, conn, transaction))
-                        {
-                            cmd.Parameters.AddWithValue("@equipment_id", equipmentId);
-                            cmd.Parameters.AddWithValue("@sotrudnik_id", currentEmployeeId);
-                            cmd.Parameters.AddWithValue("@start_date", DateTime.Parse(startDate));
-                            cmd.Parameters.AddWithValue("@end_date", string.IsNullOrEmpty(endDate) ? DateTime.Now : DateTime.Parse(endDate));
-                            cmd.Parameters.AddWithValue("@description", description);
-                            cmd.Parameters.AddWithValue("@plan_id", taskId);
-                            cmd.Parameters.AddWithValue("@spare_part", sparePartName);
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        await transaction.CommitAsync();
-                    }
-                }
-
-                await webView.CoreWebView2.ExecuteScriptAsync("showSuccess('Отчёт отправлен начальнику!')");
-                await LoadTasks();
-                await LoadStatistics();
-
-                string today = DateTime.Now.ToString("yyyy-MM-dd");
-                string monthAgo = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd");
-                await LoadHistory(monthAgo, today);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"SubmitReport error: {ex.Message}");
-                await webView.CoreWebView2.ExecuteScriptAsync($"showError('Ошибка: {ex.Message}')");
-            }
-        }
-
-        private async Task CheckNewTasks()
+        private async Task OpenReportModal(int taskId)
         {
             try
             {
@@ -686,42 +718,44 @@ namespace WindowsFormsApp1
                 {
                     await conn.OpenAsync();
 
-                    string sqlTasks = @"
-                        SELECT 
-                            p.id,
-                            o.nazvanie AS equipment,
-                            COALESCE(p.opisanie, '') as description,
-                            TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as due_date
-                        FROM plan_to p
-                        JOIN oborudovanie o ON p.oborudovanie_id = o.id
-                        WHERE p.otvetstvenniy_id = @employee_id
-                          AND p.status IN ('В работе', 'Назначена')
-                          AND p.data_nachala >= CURRENT_DATE";
+                    string sql = @"
+                SELECT
+                    o.id,
+                    o.nazvanie,
+                    TO_CHAR(CURRENT_TIMESTAMP, 'yyyy-MM-ddTHH24:MI'),
+                    TO_CHAR(CURRENT_TIMESTAMP, 'yyyy-MM-ddTHH24:MI')
+                FROM plan_to p
+                JOIN oborudovanie o
+                    ON p.oborudovanie_id = o.id
+                WHERE p.id = @id";
 
-                    using (var cmd = new NpgsqlCommand(sqlTasks, conn))
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@employee_id", currentEmployeeId);
+                        cmd.Parameters.AddWithValue("@id", taskId);
 
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            while (await reader.ReadAsync())
+                            if (await reader.ReadAsync())
                             {
-                                int taskId = reader.GetInt32(0);
+                                int equipmentId = reader.GetInt32(0);
+                                string equipmentName = reader.GetString(1);
+                                string startDate = reader.GetString(2);
+                                string endDate = reader.GetString(3);
 
-                                if (!notifiedTasks.Contains(taskId))
+                                var data = new
                                 {
-                                    notifiedTasks.Add(taskId);
+                                    taskId = taskId,
+                                    equipmentId = equipmentId,
+                                    equipment = equipmentName,
+                                    startDate = startDate,
+                                    endDate = endDate
+                                };
 
-                                    var task = new
-                                    {
-                                        id = taskId,
-                                        equipment = reader.GetString(1),
-                                        description = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                                        due_date = reader.GetString(3)
-                                    };
-                                    string json = JsonSerializer.Serialize(task);
-                                    await webView.CoreWebView2.ExecuteScriptAsync($"onNewTask('{json.Replace("'", "\\'")}')");
-                                }
+                                string json = JsonSerializer.Serialize(data);
+                                await ExecuteJsFunction("openReportModal", json);
+
+                                // Загружаем запчасти
+                                await LoadSpareParts(equipmentId);
                             }
                         }
                     }
@@ -729,15 +763,648 @@ namespace WindowsFormsApp1
             }
             catch (Exception ex)
             {
+                await ExecuteJsFunction("showError", ex.Message);
+            }
+        }
+
+
+
+
+        private async Task SubmitReport(
+            int taskId,
+            List<int> sparePartIds,
+            string description,
+            string startDate,
+            string endDate)
+        {
+            try
+            {
+                string parts = "";
+
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    foreach (int id in sparePartIds)
+                    {
+                        string sql =
+                            "SELECT naimenovanie FROM spare_parts WHERE id_zp=@id";
+
+                        using (var cmd = new NpgsqlCommand(sql, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@id", id);
+
+                            var result = await cmd.ExecuteScalarAsync();
+
+                            if (result != null)
+                            {
+                                if (parts.Length > 0)
+                                    parts += ", ";
+
+                                parts += result.ToString();
+                            }
+                        }
+                    }
+                }
+
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    using (var tr = await conn.BeginTransactionAsync())
+                    {
+                        int equipmentId = 0;
+
+                        string sqlEq =
+                            "SELECT oborudovanie_id FROM plan_to WHERE id=@id";
+
+                        using (var cmd = new NpgsqlCommand(sqlEq, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@id", taskId);
+
+                            equipmentId =
+                                Convert.ToInt32(
+                                    await cmd.ExecuteScalarAsync());
+                        }
+
+                        string sqlUpdate =
+                            @"UPDATE plan_to
+                              SET status='Завершен',
+                                  data_okonchaniya=@end
+                              WHERE id=@id";
+
+                        using (var cmd = new NpgsqlCommand(sqlUpdate, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@id", taskId);
+
+                            cmd.Parameters.AddWithValue(
+                                "@end",
+                                DateTime.Parse(endDate));
+
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        string sqlInsert = @"
+                            INSERT INTO remont
+                            (
+                                oborudovanie_id,
+                                sotrudnik_id,
+                                data_nachala,
+                                data_okonchaniya,
+                                opisanie,
+                                plan_id,
+                                zamennaya_detal
+                            )
+                            VALUES
+                            (
+                                @eq,
+                                @emp,
+                                @start,
+                                @end,
+                                @desc,
+                                @plan,
+                                @parts
+                            )";
+
+                        using (var cmd = new NpgsqlCommand(sqlInsert, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@eq", equipmentId);
+
+                            cmd.Parameters.AddWithValue(
+                                "@emp",
+                                currentEmployeeId);
+
+                            cmd.Parameters.AddWithValue(
+                                "@start",
+                                DateTime.Parse(startDate));
+
+                            cmd.Parameters.AddWithValue(
+                                "@end",
+                                DateTime.Parse(endDate));
+
+                            cmd.Parameters.AddWithValue(
+                                "@desc",
+                                description);
+
+                            cmd.Parameters.AddWithValue(
+                                "@plan",
+                                taskId);
+
+                            cmd.Parameters.AddWithValue(
+                                "@parts",
+                                parts);
+
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        await tr.CommitAsync();
+                    }
+                }
+
+                await ExecuteJsFunction(
+                    "showSuccess",
+                    "Отчёт отправлен");
+
+                await LoadTasks();
+
+                await LoadHistory("", "");
+
+                await LoadStatistics();
+
+                await LoadAccidents();
+            }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction(
+                    "showError",
+                    ex.Message);
+            }
+        }
+
+        private async Task ShowTodayTasksNotification()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string sql = @"
+                        SELECT COUNT(*)
+                        FROM plan_to
+                        WHERE otvetstvenniy_id=@emp
+                        AND DATE(data_nachala)=CURRENT_DATE
+                        AND status<>'Завершен'";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@emp", currentEmployeeId);
+
+                        int count =
+                            Convert.ToInt32(
+                                await cmd.ExecuteScalarAsync());
+
+                        if (count > 0)
+                        {
+                            await ExecuteJsFunction(
+                                "showSuccess",
+                                $"Сегодня задач: {count}");
+                        }
+                    }
+                }
+            }
+            catch
+            {
+
+            }
+        }
+
+        private async Task CheckOverdueTasks()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string sql = @"
+                        SELECT COUNT(*)
+                        FROM plan_to
+                        WHERE otvetstvenniy_id=@emp
+                          AND status<>'Завершен'
+                          AND data_nachala<CURRENT_DATE";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@emp", currentEmployeeId);
+
+                        int count =
+                            Convert.ToInt32(
+                                await cmd.ExecuteScalarAsync());
+
+                        if (count > 0)
+                        {
+                            await ExecuteJsFunction(
+                                "showError",
+                                $"Просроченных задач: {count}");
+                        }
+                    }
+                }
+            }
+            catch
+            {
+
+            }
+        }
+
+        private async Task CheckNewTasks()
+        {
+            if (!isWebViewInitialized || webView?.CoreWebView2 == null) return;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    // Проверяем только новые задачи ТО (не аварии)
+                    string sqlTasks = @"
+                SELECT 
+                    p.id,
+                    o.nazvanie AS equipment,
+                    COALESCE(p.opisanie, '') as description,
+                    TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as due_date,
+                    COALESCE(p.is_urgent, false) as is_urgent,
+                    'ТО' as type
+                FROM plan_to p
+                JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                WHERE p.otvetstvenniy_id = @employee_id
+                  AND p.status = 'Зарегистрирован'
+                  AND p.avariya_id IS NULL
+                  AND p.created_at > NOW() - INTERVAL '1 day'";
+
+                    using (var cmd = new NpgsqlCommand(sqlTasks, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@employee_id", currentEmployeeId);
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            var newTasks = new List<object>();
+                            while (await reader.ReadAsync())
+                            {
+                                int taskId = reader.GetInt32(0);
+                                if (!notifiedTasks.Contains(taskId))
+                                {
+                                    notifiedTasks.Add(taskId);
+                                    newTasks.Add(new
+                                    {
+                                        id = taskId,
+                                        equipment = reader.GetString(1),
+                                        description = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                                        due_date = reader.GetString(3),
+                                        is_urgent = reader.GetBoolean(4),
+                                        type = reader.GetString(5)
+                                    });
+                                }
+                            }
+
+                            if (newTasks.Count > 0)
+                            {
+                                string json = JsonSerializer.Serialize(newTasks);
+                                await ExecuteJsFunction("showNewTasks", json);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Просто логируем, но не показываем пользователю
                 System.Diagnostics.Debug.WriteLine($"CheckNewTasks error: {ex.Message}");
             }
+        }
+
+        private async void OnWebMessageReceived(
+            object sender,
+            CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            try
+            {
+                string message = e.TryGetWebMessageAsString();
+
+                using (var json = JsonDocument.Parse(message))
+                {
+                    var root = json.RootElement;
+
+                    string action =
+                        root.GetProperty("action").GetString();
+
+                    switch (action)
+                    {
+                        case "loadTasks":
+
+                            await LoadTasks();
+
+                            break;
+
+
+                        case "loadHistory":
+
+                            string start =
+                                root.TryGetProperty(
+                                    "startDate",
+                                    out var s)
+                                    ? s.GetString()
+                                    : "";
+
+                            string end =
+                                root.TryGetProperty(
+                                    "endDate",
+                                    out var ed)
+                                    ? ed.GetString()
+                                    : "";
+
+                            await LoadHistory(start, end);
+
+                            break;
+
+                        case "changeStatus":
+
+                            int taskId =
+                                root.GetProperty("taskId").GetInt32();
+
+                            await ChangeStatus(taskId);
+
+                            break;
+
+                        case "openReport":
+
+                            int openTaskId =
+                                root.GetProperty("taskId").GetInt32();
+
+                            await OpenReportModal(openTaskId);
+
+                            break;
+
+                        case "loadSpareParts":
+                            int equipId = root.GetProperty("equipmentId").GetInt32();
+                            await LoadSpareParts(equipId);
+                            break;
+
+                        case "submitReport":
+
+                            int reportTaskId =
+                                root.GetProperty("taskId").GetInt32();
+
+                            List<int> parts = new List<int>();
+
+                            if (root.TryGetProperty(
+                                "sparePartIds",
+                                out var arr))
+                            {
+                                foreach (var item in arr.EnumerateArray())
+                                {
+                                    parts.Add(item.GetInt32());
+                                }
+                            }
+
+                            string desc =
+                                root.GetProperty("description").GetString();
+
+                            string startDate =
+                                root.GetProperty("startDate").GetString();
+
+                            string endDate =
+                                root.GetProperty("endDate").GetString();
+
+                            await SubmitReport(
+                                reportTaskId,
+                                parts,
+                                desc,
+                                startDate,
+                                endDate);
+
+                            break;
+
+                        case "logout":
+
+                            Invoke(new Action(() =>
+                            {
+                                notificationTimer?.Stop();
+
+                                LoginForm form = new LoginForm();
+
+                                form.Show();
+
+                                Close();
+                            }));
+
+                            break;
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction(
+                    "showError",
+                    ex.Message);
+            }
+        }
+
+        private async Task SendNotification(string title, string message, string type)
+        {
+            var notification = new { title = title, message = message, type = type };
+            string json = JsonSerializer.Serialize(notification);
+            await ExecuteJsFunction("showCustomNotification", json);
+        }
+
+        private async Task GetTaskDetails(int taskId)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string sql = @"
+                SELECT 
+                    p.id,
+                    o.nazvanie,
+                    COALESCE(p.opisanie, ''),
+                    TO_CHAR(p.data_nachala, 'DD.MM.YYYY'),
+                    p.status
+                FROM plan_to p
+                JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                WHERE p.id = @id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", taskId);
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                var task = new
+                                {
+                                    id = reader.GetInt32(0),
+                                    equipment = reader.GetString(1),
+                                    description = reader.GetString(2),
+                                    date = reader.GetString(3),
+                                    status = reader.GetString(4)
+                                };
+
+                                string json = JsonSerializer.Serialize(task);
+                                await ExecuteJsFunction("showTaskDetails", json);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction("showError", ex.Message);
+            }
+        }
+
+        private async Task LoadAccidents()
+        {
+            try
+            {
+                var accidents = new List<object>();
+
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string sql = @"
+                SELECT
+                    TO_CHAR(a.data_avarii,'DD.MM.YYYY'),
+                    o.nazvanie,
+                    COALESCE(a.opisanie,''),
+                    a.status,
+                    a.data_avarii
+                FROM avariya a
+                JOIN oborudovanie o
+                    ON a.oborudovanie_id = o.id
+                JOIN plan_to p
+                    ON p.avariya_id = a.id
+                WHERE p.otvetstvenniy_id=@emp
+                ORDER BY a.data_avarii DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@emp", currentEmployeeId);
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                accidents.Add(new
+                                {
+                                    date =
+                                        reader.GetString(0),
+
+                                    equipment =
+                                        reader.GetString(1),
+
+                                    description =
+                                        reader.GetString(2),
+
+                                    status =
+                                        reader.GetString(3),
+
+                                    sort_date =
+                                        reader.GetDateTime(4)
+                                });
+                            }
+                        }
+                    }
+                }
+
+                string json = JsonSerializer.Serialize(accidents);
+
+                await ExecuteJsFunction(
+                    "displayAccidents",
+                    json);
+            }
+            catch (Exception ex)
+            {
+                await ExecuteJsFunction(
+                    "showError",
+                    ex.Message);
+            }
+        }
+
+
+        private async Task<double> GetAverageRepairTime(NpgsqlConnection conn)
+        {
+            try
+            {
+                string sql = @"
+            SELECT 
+                data_nachala,
+                data_okonchaniya
+            FROM plan_to
+            WHERE otvetstvenniy_id = @emp 
+              AND status = 'Завершен'
+              AND data_okonchaniya IS NOT NULL 
+              AND data_nachala IS NOT NULL";
+
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@emp", currentEmployeeId);
+
+                    var durations = new List<double>();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            DateTime start = reader.GetDateTime(0);
+                            DateTime end = reader.GetDateTime(1);
+
+                            // Количество рабочих дней между датами
+                            double workDays = CalculateWorkingDays(start, end);
+
+                            // Переводим рабочие дни в часы (8-часовой рабочий день)
+                            double workHours = workDays * 8;
+                            durations.Add(workHours);
+                        }
+                    }
+
+                    if (durations.Count > 0)
+                    {
+                        return durations.Average();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetAverageRepairTime error: {ex.Message}");
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Подсчёт количества рабочих дней между двумя датами (исключая выходные)
+        /// </summary>
+        private double CalculateWorkingDays(DateTime startDate, DateTime endDate)
+        {
+            if (startDate > endDate)
+            {
+                var temp = startDate;
+                startDate = endDate;
+                endDate = temp;
+            }
+
+            int workingDays = 0;
+            DateTime current = startDate.Date;
+            DateTime end = endDate.Date;
+
+            while (current <= end)
+            {
+                // Понедельник = 1, Воскресенье = 7
+                if (current.DayOfWeek != DayOfWeek.Saturday && current.DayOfWeek != DayOfWeek.Sunday)
+                {
+                    workingDays++;
+                }
+                current = current.AddDays(1);
+            }
+
+            return workingDays;
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             notificationTimer?.Stop();
+
             notificationTimer?.Dispose();
+
             webView?.Dispose();
+
             base.OnFormClosing(e);
         }
     }

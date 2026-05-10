@@ -1,0 +1,712 @@
+body{
+    margin:0;
+    font-family:Segoe UI;
+    background:#f3f5fa;
+}
+
+.header {
+    height: 60px;  /* было 70px */
+    background: #1f2940;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;  /* было 25px */
+}
+
+.header-title {
+    font-size: 22px;  /* было 28px */
+    font-weight: 700;
+}
+
+.header-right{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.logout-btn{
+    background:#e74c3c;
+    border:none;
+    color:white;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+}
+
+.tabs{
+    display:flex;
+    gap:10px;
+    padding:20px;
+}
+
+.tab{
+    border:none;
+    background:#dfe3ee;
+    padding:12px 20px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:600;
+}
+.main-table tbody tr {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.main-table tbody tr.selected {
+    background: #e3f2fd;
+    border-left: 3px solid #3157ff;
+}
+
+.notification-wrapper {
+    position: relative;
+}
+
+.notification-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    position: relative;
+}
+
+.notification-count {
+    position: absolute;
+    top: -8px;
+    right: -12px;
+    background: #ef4444;
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+}
+
+.notification-panel {
+    display: none;
+    position: absolute;
+    top: 45px;
+    right: 0;
+    width: 360px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    z-index: 1000;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.notification-header {
+    padding: 15px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    background: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.notification-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.notification-item:hover {
+    background: #f8fafc;
+}
+
+.notification-item.unread {
+    background: #eff6ff;
+}
+
+.notification-item.unread:hover {
+    background: #dbeafe;
+}
+
+.notification-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.notification-title.critical {
+    color: #dc2626;
+}
+
+.notification-title.success {
+    color: #10b981;
+}
+
+.notification-text {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.notification-time {
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.notification-footer {
+    padding: 10px 15px;
+    text-align: center;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+    border-radius: 0 0 12px 12px;
+}
+
+.notification-footer a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.clear-all-btn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    font-size: 12px;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.tab.active{
+    background:#4f63ff;
+    color:white;
+}
+
+.content{
+    padding:0 20px 20px;
+}
+
+.tab-content{
+    display:none;
+}
+
+.tab-content.active{
+    display:block;
+}
+
+.main-table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    border-radius:15px;
+    overflow:hidden;
+}
+
+.main-table thead{
+    background:#1f2940;
+    color:white;
+}
+
+.main-table th{
+    padding:16px;
+    text-align:left;
+}
+
+.main-table td{
+    padding:16px;
+    border-bottom:1px solid #eee;
+}
+
+.type-badge{
+    padding:8px 14px;
+    border-radius:20px;
+    font-weight:700;
+    font-size:13px;
+}
+
+.type-to{
+    background:#dfe6ff;
+    color:#3157ff;
+}
+
+.type-avariya{
+    background:#ffe3e3;
+    color:#e53935;
+}
+
+.status-btn{
+    border:none;
+    border-radius:10px;
+    padding:10px 16px;
+    color:white;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.status-registered {
+    background: #fef3c7;
+    color: #d97706;
+    border-left: 3px solid #f59e0b;
+}
+
+.status-working {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-left: 3px solid #3b82f6;
+}
+
+.status-completed {
+    background: #d1fae5;
+    color: #059669;
+    border-left: 3px solid #10b981;
+}
+
+.status-overdue {
+    background: #fee2e2;
+    color: #dc2626;
+    border-left: 3px solid #ef4444;
+}
+
+/* Для кнопок добавим небольшие тени */
+.btn-start, .btn-report {
+    transition: all 0.2s;
+}
+
+.btn-start:hover, .btn-report:hover {
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.report-btn{
+    background:#4caf50;
+    border:none;
+    color:white;
+    padding:10px 16px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:700;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    margin-top: 10px;
+    color: #1f2937;
+}
+
+.stat-title {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.notification-wrapper{
+    position:relative;
+}
+
+.notification-btn{
+    background:none;
+    border:none;
+    color:white;
+    font-size:28px;
+    cursor:pointer;
+    position:relative;
+}
+
+.notification-count{
+    position:absolute;
+    top:-6px;
+    right:-10px;
+    background:red;
+    color:white;
+    border-radius:50%;
+    width:20px;
+    height:20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:12px;
+}
+
+.notification-panel{
+    display:none;
+    position:absolute;
+    top:50px;
+    right:0;
+    width:350px;
+    background:white;
+    color:black;
+    border-radius:12px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.2);
+    z-index:100;
+}
+
+.notification-header{
+    padding:15px;
+    font-size:18px;
+    font-weight:700;
+    border-bottom:1px solid #eee;
+}
+
+.notification-item{
+    padding:15px;
+    border-bottom:1px solid #eee;
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    left:0;
+    top:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.5);
+}
+
+.modal-content{
+    width:600px;
+    background:white;
+    margin:60px auto;
+    border-radius:15px;
+    overflow:hidden;
+}
+
+.modal-header{
+    background:#1f2940;
+    color:white;
+    padding:20px;
+    font-size:24px;
+    font-weight:700;
+}
+
+.modal-body{
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.modal-body input,
+.modal-body textarea,
+.modal-body select{
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:8px;
+}
+
+.modal-body textarea{
+    height:120px;
+    resize:none;
+}
+
+.modal-footer{
+    padding:20px;
+    display:flex;
+    gap:10px;
+}
+
+.modal-footer button{
+    padding:12px 18px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    color:white;
+    background:#3157ff;
+    font-weight:700;
+}
+
+.cancel-btn{
+    background:#999 !important;
+}
+
+.filter-panel{
+    margin-bottom:20px;
+    display:flex;
+    gap:10px;
+}
+
+.header {
+    height: 60px;
+    background: #1f2940;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+}
+
+.header-title {
+    font-size: 22px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    color: white;
+}
+
+.logout-btn {
+    background: #e74c3c;
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.notification-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.notification-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    position: relative;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.notification-count {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+}
+
+.modal-body select[multiple] {
+    min-height: 120px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.modal-body select option {
+    padding: 8px;
+    cursor: pointer;
+}
+
+.modal-body select option:checked {
+    background: #3157ff;
+    color: white;
+}
+.center-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 3000;
+    min-width: 300px;
+    text-align: center;
+    animation: fadeIn 0.2s ease;
+}
+
+.center-modal.error {
+    border-top: 4px solid #ef4444;
+}
+
+.center-modal.success {
+    border-top: 4px solid #10b981;
+}
+
+.center-modal .modal-title {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.center-modal .modal-text {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 15px;
+}
+
+.center-modal button {
+    background: #3157ff;
+    border: none;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.hint-text {
+    font-size: 11px;
+    color: #888;
+    margin-top: 6px;
+    background: #f8f9fa;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border-left: 3px solid #3157ff;
+}
+
+kbd {
+    background: #f1f1f1;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: monospace;
+    font-size: 11px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+}
+/* Анимация для карточек статистики */
+.stat-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: default;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+/* Цветные иконки для статистики */
+.stat-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.stat-card.total .stat-icon { color: #3b82f6; }
+.stat-card.completed .stat-icon { color: #10b981; }
+.stat-card.work .stat-icon { color: #f59e0b; }
+.stat-card.overdue .stat-icon { color: #ef4444; }
+.stat-card.urgent .stat-icon { color: #dc2626; }
+.stat-card.today .stat-icon { color: #8b5cf6; }
+.stat-card.percent .stat-icon { color: #06b6d4; }
+.stat-card.avg .stat-icon { color: #ec4899; }
+
+/* Прогресс-бар с градиентом */
+.progress-container {
+    margin-top: 10px;
+}
+
+.progress-bar-bg {
+    background: #e2e8f0;
+    border-radius: 10px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    background: linear-gradient(90deg, #3b82f6, #06b6d4);
+    height: 100%;
+    border-radius: 10px;
+    width: 0%;
+    transition: width 0.5s ease;
+}
+
+/* Анимация появления карточек */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.stat-card {
+    animation: fadeInUp 0.3s ease forwards;
+    animation-delay: calc(var(--i, 0) * 0.05s);
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-registered {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.status-working {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.status-completed {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.status-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.status-registered {
+    background: #f59e0b;
+    color: white;
+}
+
+.status-registered:hover {
+    background: #d97706;
+}
