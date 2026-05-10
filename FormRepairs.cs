@@ -179,7 +179,7 @@ namespace WindowsFormsApp1
 
                         await ShowTodayTasksNotification();
 
-                        await CheckNewTasks();
+                     //   await CheckNewTasks();
 
                         await LoadAccidents();
                     }
@@ -610,46 +610,32 @@ namespace WindowsFormsApp1
                 {
                     await conn.OpenAsync();
 
-                    string checkSql =
-                        @"SELECT status
-                  FROM plan_to
-                  WHERE id=@id";
-
+                    string checkSql = "SELECT status FROM plan_to WHERE id = @id";
                     string currentStatus = "";
 
                     using (var cmd = new NpgsqlCommand(checkSql, conn))
                     {
                         cmd.Parameters.AddWithValue("@id", taskId);
-
                         var result = await cmd.ExecuteScalarAsync();
-
                         currentStatus = result?.ToString() ?? "";
                     }
 
-                    if (currentStatus == "Зарегистрирован")
+                    // Исправлено: проверяем оба варианта статуса
+                    if (currentStatus == "Зарегистрирован" || currentStatus == "Зарегистрирована")
                     {
-                        string sql = @"
-                    UPDATE plan_to
-                    SET status = 'В работе',
-                        data_nachala = NOW()
-                    WHERE id = @id";
+                        string sql = "UPDATE plan_to SET status = 'В работе' WHERE id = @id";
 
                         using (var cmd = new NpgsqlCommand(sql, conn))
                         {
                             cmd.Parameters.AddWithValue("@id", taskId);
-
                             await cmd.ExecuteNonQueryAsync();
                         }
 
-                        await ExecuteJsFunction(
-                            "showSuccess",
-                            "Задача переведена в работу");
+                        await ExecuteJsFunction("showSuccess", "Задача принята в работу");
                     }
                     else
                     {
-                        await ExecuteJsFunction(
-                            "showError",
-                            "Задача уже находится в работе");
+                        await ExecuteJsFunction("showError", "Нельзя изменить статус этой задачи");
                     }
                 }
 
@@ -657,9 +643,7 @@ namespace WindowsFormsApp1
             }
             catch (Exception ex)
             {
-                await ExecuteJsFunction(
-                    "showError",
-                    ex.Message);
+                await ExecuteJsFunction("showError", ex.Message);
             }
         }
 
@@ -771,37 +755,34 @@ namespace WindowsFormsApp1
 
 
         private async Task SubmitReport(
-            int taskId,
-            List<int> sparePartIds,
-            string description,
-            string startDate,
-            string endDate)
+    int taskId,
+    List<int> sparePartIds,
+    string description,
+    string startDate,
+    string endDate)
         {
             try
             {
                 string parts = "";
 
-                using (var conn = new NpgsqlConnection(connectionString))
+                if (sparePartIds != null && sparePartIds.Count > 0)
                 {
-                    await conn.OpenAsync();
-
-                    foreach (int id in sparePartIds)
+                    using (var conn = new NpgsqlConnection(connectionString))
                     {
-                        string sql =
-                            "SELECT naimenovanie FROM spare_parts WHERE id_zp=@id";
+                        await conn.OpenAsync();
 
-                        using (var cmd = new NpgsqlCommand(sql, conn))
+                        foreach (int id in sparePartIds)
                         {
-                            cmd.Parameters.AddWithValue("@id", id);
-
-                            var result = await cmd.ExecuteScalarAsync();
-
-                            if (result != null)
+                            string sql = "SELECT naimenovanie FROM spare_parts WHERE id_zp = @id";
+                            using (var cmd = new NpgsqlCommand(sql, conn))
                             {
-                                if (parts.Length > 0)
-                                    parts += ", ";
-
-                                parts += result.ToString();
+                                cmd.Parameters.AddWithValue("@id", id);
+                                var result = await cmd.ExecuteScalarAsync();
+                                if (result != null)
+                                {
+                                    if (parts.Length > 0) parts += ", ";
+                                    parts += result.ToString();
+                                }
                             }
                         }
                     }
@@ -997,6 +978,8 @@ namespace WindowsFormsApp1
             }
         }
 
+        private bool isFirstLoad = true;
+
         private async Task CheckNewTasks()
         {
             if (!isWebViewInitialized || webView?.CoreWebView2 == null) return;
@@ -1007,7 +990,6 @@ namespace WindowsFormsApp1
                 {
                     await conn.OpenAsync();
 
-                    // Проверяем только новые задачи ТО (не аварии)
                     string sqlTasks = @"
                 SELECT 
                     p.id,
@@ -1021,7 +1003,7 @@ namespace WindowsFormsApp1
                 WHERE p.otvetstvenniy_id = @employee_id
                   AND p.status = 'Зарегистрирован'
                   AND p.avariya_id IS NULL
-                  AND p.created_at > NOW() - INTERVAL '1 day'";
+                  AND p.data_nachala >= CURRENT_DATE";
 
                     using (var cmd = new NpgsqlCommand(sqlTasks, conn))
                     {
@@ -1033,7 +1015,13 @@ namespace WindowsFormsApp1
                             while (await reader.ReadAsync())
                             {
                                 int taskId = reader.GetInt32(0);
-                                if (!notifiedTasks.Contains(taskId))
+
+                                // При первой загрузке добавляем все задачи в notifiedTasks, НО НЕ ПОКАЗЫВАЕМ УВЕДОМЛЕНИЯ
+                                if (isFirstLoad)
+                                {
+                                    notifiedTasks.Add(taskId);
+                                }
+                                else if (!notifiedTasks.Contains(taskId))
                                 {
                                     notifiedTasks.Add(taskId);
                                     newTasks.Add(new
@@ -1048,18 +1036,20 @@ namespace WindowsFormsApp1
                                 }
                             }
 
-                            if (newTasks.Count > 0)
+                            // Показываем уведомления ТОЛЬКО для новых задач (не при первой загрузке)
+                            if (!isFirstLoad && newTasks.Count > 0)
                             {
                                 string json = JsonSerializer.Serialize(newTasks);
                                 await ExecuteJsFunction("showNewTasks", json);
                             }
+
+                            isFirstLoad = false;
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                // Просто логируем, но не показываем пользователю
                 System.Diagnostics.Debug.WriteLine($"CheckNewTasks error: {ex.Message}");
             }
         }

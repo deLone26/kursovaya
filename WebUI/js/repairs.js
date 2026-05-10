@@ -2,11 +2,9 @@ let selectedTaskId = null;
 let selectedAccidentId = null;
 
 function selectTaskRow(element, taskId) {
-    // Убираем выделение со всех строк
     document.querySelectorAll('#tasksTableBody tr').forEach(row => {
         row.classList.remove('selected');
     });
-    // Выделяем текущую строку
     element.classList.add('selected');
     selectedTaskId = taskId;
 }
@@ -22,56 +20,44 @@ function selectAccidentRow(element, accidentId) {
 let notifications = [];
 let unreadCount = 0;
 
-function setCurrentUser(id,login,role,name){
-    document.getElementById("userName").innerText=name;
+function setCurrentUser(id, login, role, name) {
+    document.getElementById("userName").innerText = name;
 }
 
-function showTab(name){
+function showTab(name) {
+    document.querySelectorAll(".tab-content").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
 
-    document.querySelectorAll(".tab-content")
-        .forEach(x=>x.classList.remove("active"));
-
-    document.querySelectorAll(".tab")
-        .forEach(x=>x.classList.remove("active"));
-
-    if(name==="tasks"){
+    if (name === "tasks") {
         document.getElementById("tasksTab").classList.add("active");
         document.querySelectorAll(".tab")[0].classList.add("active");
     }
-
-    if(name==="history"){
+    if (name === "history") {
         document.getElementById("historyTab").classList.add("active");
         document.querySelectorAll(".tab")[1].classList.add("active");
     }
-
-    if(name==="accidents"){
+    if (name === "accidents") {
         document.getElementById("accidentsTab").classList.add("active");
         document.querySelectorAll(".tab")[2].classList.add("active");
     }
-
-    if(name==="stats"){
+    if (name === "stats") {
         document.getElementById("statsTab").classList.add("active");
         document.querySelectorAll(".tab")[3].classList.add("active");
     }
 }
 
-function displayTasks(data){
+function displayTasks(data) {
+    let tasks = JSON.parse(data);
+    let body = document.getElementById("tasksTableBody");
+    body.innerHTML = "";
 
-    let tasks=JSON.parse(data);
-
-    let body=document.getElementById("tasksTableBody");
-
-    body.innerHTML="";
-
-    tasks.forEach(t=>{
-
-        let type=t.is_accident
+    tasks.forEach(t => {
+        let type = t.is_accident
             ? `<span class="type-badge type-avariya">Авария</span>`
             : `<span class="type-badge type-to">Техническое обслуживание</span>`;
 
-        // Определяем, какая кнопка статуса нужна
         let statusHtml = "";
-        
+
         if (t.status === "Зарегистрирован") {
             statusHtml = `
                 <button class="status-btn status-registered" onclick="changeStatus(${t.id})">
@@ -110,12 +96,53 @@ function displayTasks(data){
     });
 }
 
+function showConfirmModal(title, message, onConfirm) {
+    let oldModal = document.querySelector('.confirm-modal');
+    if (oldModal) oldModal.remove();
+
+    let modal = document.createElement('div');
+    modal.className = 'confirm-modal';
+    modal.innerHTML = `
+        <div class="confirm-modal-content">
+            <div class="confirm-modal-title">${escapeHtml(title)}</div>
+            <div class="confirm-modal-text">${escapeHtml(message)}</div>
+            <div class="confirm-modal-buttons">
+                <button class="confirm-btn confirm-yes">Да</button>
+                <button class="confirm-btn confirm-no">Нет</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector('.confirm-yes').onclick = () => {
+        modal.remove();
+        if (onConfirm) onConfirm();
+    };
+
+    modal.querySelector('.confirm-no').onclick = () => {
+        modal.remove();
+    };
+}
+
+function changeStatus(taskId) {
+    showConfirmModal(
+        "Подтверждение",
+        "Вы уверены, что хотите принять эту задачу в работу?",
+        function() {
+            chrome.webview.postMessage(JSON.stringify({
+                action: "changeStatus",
+                taskId: taskId
+            }));
+        }
+    );
+}
 
 function getSelectedTask() {
     if (selectedTaskId) {
         sendToCSharp('getTaskDetails', { taskId: selectedTaskId });
     } else {
-        showToast('Выберите задачу из списка', 'warning');
+        showCenterModal('Внимание', 'Выберите задачу из списка', 'error');
     }
 }
 
@@ -123,83 +150,58 @@ function getSelectedAccident() {
     if (selectedAccidentId) {
         sendToCSharp('getAccidentDetails', { accidentId: selectedAccidentId });
     } else {
-        showToast('Выберите аварию из списка', 'warning');
+        showCenterModal('Внимание', 'Выберите аварию из списка', 'error');
     }
 }
 
-function displayHistory(data){
-
-    let rows=JSON.parse(data);
-
-    rows.sort((a,b)=>{
-
-        return new Date(b.sort_date)-new Date(a.sort_date);
-    });
-
-    let body=document.getElementById("historyTableBody");
-
-    body.innerHTML="";
-
-    rows.forEach(r=>{
-
-        body.innerHTML+=`
-            <tr>
-                <td>${r.completion_date}</td>
-                <td>${r.equipment}</td>
-                <td>${r.description}</td>
-                <td>${r.replaced_part}</td>
-            </tr>
-        `;
+function displayHistory(data) {
+    let rows = JSON.parse(data);
+    rows.sort((a, b) => new Date(b.sort_date) - new Date(a.sort_date));
+    let body = document.getElementById("historyTableBody");
+    body.innerHTML = "";
+    rows.forEach(r => {
+        body.innerHTML += `<table>
+            <td>${r.completion_date || '-'}</td>
+            <td>${escapeHtml(r.equipment || '-')}</td>
+            <td>${escapeHtml(r.description || '-')}</td>
+            <td>${escapeHtml(r.replaced_part || '-')}</td>
+        </tr>`;
     });
 }
 
-function displayAccidents(data){
-
-    let rows=JSON.parse(data);
-
-    rows.sort((a,b)=>{
-
-        return new Date(b.sort_date)-new Date(a.sort_date);
-    });
-
-    let body=document.getElementById("accidentsTableBody");
-
-    body.innerHTML="";
-
-    rows.forEach(r=>{
-
-        body.innerHTML+=`
-            <tr>
-                <td>${r.date}</td>
-                <td>${r.equipment}</td>
-                <td>${r.description}</td>
-                <td>${r.status}</td>
-            </tr>
-        `;
+function displayAccidents(data) {
+    let rows = JSON.parse(data);
+    rows.sort((a, b) => new Date(b.sort_date) - new Date(a.sort_date));
+    let body = document.getElementById("accidentsTableBody");
+    body.innerHTML = "";
+    rows.forEach(r => {
+        body.innerHTML += `<tr>
+            <td>${r.date || '-'}</td>
+            <td>${escapeHtml(r.equipment || '-')}</td>
+            <td>${escapeHtml(r.description || '-')}</td>
+            <td>${escapeHtml(r.status || '-')}</td>
+        </tr>`;
     });
 }
 
 function displayStats(data) {
     let s = JSON.parse(data);
-    
-    // Анимированное обновление чисел
+
     animateNumber("statTotal", s.total || 0);
     animateNumber("statDone", s.completed || 0);
     animateNumber("statWork", s.inwork || 0);
     animateNumber("statOverdue", s.overdue || 0);
     animateNumber("statUrgent", s.urgent || 0);
     animateNumber("statToday", s.today || 0);
-    
+
     let percent = s.percent || 0;
     animateNumber("statPercent", percent, "%");
-    
-    // Обновляем прогресс-бар
+
     let progressFill = document.getElementById("progressFill");
     if (progressFill) {
         progressFill.style.width = percent + "%";
     }
-    
-    // Среднее время ремонта
+
     let avgHours = s.avg || 0;
     let avgText = "";
     if (avgHours >= 24) {
@@ -213,18 +215,17 @@ function displayStats(data) {
     } else {
         avgText = "0 ч";
     }
-    
+
     let avgElement = document.getElementById("statAvg");
     if (avgElement) {
         avgElement.innerHTML = avgText;
     }
 }
 
-// Функция анимации чисел
 function animateNumber(elementId, targetValue, suffix = "") {
     let element = document.getElementById(elementId);
     if (!element) return;
-    
+
     let startValue = parseInt(element.innerText) || 0;
     let duration = 500;
     let stepTime = 20;
@@ -232,7 +233,7 @@ function animateNumber(elementId, targetValue, suffix = "") {
     let stepValue = (targetValue - startValue) / steps;
     let current = startValue;
     let step = 0;
-    
+
     let timer = setInterval(() => {
         step++;
         current += stepValue;
@@ -249,56 +250,49 @@ function openReport(task) {
     document.getElementById("reportModal").style.display = "block";
     document.getElementById("reportTaskId").value = task.id;
     document.getElementById("reportEquipment").value = task.equipment_name;
-    
+
     let now = new Date();
-    let formattedStart = now.getFullYear() + "-" + 
-        String(now.getMonth() + 1).padStart(2, '0') + "-" + 
-        String(now.getDate()).padStart(2, '0') + "T" + 
-        String(now.getHours()).padStart(2, '0') + ":" + 
+    let formattedStart = now.getFullYear() + "-" +
+        String(now.getMonth() + 1).padStart(2, '0') + "-" +
+        String(now.getDate()).padStart(2, '0') + "T" +
+        String(now.getHours()).padStart(2, '0') + ":" +
         String(now.getMinutes()).padStart(2, '0');
-    
+
     document.getElementById("reportStartDate").value = task.start_work_date || formattedStart;
     document.getElementById("reportEndDate").value = formattedStart;
     document.getElementById("reportDescription").value = "";
-    
-    // Загружаем запчасти
+
     loadSpareParts(task.equipment_id);
 }
 
-function closeModal(){
-    document.getElementById("reportModal").style.display="none";
+function closeModal() {
+    document.getElementById("reportModal").style.display = "none";
 }
 
 function submitReport() {
     let parts = [];
     let select = document.getElementById("reportParts");
-    
+
     for (let i = 0; i < select.options.length; i++) {
         if (select.options[i].selected && select.options[i].value) {
             parts.push(parseInt(select.options[i].value));
         }
     }
-    
+
     let startDate = document.getElementById("reportStartDate").value;
     let endDate = document.getElementById("reportEndDate").value;
     let description = document.getElementById("reportDescription").value;
-    
-    // Проверка: дата начала не может быть позже даты окончания
+
     if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
         showCenterModal("Ошибка валидации", "Дата начала не может быть позже даты окончания!", "error");
         return;
     }
-    
-    if (parts.length === 0) {
-        showCenterModal("Ошибка", "Выберите хотя бы одну заменённую деталь!", "error");
-        return;
-    }
-    
+
     if (!description.trim()) {
         showCenterModal("Ошибка", "Введите описание выполненных работ!", "error");
         return;
     }
-    
+
     chrome.webview.postMessage(JSON.stringify({
         action: "submitReport",
         taskId: parseInt(document.getElementById("reportTaskId").value),
@@ -307,55 +301,46 @@ function submitReport() {
         startDate: startDate,
         endDate: endDate
     }));
-    
+
     closeModal();
 }
 
 function loadSpareParts(equipmentId) {
-    chrome.webview.postMessage(JSON.stringify({ 
-        action: "loadSpareParts", 
-        equipmentId: equipmentId 
+    chrome.webview.postMessage(JSON.stringify({
+        action: "loadSpareParts",
+        equipmentId: equipmentId
     }));
 }
 
-function loadHistory(){
-
-    chrome.webview.postMessage(
-        JSON.stringify({
-
-            action:"loadHistory",
-
-            startDate:
-                document.getElementById("historyStart").value,
-
-            endDate:
-                document.getElementById("historyEnd").value
-        }));
+function loadHistory() {
+    chrome.webview.postMessage(JSON.stringify({
+        action: "loadHistory",
+        startDate: document.getElementById("historyStart").value,
+        endDate: document.getElementById("historyEnd").value
+    }));
 }
 
-function logout(){
-
-    chrome.webview.postMessage(
-        JSON.stringify({
-            action:"logout"
-        }));
+function logout() {
+    chrome.webview.postMessage(JSON.stringify({ action: "logout" }));
 }
+
+// ========== УВЕДОМЛЕНИЯ ==========
 
 function toggleNotifications() {
     let panel = document.getElementById("notificationPanel");
-    
+    if (!panel) return;
+
     if (panel.style.display === "block") {
         panel.style.display = "none";
     } else {
         panel.style.display = "block";
-        markAllNotificationsAsRead();
     }
 }
 
-function addNotification(title, text, type = 'info') {
+function addNotification(title, text, type = 'info', taskId = null) {
     let now = new Date();
     let timeText = formatRelativeTime(now);
-    
+
     let notification = {
         id: Date.now(),
         title: title,
@@ -363,12 +348,12 @@ function addNotification(title, text, type = 'info') {
         time: timeText,
         timestamp: now,
         type: type,
+        taskId: taskId,
         isRead: false
     };
-    
+
     notifications.unshift(notification);
     unreadCount++;
-    
     updateNotificationUI();
 }
 
@@ -376,10 +361,13 @@ function markAllNotificationsAsRead() {
     unreadCount = 0;
     document.getElementById("notificationCount").innerText = "0";
     document.getElementById("notificationCount").style.display = "none";
-    
-    // Визуально снимаем пометку unread со всех уведомлений
+
     document.querySelectorAll('.notification-item').forEach(item => {
         item.classList.remove('unread');
+    });
+
+    notifications.forEach(n => {
+        n.isRead = true;
     });
 }
 
@@ -387,43 +375,55 @@ function updateNotificationUI() {
     let countEl = document.getElementById("notificationCount");
     countEl.innerText = unreadCount;
     countEl.style.display = unreadCount > 0 ? "flex" : "none";
-    
+
     let container = document.getElementById("notificationsContainer");
-    
+
     if (notifications.length === 0) {
         container.innerHTML = `<div class="notification-item" style="text-align:center; color:#9ca3af;">Нет уведомлений</div>`;
         return;
     }
-    
+
     let html = '';
-    
+
     for (let i = 0; i < Math.min(notifications.length, 20); i++) {
         let n = notifications[i];
         let unreadClass = !n.isRead ? 'unread' : '';
         let titleClass = '';
-        
+
         if (n.type === 'error') titleClass = 'critical';
         if (n.type === 'success') titleClass = 'success';
-        
+
         html += `
-            <div class="notification-item ${unreadClass}" data-id="${n.id}" onclick="markNotificationRead(${n.id})">
+            <div class="notification-item ${unreadClass}" 
+                 data-id="${n.id}" 
+                 data-task-id="${n.taskId || ''}"
+                 onclick="onNotificationClick(this)">
                 <div class="notification-title ${titleClass}">${escapeHtml(n.title)}</div>
                 <div class="notification-text">${escapeHtml(n.text)}</div>
                 <div class="notification-time">${n.time}</div>
             </div>
         `;
     }
-    
+
     html += `
         <div class="notification-footer">
-            <a onclick="clearAllNotifications()">Все уведомления</a>
-            <div><button class="clear-all-btn" onclick="clearAllNotifications()">Очистить все</button></div>
+            <a onclick="clearAllNotifications()">Очистить все</a>
         </div>
     `;
-    
+
     container.innerHTML = html;
 }
 
+function onNotificationClick(element) {
+    let taskId = element.getAttribute('data-task-id');
+    if (taskId && taskId !== '') {
+        showTab('tasks');
+        highlightTaskById(taskId);
+    }
+    let id = parseInt(element.getAttribute('data-id'));
+    markNotificationRead(id);
+    document.getElementById("notificationPanel").style.display = "none";
+}
 
 function markNotificationRead(id) {
     let notif = notifications.find(n => n.id === id);
@@ -438,41 +438,66 @@ function clearAllNotifications() {
     notifications = [];
     unreadCount = 0;
     updateNotificationUI();
+    document.getElementById("notificationCount").style.display = "none";
 }
 
-// Переопределяем showSuccess и showError для красивого отображения
 function showSuccess(text) {
     addNotification('Успешно', text, 'success');
 }
 
 function showError(text) {
-    if (text.includes('срочная') || text.includes('авария')) {
-        addNotification('🚨 Новая авария!', text, 'error');
-    } else if (text.includes('Просрочен')) {
-        addNotification('⚠️ Просроченные задачи', text, 'error');
+    if (text.includes('Просрочен')) {
+        addNotification('Просроченные задачи', text, 'error');
+    } else if (text.includes('срочная') || text.includes('авария')) {
+        addNotification('Внимание!', text, 'error');
     } else {
-        addNotification('Ошибка', text, 'error');
+        console.error(text);
     }
 }
 
 function showNewTasksNotification(data) {
     let tasks = typeof data === 'string' ? JSON.parse(data) : data;
     if (tasks && tasks.length > 0) {
-        // Отделяем срочные и обычные ТО
         let urgentTasks = tasks.filter(t => t.is_urgent === true);
         let regularTasks = tasks.filter(t => t.is_urgent !== true);
-        
+
         if (urgentTasks.length > 0) {
             urgentTasks.forEach(task => {
-                addNotification('Срочное ТО', `${task.equipment} - срок ${task.due_date}`, 'error');
+                addNotification('Срочное ТО', `${task.equipment} - срок ${task.due_date}`, 'error', task.id);
             });
         }
-        
+
         if (regularTasks.length > 0) {
-            addNotification('Новое техническое обслуживание', `${regularTasks.length} задач(а)`, 'info');
+            addNotification('Новое техническое обслуживание', `${regularTasks.length} задач(а)`, 'info', regularTasks[0]?.id);
         }
-        
-        loadTasks();
+    }
+}
+
+// Закрытие панели при клике вне её
+document.addEventListener('click', function(event) {
+    let panel = document.getElementById("notificationPanel");
+    let btn = document.getElementById("notificationBtn");
+
+    if (panel && panel.style.display === "block") {
+        if (btn && btn.contains(event.target)) {
+            return;
+        }
+        if (!panel.contains(event.target)) {
+            panel.style.display = "none";
+        }
+    }
+});
+
+function highlightTaskById(taskId) {
+    let rows = document.querySelectorAll('#tasksTableBody tr');
+    for (let row of rows) {
+        let firstCell = row.cells[0];
+        if (firstCell && firstCell.innerText == taskId) {
+            rows.forEach(r => r.classList.remove('selected'));
+            row.classList.add('selected');
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            break;
+        }
     }
 }
 
@@ -487,10 +512,9 @@ function escapeHtml(text) {
 }
 
 function showCenterModal(title, text, type = 'error') {
-    // Удаляем старые модальные окна
     let oldModal = document.querySelector('.center-modal');
     if (oldModal) oldModal.remove();
-    
+
     let modal = document.createElement('div');
     modal.className = `center-modal ${type}`;
     modal.innerHTML = `
@@ -498,70 +522,53 @@ function showCenterModal(title, text, type = 'error') {
         <div class="modal-text">${escapeHtml(text)}</div>
         <button onclick="this.parentElement.remove()">OK</button>
     `;
-    
+
     document.body.appendChild(modal);
-    
-    // Автоматическое закрытие через 3 секунды
+
     setTimeout(() => {
         if (modal) modal.remove();
     }, 3000);
 }
 
-// Функция для получения названия типа уведомления
-function getNotificationTypeText(type) {
-    switch(type) {
-        case 'error': return 'критическое';
-        case 'success': return 'успех';
-        default: return 'информация';
-    }
-}
-
 function formatRelativeTime(date) {
     let now = new Date();
     let diff = Math.floor((now - date) / 1000 / 60);
-    
+
     if (diff < 1) return "только что";
     if (diff < 60) return `${diff} мин назад`;
     if (diff < 1440) return `${Math.floor(diff / 60)} ч назад`;
     return `${Math.floor(diff / 1440)} дн назад`;
 }
 
-function showSuccess(text){
-    addNotification(text);
-}
+// ========== ПОЛУЧЕНИЕ ДАННЫХ ИЗ C# ==========
 
-function showError(text) {
-    // Показываем ошибки только если они действительно важны для пользователя
-    if (text.includes('Просрочен')) {
-        addNotification('Просроченные задачи', text, 'error');
-    } else if (text.includes('срочная') || text.includes('авария')) {
-        addNotification('Внимание!', text, 'error');
-    } else {
-        // Остальные ошибки не показываем в уведомлениях
-        console.error(text);
+window.receiveFromCSharp = function(func, data) {
+    if (func === "displayTasks") displayTasks(data);
+    if (func === "displayHistory") displayHistory(data);
+    if (func === "displayAccidents") displayAccidents(data);
+    if (func === "displayStats") displayStats(data);
+    if (func === "showSuccess") showSuccess(data);
+    if (func === "showError") showError(data);
+    if (func === "displaySpareParts") {
+        let select = document.getElementById("reportParts");
+        let parts = JSON.parse(data);
+        select.innerHTML = '';
+        if (parts.length === 0) {
+            select.innerHTML = '<option disabled>Нет доступных запчастей</option>';
+        } else {
+            parts.forEach(p => {
+                let option = document.createElement('option');
+                option.value = p.id;
+                option.text = p.name;
+                select.appendChild(option);
+            });
+        }
     }
-}
-
-window.receiveFromCSharp=function(func,data){
-    if(func==="displayTasks") displayTasks(data);
-    if(func==="displayHistory") displayHistory(data);
-    if(func==="displayAccidents") displayAccidents(data);
-    if(func==="displayStats") displayStats(data);
-    if(func==="showSuccess") showSuccess(data);
-    if(func==="showError") showError(data);
-if (func === "displaySpareParts") {
-    let select = document.getElementById("reportParts");
-    let parts = JSON.parse(data);
-    select.innerHTML = '';
-    if (parts.length === 0) {
-        select.innerHTML = '<option disabled>Нет доступных запчастей</option>';
-    } else {
-        parts.forEach(p => {
-            let option = document.createElement('option');
-            option.value = p.id;
-            option.text = p.name;
-            select.appendChild(option);
-        });
-    }
-}
 };
+
+// Инициализация после загрузки DOM
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM загружен");
+    let notifBtn = document.getElementById("notificationBtn");
+    console.log("Кнопка уведомлений:", notifBtn);
+});
