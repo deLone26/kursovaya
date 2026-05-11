@@ -1,24 +1,9 @@
 let selectedTaskId = null;
-let selectedAccidentId = null;
-
-function selectTaskRow(element, taskId) {
-    document.querySelectorAll('#tasksTableBody tr').forEach(row => {
-        row.classList.remove('selected');
-    });
-    element.classList.add('selected');
-    selectedTaskId = taskId;
-}
-
-function selectAccidentRow(element, accidentId) {
-    document.querySelectorAll('#accidentsTableBody tr').forEach(row => {
-        row.classList.remove('selected');
-    });
-    element.classList.add('selected');
-    selectedAccidentId = accidentId;
-}
-
 let notifications = [];
 let unreadCount = 0;
+let shownNotificationIds = new Set();
+
+// ========== ОСНОВНЫЕ ФУНКЦИИ ==========
 
 function setCurrentUser(id, login, role, name) {
     document.getElementById("userName").innerText = name;
@@ -27,67 +12,113 @@ function setCurrentUser(id, login, role, name) {
 function showTab(name) {
     document.querySelectorAll(".tab-content").forEach(x => x.classList.remove("active"));
     document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
-
+    
     if (name === "tasks") {
         document.getElementById("tasksTab").classList.add("active");
         document.querySelectorAll(".tab")[0].classList.add("active");
+        loadTasks();
     }
     if (name === "history") {
         document.getElementById("historyTab").classList.add("active");
         document.querySelectorAll(".tab")[1].classList.add("active");
+        loadHistory();
     }
     if (name === "accidents") {
         document.getElementById("accidentsTab").classList.add("active");
         document.querySelectorAll(".tab")[2].classList.add("active");
+        loadAccidentHistory();
     }
     if (name === "stats") {
         document.getElementById("statsTab").classList.add("active");
         document.querySelectorAll(".tab")[3].classList.add("active");
+        loadStatistics();
     }
 }
+
+function sendToCSharp(action, data = {}) {
+    const msg = JSON.stringify({ action: action, ...data });
+    if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage(msg);
+    }
+}
+
+// ========== ЗАГРУЗКА ДАННЫХ ==========
+
+function loadTasks() {
+    sendToCSharp("loadTasks");
+}
+
+function loadHistory() {
+    sendToCSharp("loadHistory", {
+        startDate: document.getElementById("historyStart").value,
+        endDate: document.getElementById("historyEnd").value
+    });
+}
+
+function loadAccidentHistory() {
+    sendToCSharp("loadAccidentHistory", {
+        startDate: document.getElementById("accidentStart").value,
+        endDate: document.getElementById("accidentEnd").value
+    });
+}
+
+function loadStatistics() {
+    sendToCSharp("loadStatistics");
+}
+
+function loadSpareParts(equipmentId) {
+    sendToCSharp("loadSpareParts", { equipmentId: equipmentId });
+}
+
+// ========== ОТОБРАЖЕНИЕ ДАННЫХ ==========
 
 function displayTasks(data) {
     let tasks = JSON.parse(data);
     let body = document.getElementById("tasksTableBody");
     body.innerHTML = "";
 
+    if (!tasks || tasks.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" class="loading">Нет активных задач</td></tr>';
+        return;
+    }
+
     tasks.forEach(t => {
-        let type = t.is_accident
-            ? `<span class="type-badge type-avariya">Авария</span>`
-            : `<span class="type-badge type-to">Техническое обслуживание</span>`;
+        let isEmergency = t.is_urgent === true || t.is_accident === true;
+        let type = isEmergency
+            ? `<span class="type-badge type-avariya">🔴 Аварийный ремонт</span>`
+            : `<span class="type-badge type-to">🔵 Техническое обслуживание</span>`;
 
+        // Кнопка "Принять в работу" меняет текст если задача просрочена
         let statusHtml = "";
-
-        if (t.status === "Зарегистрирован") {
-            statusHtml = `
-                <button class="status-btn status-registered" onclick="changeStatus(${t.id})">
-                    Принять в работу
-                </button>
-            `;
+        if (t.status === "Просрочен" || t.is_overdue === true) {
+            statusHtml = `<button class="status-btn overdue-btn" onclick="changeStatus(${t.id})">⚠️ Принять (просрочено)</button>`;
+        } else if (t.status === "Зарегистрирован") {
+            statusHtml = `<button class="status-btn" onclick="changeStatus(${t.id})">Принять в работу</button>`;
         } else if (t.status === "В работе") {
-            statusHtml = `
-                <span class="status-badge status-working">В работе</span>
-            `;
+            statusHtml = `<span class="status-badge status-working">⚙️ В работе</span>`;
         } else if (t.status === "Завершен") {
-            statusHtml = `
-                <span class="status-badge status-completed">Завершено</span>
-            `;
+            statusHtml = `<span class="status-badge status-completed">✅ Завершено</span>`;
         } else {
-            statusHtml = `
-                <span class="status-badge status-registered">${t.status}</span>
-            `;
+            statusHtml = `<span class="status-badge status-registered">${t.status}</span>`;
         }
 
+        let rowClass = '';
+        if (t.is_urgent) rowClass = 'urgent-task';
+        if (t.is_overdue === true || t.status === "Просрочен") rowClass = 'overdue-task';
+
         let reportButton = (t.status === "В работе")
-            ? `<button class="report-btn" onclick='openReport(${JSON.stringify(t).replace(/'/g, "\\'")})'>Отчёт</button>`
+            ? `<button class="report-btn" onclick='openReport(${JSON.stringify(t).replace(/'/g, "\\'")})'>📝 Отчёт</button>`
             : "-";
+        
+        let description = t.description || '-';
+        if (description.length > 60) description = description.substring(0, 57) + '...';
 
         body.innerHTML += `
-            <tr onclick="selectTaskRow(this, ${t.id})" style="cursor:pointer">
+            <tr class="${rowClass}" onclick="selectTaskRow(this, ${t.id})">
                 <td>${t.id}</td>
                 <td>${type}</td>
-                <td>${t.equipment_name}</td>
-                <td>${t.description || '-'}</td>
+                <td>${escapeHtml(t.equipment_name)}</td>
+                <td>${escapeHtml(description)}</td>
                 <td>${t.due_date || '-'}</td>
                 <td>${statusHtml}</td>
                 <td>${reportButton}</td>
@@ -96,33 +127,137 @@ function displayTasks(data) {
     });
 }
 
-function showConfirmModal(title, message, onConfirm) {
-    let oldModal = document.querySelector('.confirm-modal');
-    if (oldModal) oldModal.remove();
+function displayHistory(data) {
+    let rows = JSON.parse(data);
+    let body = document.getElementById("historyTableBody");
+    body.innerHTML = "";
+    
+    if (!rows || rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" class="loading">Нет данных</td></tr>';
+        return;
+    }
+    
+    rows.forEach(r => {
+        let deadlineClass = r.deadline_status === "Просрочена" ? "status-overdue" : "status-on-time";
+        
+        body.innerHTML += `
+            <tr>
+                <td>${escapeHtml(r.equipment || '-')}</td>
+                <td>${r.start_date || '-'}</td>
+                <td>${r.completion_date || '-'}</td>
+                <td>${escapeHtml(r.description || '-')}</td>
+                <td>${escapeHtml(r.replaced_part || '-')}</td>
+                <td><span class="status-badge status-completed">✅ Завершено</span></td>
+                <td><span class="status-badge ${deadlineClass}">${r.deadline_status === "Просрочена" ? '⚠️ Просрочена' : '✅ В срок'}</span></td>
+            </tr>
+        `;
+    });
+}
 
-    let modal = document.createElement('div');
-    modal.className = 'confirm-modal';
-    modal.innerHTML = `
-        <div class="confirm-modal-content">
-            <div class="confirm-modal-title">${escapeHtml(title)}</div>
-            <div class="confirm-modal-text">${escapeHtml(message)}</div>
-            <div class="confirm-modal-buttons">
-                <button class="confirm-btn confirm-yes">Да</button>
-                <button class="confirm-btn confirm-no">Нет</button>
-            </div>
-        </div>
-    `;
+function displayAccidentHistory(data) {
+    let rows = typeof data === 'string' ? JSON.parse(data) : data;
+    let body = document.getElementById("accidentsTableBody");
+    body.innerHTML = "";
+    
+    if (!rows || rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" class="loading">Нет данных</td></tr>';
+        return;
+    }
+    
+    rows.forEach(r => {
+        let description = r.description || '-';
+        if (description.length > 60) description = description.substring(0, 57) + '...';
+        
+        let spareParts = r.spare_parts || '-';
+        if (spareParts !== '-' && spareParts.length > 25) {
+            spareParts = spareParts.substring(0, 22) + '...';
+        }
+        
+        let deadlineClass = r.was_overdue === true ? "status-overdue" : "status-on-time";
+        let deadlineText = r.was_overdue === true ? '⚠️ Просрочена' : '✅ В срок';
+        
+        body.innerHTML += `
+            <tr>
+                <td>${escapeHtml(r.equipment || '-')}</td>
+                <td>${r.date || '-'}</td>
+                <td>${r.completion_date || '-'}</td>
+                <td>${escapeHtml(description)}</td>
+                <td>${escapeHtml(spareParts)}</td>
+                <td><span class="status-badge status-completed">✅ Завершена</span></td>
+                <td><span class="status-badge ${deadlineClass}">${deadlineText}</span></td>
+            </tr>
+        `;
+    });
+}
 
-    document.body.appendChild(modal);
+function displayStats(data) {
+    let s = JSON.parse(data);
+    
+    animateNumber("statTotal", s.total || 0);
+    animateNumber("statDone", s.completed || 0);
+    animateNumber("statWork", s.inwork || 0);
+    animateNumber("statOverdue", s.overdue || 0);
+    animateNumber("statUrgent", s.urgent || 0);
+    animateNumber("statToday", s.today || 0);
+    
+    let percent = s.percent || 0;
+    animateNumber("statPercent", percent, "%");
+    
+    let progressFill = document.getElementById("progressFill");
+    if (progressFill) progressFill.style.width = percent + "%";
+    
+    let avgDays = s.avg || 0;
+    let avgText = avgDays >= 1 ? Math.round(avgDays) + " дн" : (avgDays > 0 ? "< 1 дн" : "0 дн");
+    let avgElement = document.getElementById("statAvg");
+    if (avgElement) avgElement.innerHTML = avgText;
+}
 
-    modal.querySelector('.confirm-yes').onclick = () => {
-        modal.remove();
-        if (onConfirm) onConfirm();
-    };
+function displaySpareParts(data) {
+    let select = document.getElementById("reportParts");
+    let parts = JSON.parse(data);
+    select.innerHTML = '';
+    if (parts.length === 0) {
+        select.innerHTML = '<option disabled>Нет доступных запчастей</option>';
+    } else {
+        parts.forEach(p => {
+            let option = document.createElement('option');
+            option.value = p.id;
+            option.text = p.name + (p.stock ? ` (остаток: ${p.stock})` : '');
+            select.appendChild(option);
+        });
+    }
+}
 
-    modal.querySelector('.confirm-no').onclick = () => {
-        modal.remove();
-    };
+// ========== УВЕДОМЛЕНИЯ О ПРОСРОЧКЕ ==========
+
+function showOverdueNotification(count) {
+    if (count > 0) {
+        let text = `У вас ${count} просроченных ${getDeclension(count, 'задача', 'задачи', 'задач')}!`;
+        addNotification('⚠️ Просроченные задачи', text, 'error');
+    }
+}
+
+function checkOverdueTasks(count) {
+    if (count > 0) {
+        showOverdueNotification(count);
+    }
+}
+
+function getDeclension(number, one, two, five) {
+    let n = Math.abs(number) % 100;
+    if (n >= 5 && n <= 20) return five;
+    n = n % 10;
+    if (n === 1) return one;
+    if (n >= 2 && n <= 4) return two;
+    return five;
+}
+
+// ========== ДЕЙСТВИЯ С ЗАДАЧАМИ ==========
+
+function selectTaskRow(element, taskId) {
+    document.querySelectorAll('#tasksTableBody tr').forEach(row => row.classList.remove('selected'));
+    element.classList.add('selected');
+    selectedTaskId = taskId;
 }
 
 function changeStatus(taskId) {
@@ -130,138 +265,22 @@ function changeStatus(taskId) {
         "Подтверждение",
         "Вы уверены, что хотите принять эту задачу в работу?",
         function() {
-            chrome.webview.postMessage(JSON.stringify({
-                action: "changeStatus",
-                taskId: taskId
-            }));
+            sendToCSharp("changeStatus", { taskId: taskId });
         }
     );
-}
-
-function getSelectedTask() {
-    if (selectedTaskId) {
-        sendToCSharp('getTaskDetails', { taskId: selectedTaskId });
-    } else {
-        showCenterModal('Внимание', 'Выберите задачу из списка', 'error');
-    }
-}
-
-function getSelectedAccident() {
-    if (selectedAccidentId) {
-        sendToCSharp('getAccidentDetails', { accidentId: selectedAccidentId });
-    } else {
-        showCenterModal('Внимание', 'Выберите аварию из списка', 'error');
-    }
-}
-
-function displayHistory(data) {
-    let rows = JSON.parse(data);
-    rows.sort((a, b) => new Date(b.sort_date) - new Date(a.sort_date));
-    let body = document.getElementById("historyTableBody");
-    body.innerHTML = "";
-    rows.forEach(r => {
-        body.innerHTML += `<table>
-            <td>${r.completion_date || '-'}</td>
-            <td>${escapeHtml(r.equipment || '-')}</td>
-            <td>${escapeHtml(r.description || '-')}</td>
-            <td>${escapeHtml(r.replaced_part || '-')}</td>
-        </tr>`;
-    });
-}
-
-function displayAccidents(data) {
-    let rows = JSON.parse(data);
-    rows.sort((a, b) => new Date(b.sort_date) - new Date(a.sort_date));
-    let body = document.getElementById("accidentsTableBody");
-    body.innerHTML = "";
-    rows.forEach(r => {
-        body.innerHTML += `<tr>
-            <td>${r.date || '-'}</td>
-            <td>${escapeHtml(r.equipment || '-')}</td>
-            <td>${escapeHtml(r.description || '-')}</td>
-            <td>${escapeHtml(r.status || '-')}</td>
-        </tr>`;
-    });
-}
-
-function displayStats(data) {
-    let s = JSON.parse(data);
-
-    animateNumber("statTotal", s.total || 0);
-    animateNumber("statDone", s.completed || 0);
-    animateNumber("statWork", s.inwork || 0);
-    animateNumber("statOverdue", s.overdue || 0);
-    animateNumber("statUrgent", s.urgent || 0);
-    animateNumber("statToday", s.today || 0);
-
-    let percent = s.percent || 0;
-    animateNumber("statPercent", percent, "%");
-
-    let progressFill = document.getElementById("progressFill");
-    if (progressFill) {
-        progressFill.style.width = percent + "%";
-    }
-
-    let avgHours = s.avg || 0;
-    let avgText = "";
-    if (avgHours >= 24) {
-        let days = Math.floor(avgHours / 24);
-        let hours = Math.round(avgHours % 24);
-        avgText = days + " дн " + hours + " ч";
-    } else if (avgHours >= 1) {
-        avgText = Math.round(avgHours) + " ч";
-    } else if (avgHours > 0) {
-        avgText = "< 1 ч";
-    } else {
-        avgText = "0 ч";
-    }
-
-    let avgElement = document.getElementById("statAvg");
-    if (avgElement) {
-        avgElement.innerHTML = avgText;
-    }
-}
-
-function animateNumber(elementId, targetValue, suffix = "") {
-    let element = document.getElementById(elementId);
-    if (!element) return;
-
-    let startValue = parseInt(element.innerText) || 0;
-    let duration = 500;
-    let stepTime = 20;
-    let steps = duration / stepTime;
-    let stepValue = (targetValue - startValue) / steps;
-    let current = startValue;
-    let step = 0;
-
-    let timer = setInterval(() => {
-        step++;
-        current += stepValue;
-        if (step >= steps) {
-            element.innerText = targetValue + suffix;
-            clearInterval(timer);
-        } else {
-            element.innerText = Math.round(current) + suffix;
-        }
-    }, stepTime);
 }
 
 function openReport(task) {
     document.getElementById("reportModal").style.display = "block";
     document.getElementById("reportTaskId").value = task.id;
     document.getElementById("reportEquipment").value = task.equipment_name;
-
+    
     let now = new Date();
-    let formattedStart = now.getFullYear() + "-" +
-        String(now.getMonth() + 1).padStart(2, '0') + "-" +
-        String(now.getDate()).padStart(2, '0') + "T" +
-        String(now.getHours()).padStart(2, '0') + ":" +
-        String(now.getMinutes()).padStart(2, '0');
-
+    let formattedStart = now.toISOString().slice(0, 16);
     document.getElementById("reportStartDate").value = task.start_work_date || formattedStart;
     document.getElementById("reportEndDate").value = formattedStart;
     document.getElementById("reportDescription").value = "";
-
+    
     loadSpareParts(task.equipment_id);
 }
 
@@ -272,145 +291,106 @@ function closeModal() {
 function submitReport() {
     let parts = [];
     let select = document.getElementById("reportParts");
-
+    
     for (let i = 0; i < select.options.length; i++) {
         if (select.options[i].selected && select.options[i].value) {
             parts.push(parseInt(select.options[i].value));
         }
     }
-
+    
     let startDate = document.getElementById("reportStartDate").value;
     let endDate = document.getElementById("reportEndDate").value;
     let description = document.getElementById("reportDescription").value;
-
+    
     if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
         showCenterModal("Ошибка валидации", "Дата начала не может быть позже даты окончания!", "error");
         return;
     }
-
+    
     if (!description.trim()) {
         showCenterModal("Ошибка", "Введите описание выполненных работ!", "error");
         return;
     }
-
-    chrome.webview.postMessage(JSON.stringify({
-        action: "submitReport",
+    
+    sendToCSharp("submitReport", {
         taskId: parseInt(document.getElementById("reportTaskId").value),
         sparePartIds: parts,
         description: description,
         startDate: startDate,
         endDate: endDate
-    }));
-
+    });
+    
     closeModal();
 }
 
-function loadSpareParts(equipmentId) {
-    chrome.webview.postMessage(JSON.stringify({
-        action: "loadSpareParts",
-        equipmentId: equipmentId
-    }));
-}
-
-function loadHistory() {
-    chrome.webview.postMessage(JSON.stringify({
-        action: "loadHistory",
-        startDate: document.getElementById("historyStart").value,
-        endDate: document.getElementById("historyEnd").value
-    }));
-}
-
 function logout() {
-    chrome.webview.postMessage(JSON.stringify({ action: "logout" }));
+    sendToCSharp("logout");
 }
 
 // ========== УВЕДОМЛЕНИЯ ==========
 
-function toggleNotifications() {
-    let panel = document.getElementById("notificationPanel");
-    if (!panel) return;
-
-    if (panel.style.display === "block") {
-        panel.style.display = "none";
-    } else {
-        panel.style.display = "block";
-    }
+function formatRelativeTime(date) {
+    let now = new Date();
+    let diff = Math.floor((now - date) / 1000 / 60);
+    if (diff < 1) return "только что";
+    if (diff < 60) return `${diff} мин назад`;
+    if (diff < 1440) return `${Math.floor(diff / 60)} ч назад`;
+    return `${Math.floor(diff / 1440)} дн назад`;
 }
 
 function addNotification(title, text, type = 'info', taskId = null) {
-    let now = new Date();
-    let timeText = formatRelativeTime(now);
-
+    let notifKey = `${title}-${text}-${taskId}`;
+    if (shownNotificationIds.has(notifKey)) return;
+    
     let notification = {
         id: Date.now(),
         title: title,
         text: text,
-        time: timeText,
-        timestamp: now,
+        time: formatRelativeTime(new Date()),
         type: type,
         taskId: taskId,
         isRead: false
     };
-
+    
+    shownNotificationIds.add(notifKey);
     notifications.unshift(notification);
     unreadCount++;
     updateNotificationUI();
 }
 
-function markAllNotificationsAsRead() {
-    unreadCount = 0;
-    document.getElementById("notificationCount").innerText = "0";
-    document.getElementById("notificationCount").style.display = "none";
-
-    document.querySelectorAll('.notification-item').forEach(item => {
-        item.classList.remove('unread');
-    });
-
-    notifications.forEach(n => {
-        n.isRead = true;
-    });
-}
-
 function updateNotificationUI() {
     let countEl = document.getElementById("notificationCount");
-    countEl.innerText = unreadCount;
-    countEl.style.display = unreadCount > 0 ? "flex" : "none";
-
+    if (countEl) {
+        countEl.innerText = unreadCount;
+        countEl.style.display = unreadCount > 0 ? "flex" : "none";
+    }
+    
     let container = document.getElementById("notificationsContainer");
-
+    if (!container) return;
+    
     if (notifications.length === 0) {
-        container.innerHTML = `<div class="notification-item" style="text-align:center; color:#9ca3af;">Нет уведомлений</div>`;
+        container.innerHTML = '<div class="notification-item">Нет уведомлений</div>';
         return;
     }
-
+    
     let html = '';
-
     for (let i = 0; i < Math.min(notifications.length, 20); i++) {
         let n = notifications[i];
         let unreadClass = !n.isRead ? 'unread' : '';
-        let titleClass = '';
-
-        if (n.type === 'error') titleClass = 'critical';
-        if (n.type === 'success') titleClass = 'success';
-
+        let titleClass = n.type === 'error' ? 'critical' : (n.type === 'success' ? 'success' : '');
+        let icon = n.type === 'error' ? '🔴' : (n.type === 'success' ? '✅' : '🔵');
+        
         html += `
-            <div class="notification-item ${unreadClass}" 
-                 data-id="${n.id}" 
-                 data-task-id="${n.taskId || ''}"
-                 onclick="onNotificationClick(this)">
-                <div class="notification-title ${titleClass}">${escapeHtml(n.title)}</div>
+            <div class="notification-item ${unreadClass}" data-id="${n.id}" data-task-id="${n.taskId || ''}" onclick="onNotificationClick(this)">
+                <div class="notification-title ${titleClass}">${icon} ${escapeHtml(n.title)}</div>
                 <div class="notification-text">${escapeHtml(n.text)}</div>
                 <div class="notification-time">${n.time}</div>
             </div>
+            <div class="notification-separator"></div>
         `;
     }
-
-    html += `
-        <div class="notification-footer">
-            <a onclick="clearAllNotifications()">Очистить все</a>
-        </div>
-    `;
-
+    
+    html += `<div class="notification-footer"><a onclick="clearAllNotifications()">Очистить все</a></div>`;
     container.innerHTML = html;
 }
 
@@ -418,7 +398,7 @@ function onNotificationClick(element) {
     let taskId = element.getAttribute('data-task-id');
     if (taskId && taskId !== '') {
         showTab('tasks');
-        highlightTaskById(taskId);
+        setTimeout(() => highlightTaskById(taskId), 100);
     }
     let id = parseInt(element.getAttribute('data-id'));
     markNotificationRead(id);
@@ -438,18 +418,22 @@ function clearAllNotifications() {
     notifications = [];
     unreadCount = 0;
     updateNotificationUI();
-    document.getElementById("notificationCount").style.display = "none";
+}
+
+function toggleNotifications() {
+    let panel = document.getElementById("notificationPanel");
+    if (panel) panel.style.display = panel.style.display === "block" ? "none" : "block";
 }
 
 function showSuccess(text) {
-    addNotification('Успешно', text, 'success');
+    addNotification('✅ Успешно', text, 'success');
 }
 
 function showError(text) {
-    if (text.includes('Просрочен')) {
-        addNotification('Просроченные задачи', text, 'error');
+    if (text.includes('просрочен')) {
+        addNotification('⚠️ Просроченные задачи', text, 'error');
     } else if (text.includes('срочная') || text.includes('авария')) {
-        addNotification('Внимание!', text, 'error');
+        addNotification('🚨 Внимание!', text, 'error');
     } else {
         console.error(text);
     }
@@ -457,36 +441,169 @@ function showError(text) {
 
 function showNewTasksNotification(data) {
     let tasks = typeof data === 'string' ? JSON.parse(data) : data;
-    if (tasks && tasks.length > 0) {
-        let urgentTasks = tasks.filter(t => t.is_urgent === true);
-        let regularTasks = tasks.filter(t => t.is_urgent !== true);
-
-        if (urgentTasks.length > 0) {
-            urgentTasks.forEach(task => {
-                addNotification('Срочное ТО', `${task.equipment} - срок ${task.due_date}`, 'error', task.id);
-            });
-        }
-
-        if (regularTasks.length > 0) {
-            addNotification('Новое техническое обслуживание', `${regularTasks.length} задач(а)`, 'info', regularTasks[0]?.id);
-        }
+    if (!tasks || tasks.length === 0) return;
+    
+    // Сортируем: сначала срочные
+    tasks.sort((a, b) => (b.is_urgent ? 1 : 0) - (a.is_urgent ? 1 : 0));
+    
+    let oldModal = document.querySelector('.center-modal');
+    if (oldModal) oldModal.remove();
+    
+    let urgentTasks = tasks.filter(t => t.is_urgent === true);
+    let regularTasks = tasks.filter(t => t.is_urgent !== true);
+    
+    let urgentHtml = '';
+    let regularHtml = '';
+    
+    if (urgentTasks.length > 0) {
+        urgentHtml = '<div class="task-section urgent-section"><div class="section-title">🚨 Срочные задачи</div>';
+        urgentTasks.forEach(t => {
+            urgentHtml += `
+                <div class="task-item urgent" onclick="closeModalAndShowTask(${t.id})">
+                    <div class="task-icon">⚠️</div>
+                    <div class="task-content">
+                        <div class="task-equipment">${escapeHtml(t.equipment)}</div>
+                        <div class="task-description">${escapeHtml(t.description || 'Срочное техническое обслуживание')}</div>
+                        <div class="task-date">📅 Дата: ${t.due_date || 'Не указана'}</div>
+                        <div class="task-type">🔧 Тип: ${t.type === 'Авария' ? 'Аварийный ремонт' : 'Плановое ТО'}</div>
+                    </div>
+                </div>
+                <div class="task-separator"></div>
+            `;
+        });
+        urgentHtml += '</div>';
     }
+    
+    if (regularTasks.length > 0) {
+        regularHtml = '<div class="task-section"><div class="section-title">📋 Обычные задачи</div>';
+        regularTasks.forEach(t => {
+            regularHtml += `
+                <div class="task-item regular" onclick="closeModalAndShowTask(${t.id})">
+                    <div class="task-icon">ℹ️</div>
+                    <div class="task-content">
+                        <div class="task-equipment">${escapeHtml(t.equipment)}</div>
+                        <div class="task-description">${escapeHtml(t.description || 'Плановое техническое обслуживание')}</div>
+                        <div class="task-date">📅 Дата: ${t.due_date || 'Не указана'}</div>
+                        <div class="task-type">🔧 Тип: ${t.type === 'Авария' ? 'Аварийный ремонт' : 'Плановое ТО'}</div>
+                    </div>
+                </div>
+                <div class="task-separator"></div>
+            `;
+        });
+        regularHtml += '</div>';
+    }
+    
+    let modal = document.createElement('div');
+    modal.className = 'center-modal info large';
+    modal.innerHTML = `
+        <div class="modal-header">
+            <div class="modal-icon-info">📋</div>
+            <div class="modal-title">НОВЫЕ ЗАДАЧИ (${tasks.length})</div>
+        </div>
+        <div class="modal-body">
+            ${urgentHtml}
+            ${regularHtml}
+        </div>
+        <div class="modal-footer">
+            <button onclick="this.closest('.center-modal').remove()">Понятно</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Добавляем уведомления в панель
+    tasks.forEach(task => {
+        let type = task.is_urgent ? 'error' : 'info';
+        let title = task.is_urgent ? '⚠️ СРОЧНАЯ ЗАДАЧА' : '📋 Новая задача';
+        addNotification(title, `${task.equipment} - ${task.description || 'ТО'} (${task.due_date})`, type, task.id);
+    });
 }
 
-// Закрытие панели при клике вне её
-document.addEventListener('click', function(event) {
-    let panel = document.getElementById("notificationPanel");
-    let btn = document.getElementById("notificationBtn");
-
-    if (panel && panel.style.display === "block") {
-        if (btn && btn.contains(event.target)) {
-            return;
-        }
-        if (!panel.contains(event.target)) {
-            panel.style.display = "none";
-        }
+function showTodayTasksList(data) {
+    if (!data) return;
+    let tasks = typeof data === 'string' ? JSON.parse(data) : data;
+    if (!tasks || tasks.length === 0) return;
+    
+    let urgentTasks = tasks.filter(t => t.is_urgent === true);
+    let regularTasks = tasks.filter(t => t.is_urgent !== true);
+    
+    let oldModal = document.querySelector('.center-modal');
+    if (oldModal) oldModal.remove();
+    
+    let urgentHtml = '';
+    let regularHtml = '';
+    
+    if (urgentTasks.length > 0) {
+        urgentHtml = '<div class="task-section urgent-section"><div class="section-title">🚨 Срочные задачи</div>';
+        urgentTasks.forEach(t => {
+            urgentHtml += `
+                <div class="task-item urgent" onclick="closeModalAndShowTask(${t.id})">
+                    <div class="task-icon">⚠️</div>
+                    <div class="task-content">
+                        <div class="task-equipment">${escapeHtml(t.equipment)}</div>
+                        <div class="task-description">${escapeHtml(t.description || 'Срочное техническое обслуживание')}</div>
+                        <div class="task-date">📅 Дата: ${t.due_date || 'Не указана'}</div>
+                        <div class="task-type">🔧 Тип: ${t.type === 'Авария' ? 'Аварийный ремонт' : 'Плановое ТО'}</div>
+                    </div>
+                </div>
+                <div class="task-separator"></div>
+            `;
+        });
+        urgentHtml += '</div>';
     }
-});
+    
+    if (regularTasks.length > 0) {
+        regularHtml = '<div class="task-section"><div class="section-title">📋 Обычные задачи</div>';
+        regularTasks.forEach(t => {
+            regularHtml += `
+                <div class="task-item regular" onclick="closeModalAndShowTask(${t.id})">
+                    <div class="task-icon">ℹ️</div>
+                    <div class="task-content">
+                        <div class="task-equipment">${escapeHtml(t.equipment)}</div>
+                        <div class="task-description">${escapeHtml(t.description || 'Плановое техническое обслуживание')}</div>
+                        <div class="task-date">📅 Дата: ${t.due_date || 'Не указана'}</div>
+                        <div class="task-type">🔧 Тип: ${t.type === 'Авария' ? 'Аварийный ремонт' : 'Плановое ТО'}</div>
+                    </div>
+                </div>
+                <div class="task-separator"></div>
+            `;
+        });
+        regularHtml += '</div>';
+    }
+    
+    let modal = document.createElement('div');
+    modal.className = 'center-modal info large';
+    modal.innerHTML = `
+        <div class="modal-header">
+            <div class="modal-icon-info">📅</div>
+            <div class="modal-title">Задачи на сегодня (${tasks.length})</div>
+        </div>
+        <div class="modal-body">
+            ${urgentHtml}
+            ${regularHtml}
+        </div>
+        <div class="modal-footer">
+            <button onclick="this.closest('.center-modal').remove()">Понятно</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    tasks.forEach(task => {
+        if (task.is_urgent) {
+            addNotification('⚠️ СРОЧНАЯ ЗАДАЧА НА СЕГОДНЯ', `${task.equipment} - ${task.description || 'ТО'} (${task.due_date})`, 'error', task.id);
+        } else {
+            addNotification('📅 ЗАДАЧА НА СЕГОДНЯ', `${task.equipment} - ${task.description || 'ТО'} (${task.due_date})`, 'info', task.id);
+        }
+    });
+}
+
+function closeModalAndShowTask(taskId) {
+    let modal = document.querySelector('.center-modal');
+    if (modal) modal.remove();
+    showTab('tasks');
+    setTimeout(() => highlightTaskById(taskId), 100);
+}
 
 function highlightTaskById(taskId) {
     let rows = document.querySelectorAll('#tasksTableBody tr');
@@ -501,6 +618,68 @@ function highlightTaskById(taskId) {
     }
 }
 
+// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+
+function showConfirmModal(title, message, onConfirm) {
+    let oldModal = document.querySelector('.confirm-modal');
+    if (oldModal) oldModal.remove();
+    
+    let modal = document.createElement('div');
+    modal.className = 'confirm-modal';
+    modal.innerHTML = `
+        <div class="confirm-modal-content">
+            <div class="confirm-modal-title">${escapeHtml(title)}</div>
+            <div class="confirm-modal-text">${escapeHtml(message)}</div>
+            <div class="confirm-modal-buttons">
+                <button class="confirm-yes">Да</button>
+                <button class="confirm-no">Нет</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.querySelector('.confirm-yes').onclick = () => { modal.remove(); if (onConfirm) onConfirm(); };
+    modal.querySelector('.confirm-no').onclick = () => modal.remove();
+}
+
+function showCenterModal(title, text, type = 'error') {
+    let oldModal = document.querySelector('.center-modal');
+    if (oldModal) oldModal.remove();
+    
+    let modal = document.createElement('div');
+    modal.className = `center-modal ${type}`;
+    modal.innerHTML = `
+        <div class="modal-title">${escapeHtml(title)}</div>
+        <div class="modal-text">${escapeHtml(text)}</div>
+        <button onclick="this.parentElement.remove()">OK</button>
+    `;
+    document.body.appendChild(modal);
+}
+
+function animateNumber(elementId, targetValue, suffix = "") {
+    let element = document.getElementById(elementId);
+    if (!element) return;
+    
+    let startValue = parseInt(element.innerText) || 0;
+    let duration = 500;
+    let stepTime = 20;
+    let steps = duration / stepTime;
+    let stepValue = (targetValue - startValue) / steps;
+    let current = startValue;
+    let step = 0;
+    
+    let timer = setInterval(() => {
+        step++;
+        current += stepValue;
+        if (step >= steps) {
+            element.innerText = targetValue + suffix;
+            clearInterval(timer);
+        } else {
+            element.innerText = Math.round(current) + suffix;
+        }
+    }, stepTime);
+}
+
 function escapeHtml(text) {
     if (!text) return '';
     return text.replace(/[&<>]/g, function(m) {
@@ -511,64 +690,37 @@ function escapeHtml(text) {
     });
 }
 
-function showCenterModal(title, text, type = 'error') {
-    let oldModal = document.querySelector('.center-modal');
-    if (oldModal) oldModal.remove();
-
-    let modal = document.createElement('div');
-    modal.className = `center-modal ${type}`;
-    modal.innerHTML = `
-        <div class="modal-title">${escapeHtml(title)}</div>
-        <div class="modal-text">${escapeHtml(text)}</div>
-        <button onclick="this.parentElement.remove()">OK</button>
-    `;
-
-    document.body.appendChild(modal);
-
-    setTimeout(() => {
-        if (modal) modal.remove();
-    }, 3000);
-}
-
-function formatRelativeTime(date) {
-    let now = new Date();
-    let diff = Math.floor((now - date) / 1000 / 60);
-
-    if (diff < 1) return "только что";
-    if (diff < 60) return `${diff} мин назад`;
-    if (diff < 1440) return `${Math.floor(diff / 60)} ч назад`;
-    return `${Math.floor(diff / 1440)} дн назад`;
-}
-
 // ========== ПОЛУЧЕНИЕ ДАННЫХ ИЗ C# ==========
 
 window.receiveFromCSharp = function(func, data) {
+    console.log("Received from C#:", func, data);
+    
     if (func === "displayTasks") displayTasks(data);
     if (func === "displayHistory") displayHistory(data);
-    if (func === "displayAccidents") displayAccidents(data);
+    if (func === "displayAccidentHistory") displayAccidentHistory(data);
     if (func === "displayStats") displayStats(data);
+    if (func === "displaySpareParts") displaySpareParts(data);
     if (func === "showSuccess") showSuccess(data);
     if (func === "showError") showError(data);
-    if (func === "displaySpareParts") {
-        let select = document.getElementById("reportParts");
-        let parts = JSON.parse(data);
-        select.innerHTML = '';
-        if (parts.length === 0) {
-            select.innerHTML = '<option disabled>Нет доступных запчастей</option>';
-        } else {
-            parts.forEach(p => {
-                let option = document.createElement('option');
-                option.value = p.id;
-                option.text = p.name;
-                select.appendChild(option);
-            });
-        }
-    }
+    if (func === "showNewTasks") showNewTasksNotification(data);
+    if (func === "showTodayTasksList") showTodayTasksList(data);
+    if (func === "checkOverdueTasks") checkOverdueTasks(parseInt(data));
 };
 
-// Инициализация после загрузки DOM
+// Закрытие панели уведомлений при клике вне
+document.addEventListener('click', function(event) {
+    let panel = document.getElementById("notificationPanel");
+    let btn = document.getElementById("notificationBtn");
+    if (panel && panel.style.display === "block") {
+        if (btn && btn.contains(event.target)) return;
+        if (!panel.contains(event.target)) panel.style.display = "none";
+    }
+});
+
+// Инициализация
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM загружен");
-    let notifBtn = document.getElementById("notificationBtn");
-    console.log("Кнопка уведомлений:", notifBtn);
+    loadTasks();
+    loadHistory();
+    loadAccidentHistory();
+    loadStatistics();
 });

@@ -7,210 +7,376 @@
     <link rel="stylesheet" href="css/boss.css">
 </head>
 <body>
-    <div class="app-container">
-        <div class="top-bar">
-            <h2>Панель начальника - Управление ремонтами</h2>
-        </div>
-
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="plans">Планы ТО</button>
-            <button class="tab-btn" data-tab="avariya">Аварии</button>
-            <button class="tab-btn" data-tab="history">История ремонтов</button>
-            <button class="tab-btn" data-tab="statistics">Статистика</button>
-        </div>
-
-        <!-- Вкладка "Планы ТО" -->
-        <div id="plansTab" class="tab-content active">
-            <div class="filters-bar">
-                <div class="filter-group">
-                    <label>Оборудование</label>
-                    <select id="equipmentFilter">
-                        <option value="0">Все оборудование</option>
-                    </select>
+<div class="app-container">
+    <!-- Верхняя панель -->
+    <div class="top-bar">
+        <h2>Панель начальника - Управление ремонтами</h2>
+        <div class="user-info">
+            <div class="notifications-panel">
+                <button class="bell-icon" id="bossBellBtn">🔔</button>
+                <span class="badge" id="bossNotifBadge" style="display:none">0</span>
+                <div class="notif-dropdown" id="bossNotifDropdown">
+                    <div class="notif-header">Уведомления</div>
+                    <div id="bossNotifList"></div>
                 </div>
-                <div class="filter-group">
-                    <label>Статус</label>
-                    <select id="statusFilter">
-                        <option value="">Все</option>
-                        <option value="В работе">В работе</option>
-                        <option value="Зарегистрирован">Зарегистрирован</option>
-                        <option value="Завершен">Завершен</option>
-                        <option value="Просрочен">Просрочен</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>С</label>
-                    <input type="date" id="startDateFilter">
-                </div>
-                <div class="filter-group">
-                    <label>По</label>
-                    <input type="date" id="endDateFilter">
-                </div>
-                <button class="btn-primary" id="applyFilterBtn">Применить</button>
-                <button class="btn-add" id="addPlanBtn">+ Добавить план</button>
             </div>
-
-            <div class="export-panel">
-                <div class="filter-group">
-                    <label>Тип отчета</label>
-                    <select id="reportTypeSelect">
-                        <option value="all">Все планы</option>
-                        <option value="inprogress">В работе</option>
-                        <option value="completed">Завершенные</option>
-                        <option value="overdue">Просроченные</option>
-                        <option value="history">История ремонтов</option>
-                        <option value="avariya">Аварии</option>
-                    </select>
-                </div>
-                <button class="btn-export" id="exportExcelBtn">Excel</button>
-                <button class="btn-export" id="exportWordBtn">Word</button>
-                <button class="btn-preview" id="previewReportBtn">Предпросмотр</button>
+            <span class="user-name" id="bossFio">Загрузка...</span>
+        </div>
+    </div>
+	
+	<div id="createPlanModal" class="modal" style="display:none">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📋 Создание плана работ из аварии</h3>
+            <span class="close" onclick="closeModal('createPlanModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="createPlanAvariyaId">
+            
+            <div class="form-group">
+                <label>Оборудование</label>
+                <input type="text" id="createPlanEquipment" readonly style="background:#f1f5f9;">
             </div>
-
-            <div class="table-container">
-                <table id="plansTable">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Оборудование</th>
-                            <th>Тип ТО</th>
-                            <th>Дата начала</th>
-                            <th>Дата окончания</th>
-                            <th>Ответственный</th>
-                            <th>Статус</th>
-                            <th>Авария</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody id="plansTableBody">
-                        <tr><td colspan="9" class="loading">Загрузка...</td></tr>
-                    </tbody>
-                </table>
+            
+            <div class="form-group">
+                <label>Описание аварии</label>
+                <textarea id="createPlanDescription" readonly rows="2" style="background:#f1f5f9;"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Тип ТО *</label>
+                <select id="createPlanTip" required>
+                    <option value="">Выберите тип ТО</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Дата начала *</label>
+                <input type="date" id="createPlanStartDate" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Дата окончания *</label>
+                <input type="date" id="createPlanEndDate" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Ответственный (слесарь) *</label>
+                <select id="createPlanResponsible" required>
+                    <option value="">Выберите ответственного</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Описание работ</label>
+                <textarea id="createPlanOpisanie" rows="3" placeholder="Что необходимо сделать..."></textarea>
             </div>
         </div>
+        <div class="modal-footer">
+            <button class="btn-primary" id="confirmCreatePlanBtn">✅ Создать план</button>
+            <button class="btn-secondary" onclick="closeModal('createPlanModal')">Отмена</button>
+        </div>
+    </div>
+</div>
 
-        <!-- Вкладка "Аварии" -->
-        <div id="avariyaTab" class="tab-content">
-            <div class="filters-bar">
-                <div class="filter-group">
-                    <label>С</label>
-                    <input type="date" id="avariyaStartDate">
-                </div>
-                <div class="filter-group">
-                    <label>По</label>
-                    <input type="date" id="avariyaEndDate">
-                </div>
-                <button class="btn-primary" id="applyAvariyaFilterBtn">Применить</button>
+    <!-- Вкладки -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="plans">Планы работ</button>
+        <button class="tab-btn" data-tab="avariya">Аварии (заявки)</button>
+        <button class="tab-btn" data-tab="history">История аварий</button>
+        <button class="tab-btn" data-tab="repairHistory">История ремонтов</button>
+        <button class="tab-btn" data-tab="statistics">Статистика</button>
+    </div>
+
+    <!-- Вкладка "Планы работ" -->
+    <div id="plansTab" class="tab-content active">
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label>Оборудование</label>
+                <select id="equipmentFilter">
+                    <option value="0">Все оборудование</option>
+                </select>
             </div>
-            <div class="table-container">
-                <table id="avariyaTable">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Оборудование</th>
-                            <th>Дата аварии</th>
-                            <th>Описание</th>
-                            <th>Последствия</th>
-                            <th>Статус</th>
-                            <th>План</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody id="avariyaTableBody">
-                        <tr><td colspan="8" class="loading">Загрузка...</td></tr>
-                    </tbody>
-                </table>
+            <div class="filter-group">
+                <label>Статус</label>
+                <select id="statusFilter">
+                    <option value="">Все</option>
+                    <option value="В работе">В работе</option>
+                    <option value="Зарегистрирован">Зарегистрирован</option>
+                    <option value="Просрочен">Просрочен</option>
+                </select>
             </div>
+            <div class="filter-group">
+                <label>С</label>
+                <input type="date" id="startDateFilter">
+            </div>
+            <div class="filter-group">
+                <label>По</label>
+                <input type="date" id="endDateFilter">
+            </div>
+            <button class="btn-primary" id="applyFilterBtn">Применить</button>
+            <button class="btn-add" id="addPlanBtn">+ Добавить план</button>
         </div>
 
-        <!-- Вкладка "История ремонтов" -->
-        <div id="historyTab" class="tab-content">
-            <div class="filters-bar">
-                <div class="filter-group">
-                    <label>С</label>
-                    <input type="date" id="historyStartDate">
-                </div>
-                <div class="filter-group">
-                    <label>По</label>
-                    <input type="date" id="historyEndDate">
-                </div>
-                <button class="btn-primary" id="applyHistoryFilterBtn">Применить</button>
+        <div class="export-panel">
+            <div class="filter-group">
+                <label>Тип отчета</label>
+                <select id="reportTypeSelect">
+                    <option value="all">Все планы</option>
+                    <option value="inprogress">В работе</option>
+                    <option value="completed">Завершенные</option>
+                    <option value="overdue">Просроченные</option>
+                    <option value="repairHistory">История ремонтов</option>
+                    <option value="avariyaHistory">История аварий</option>
+                </select>
             </div>
-            <div class="table-container">
-                <table id="historyTable">
-                    <thead>
-                        <tr>
-                            <th>Оборудование</th>
-                            <th>Тип ТО</th>
-                            <th>Плановая дата</th>
-                            <th>Дата выполнения</th>
-                            <th>Исполнитель</th>
-                            <th>Описание работ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyTableBody">
-                        <tr><td colspan="6" class="loading">Загрузка...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <button class="btn-export" id="exportExcelBtn">Excel</button>
+            <button class="btn-export" id="exportWordBtn">Word</button>
+            <button class="btn-preview" id="previewReportBtn">Предпросмотр</button>
         </div>
 
-        <!-- Вкладка "Статистика" -->
-        <div id="statisticsTab" class="tab-content">
-            <div class="stats-grid">
-                <div class="stat-card"><div class="stat-value" id="statEquipment">0</div><div class="stat-label">Единиц оборудования</div></div>
-                <div class="stat-card"><div class="stat-value" id="statAvariya">0</div><div class="stat-label">Аварий всего</div></div>
-                <div class="stat-card"><div class="stat-value" id="statPlans">0</div><div class="stat-label">Активных планов</div></div>
-                <div class="stat-card"><div class="stat-value" id="statCompleted">0</div><div class="stat-label">Выполнено</div></div>
-                <div class="stat-card"><div class="stat-value critical" id="statOverdue">0</div><div class="stat-label">Просрочено</div></div>
-                <div class="stat-card"><div class="stat-value" id="statInProgress">0</div><div class="stat-label">В работе</div></div>
-            </div>
+        <div class="table-container">
+            <table id="plansTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Оборудование</th>
+                        <th>Тип ТО</th>
+                        <th>Дата начала</th>
+                        <th>Дата окончания</th>
+                        <th>Ответственный</th>
+                        <th>Статус</th>
+                        <th>Авария</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="plansTableBody">
+                    <tr><td colspan="9" class="loading">Загрузка...</td</tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <!-- Модальное окно для плана -->
-    <div id="planModal" class="modal" style="display:none">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="planModalTitle">Добавление плана</h3>
-                <span class="close" onclick="closeModal('planModal')">&times;</span>
+    <!-- Вкладка "Аварии (заявки)" - активные заявки от оператора -->
+    <div id="avariyaTab" class="tab-content">
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label>С</label>
+                <input type="date" id="avariyaStartDate">
             </div>
-            <div class="modal-body">
-                <input type="hidden" id="planId">
-                <div class="form-group">
-                    <label>Оборудование *</label>
-                    <select id="planEquipment" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Тип ТО *</label>
-                    <select id="planTip" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Дата начала *</label>
-                    <input type="date" id="planStartDate" required>
-                </div>
-                <div class="form-group">
-                    <label>Дата окончания *</label>
-                    <input type="date" id="planEndDate" required>
-                </div>
-                <div class="form-group">
-                    <label>Ответственный *</label>
-                    <select id="planResponsible" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Статус</label>
-                    <input type="text" id="planStatus" value="Передан в работу" readonly style="background:#f1f5f9;">
-                </div>
+            <div class="filter-group">
+                <label>По</label>
+                <input type="date" id="avariyaEndDate">
             </div>
-            <div class="modal-footer">
-                <button class="btn-primary" id="savePlanBtn">Сохранить</button>
-                <button class="btn-secondary" onclick="closeModal('planModal')">Отмена</button>
-            </div>
+            <button class="btn-primary" id="applyAvariyaFilterBtn">Применить</button>
+        </div>
+        <div class="table-container">
+            <table id="avariyaTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Оборудование</th>
+                        <th>Дата заявки</th>
+                        <th>Описание</th>
+                        <th>Последствия</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="avariyaTableBody">
+                    <tr><td colspan="7" class="loading">Загрузка...</td</tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div id="toast" class="toast"></div>
+    <!-- Вкладка "История аварий" - только завершенные аварии -->
+    <div id="historyTab" class="tab-content">
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label>С</label>
+                <input type="date" id="historyStartDate">
+            </div>
+            <div class="filter-group">
+                <label>По</label>
+                <input type="date" id="historyEndDate">
+            </div>
+            <button class="btn-primary" id="applyHistoryFilterBtn">Применить</button>
+        </div>
+        <div class="table-container">
+            <table id="historyTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Оборудование</th>
+                        <th>Дата аварии</th>
+                        <th>Описание</th>
+                        <th>Ответственный</th>
+                        <th>Замененные запчасти</th>
+                        <th>Дата устранения</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <tr><td colspan="7" class="loading">Загрузка...</td</tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-    <script src="js/boss.js"></script>
+    <!-- Вкладка "История ремонтов" - выполненные планы работ -->
+    <div id="repairHistoryTab" class="tab-content">
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label>С</label>
+                <input type="date" id="repairHistoryStartDate">
+            </div>
+            <div class="filter-group">
+                <label>По</label>
+                <input type="date" id="repairHistoryEndDate">
+            </div>
+            <button class="btn-primary" id="applyRepairHistoryFilterBtn">Применить</button>
+        </div>
+        <div class="table-container">
+            <table id="repairHistoryTable">
+                <thead>
+                    <tr>
+                        <th>Оборудование</th>
+                        <th>Тип ТО</th>
+                        <th>Плановая дата</th>
+                        <th>Дата выполнения</th>
+                        <th>Исполнитель</th>
+                        <th>Описание работ</th>
+                        <th>Замененные запчасти</th>
+                    </tr>
+                </thead>
+                <tbody id="repairHistoryTableBody">
+                    <tr><td colspan="7" class="loading">Загрузка...</td</tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Вкладка "Статистика" -->
+    <div id="statisticsTab" class="tab-content">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="statEquipment">0</div>
+                <div class="stat-label">Единиц оборудования</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statActiveAvariya">0</div>
+                <div class="stat-label">Активных заявок</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statCompletedAvariya">0</div>
+                <div class="stat-label">Устранено аварий</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statPlans">0</div>
+                <div class="stat-label">Активных планов</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statCompleted">0</div>
+                <div class="stat-label">Выполнено планов</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value critical" id="statOverdue">0</div>
+                <div class="stat-label">Просрочено</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для плана работ -->
+<div id="planModal" class="modal" style="display:none">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="planModalTitle">Добавление плана работ</h3>
+            <span class="close" onclick="closeModal('planModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="planId">
+            <div class="form-group">
+                <label>Оборудование *</label>
+                <select id="planEquipment" required></select>
+            </div>
+            <div class="form-group">
+                <label>Тип ТО *</label>
+                <select id="planTip" required></select>
+            </div>
+            <div class="form-group">
+                <label>Дата начала *</label>
+                <input type="date" id="planStartDate" required>
+            </div>
+            <div class="form-group">
+                <label>Дата окончания *</label>
+                <input type="date" id="planEndDate" required>
+            </div>
+            <div class="form-group">
+                <label>Ответственный *</label>
+                <select id="planResponsible" required></select>
+            </div>
+            <div class="form-group">
+                <label>Связанная авария</label>
+                <select id="planAvariya">
+                    <option value="">Не выбрана</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Статус</label>
+                <input type="text" id="planStatus" value="Зарегистрирован" readonly style="background:#f1f5f9;">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-primary" id="savePlanBtn">Сохранить</button>
+            <button class="btn-secondary" onclick="closeModal('planModal')">Отмена</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для создания плана из аварии -->
+<div id="createPlanFromAvariyaModal" class="modal" style="display:none">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Создание плана работ из аварии</h3>
+            <span class="close" onclick="closeModal('createPlanFromAvariyaModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Оборудование</label>
+                <input type="text" id="avariyaEquipment" readonly style="background:#f1f5f9;">
+            </div>
+            <div class="form-group">
+                <label>Описание аварии</label>
+                <textarea id="avariyaDescription" readonly rows="3" style="background:#f1f5f9;"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Тип ТО *</label>
+                <select id="planTipFromAvariya" required></select>
+            </div>
+            <div class="form-group">
+                <label>Дата начала *</label>
+                <input type="date" id="planStartDateFromAvariya" required>
+            </div>
+            <div class="form-group">
+                <label>Дата окончания *</label>
+                <input type="date" id="planEndDateFromAvariya" required>
+            </div>
+            <div class="form-group">
+                <label>Ответственный *</label>
+                <select id="planResponsibleFromAvariya" required></select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-primary" id="confirmCreatePlanBtn">Создать план</button>
+            <button class="btn-secondary" onclick="closeModal('createPlanFromAvariyaModal')">Отмена</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast уведомления -->
+<div id="toast" class="toast"></div>
+
+<script src="js/boss.js"></script>
 </body>
 </html>

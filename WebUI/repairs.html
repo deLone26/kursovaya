@@ -3,244 +3,192 @@
 <head>
     <meta charset="UTF-8">
     <title>Рабочее место слесаря</title>
-
     <link rel="stylesheet" href="css/repairs.css">
 </head>
 <body>
 
-    <div class="header">
-
-        <div class="header-title">
-            Рабочее место слесаря
+<div class="header">
+    <div class="header-title">Рабочее место слесаря</div>
+    <div class="header-right">
+        <div class="notification-wrapper">
+            <button class="notification-btn" id="notificationBtn" onclick="toggleNotifications()">
+                🔔
+                <span id="notificationCount" class="notification-count" style="display:none">0</span>
+            </button>
+            <div id="notificationPanel" class="notification-panel">
+                <div class="notification-header">Уведомления</div>
+                <div id="notificationsContainer"></div>
+            </div>
         </div>
-
-        <div class="header-right">
-    <div class="notification-wrapper">
-        <button class="notification-btn" id="notificationBtn" onclick="toggleNotifications()">
-            🔔
-            <span id="notificationCount" class="notification-count" style="display:none">0</span>
-        </button>
-        <div id="notificationPanel" class="notification-panel">
-            <div class="notification-header">Уведомления</div>
-            <div id="notificationsContainer"></div>
-        </div>
+        <div class="user-name" id="userName">Слесарь</div>
+        <button class="logout-btn" onclick="logout()">Выход</button>
     </div>
-    <div class="user-name" id="userName">Слесарь</div>
-    <button class="logout-btn" onclick="logout()">Выход</button>
 </div>
 
+<div class="tabs">
+    <button class="tab active" onclick="showTab('tasks')">Активные задачи</button>
+    <button class="tab" onclick="showTab('history')">История ТО</button>
+    <button class="tab" onclick="showTab('accidents')">История аварий</button>
+    <button class="tab" onclick="showTab('stats')">Статистика</button>
+</div>
+
+<div class="content">
+
+    <!-- АКТИВНЫЕ ЗАДАЧИ -->
+<div id="tasksTab" class="tab-content active">
+    <div class="table-container">
+        <table class="main-table" id="tasksTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Тип</th>
+                    <th>Оборудование</th>
+                    <th>Описание</th>
+                    <th>Дата поступления заявки</th>
+                    <th>Статус</th>
+                    <th>Отчёт</th>
+                </tr>
+            </thead>
+            <tbody id="tasksTableBody">
+                <tr><td colspan="7" class="loading">Загрузка...</td</tr>
+            </tbody>
+        </table>
     </div>
+</div>
 
-    <div class="tabs">
-
-        <button class="tab active" onclick="showTab('tasks')">
-            Активные задачи
-        </button>
-
-        <button class="tab" onclick="showTab('history')">
-            История работ
-        </button>
-
-        <button class="tab" onclick="showTab('accidents')">
-            История аварий
-        </button>
-
-        <button class="tab" onclick="showTab('stats')">
-            Статистика
-        </button>
-
+<!-- ИСТОРИЯ ТО -->
+<div id="historyTab" class="tab-content">
+    <div class="filter-panel">
+        <label>Период:</label>
+        <input type="date" id="historyStart">
+        <input type="date" id="historyEnd">
+        <button onclick="loadHistory()">Показать</button>
     </div>
+    <div class="table-container">
+        <table class="main-table" id="historyTable">
+            <thead>
+                <tr>
+                    <th>Оборудование</th>
+                    <th>Дата начала</th>
+                    <th>Дата окончания</th>
+                    <th>Описание работ</th>
+                    <th>Заменённые запчасти</th>
+                    <th>Статус выполнения</th>
+                    <th>Соблюдение сроков</th>
+                </tr>
+            </thead>
+            <tbody id="historyTableBody">
+                <tr><td colspan="7" class="loading">Загрузка...</td</tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
-    <div class="content">
+<!-- ИСТОРИЯ АВАРИЙ -->
+<div id="accidentsTab" class="tab-content">
+    <div class="filter-panel">
+        <label>Период:</label>
+        <input type="date" id="accidentStart">
+        <input type="date" id="accidentEnd">
+        <button onclick="loadAccidentHistory()">Показать</button>
+    </div>
+    <div class="table-container">
+        <table class="main-table" id="accidentsTable">
+            <thead>
+                <tr>
+                    <th>Оборудование</th>
+                    <th>Дата аварии</th>
+                    <th>Дата устранения</th>
+                    <th>Описание работ</th>
+                    <th>Заменённые запчасти</th>
+                    <th>Статус выполнения</th>
+                    <th>Соблюдение сроков</th>
+                </tr>
+            </thead>
+            <tbody id="accidentsTableBody">
+                <tr><td colspan="7" class="loading">Загрузка...</td</tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
-        <!-- АКТИВНЫЕ ЗАДАЧИ -->
-
-        <div id="tasksTab" class="tab-content active">
-
-            <table class="main-table">
-
-                <thead>
-
-                    <tr>
-                        <th>ID</th>
-                        <th>Тип</th>
-                        <th>Оборудование</th>
-                        <th>Описание</th>
-                        <th>Дата</th>
-                        <th>Статус</th>
-                        <th>Отчёт</th>
-                    </tr>
-
-                </thead>
-
-                <tbody id="tasksTableBody"></tbody>
-
-            </table>
-
-        </div>
-
-        <!-- ИСТОРИЯ -->
-
-        <div id="historyTab" class="tab-content">
-
-            <div class="filter-panel">
-
-                <input type="date" id="historyStart">
-
-                <input type="date" id="historyEnd">
-
-                <button onclick="loadHistory()">
-                    Показать
-                </button>
-
+    <!-- СТАТИСТИКА -->
+    <div id="statsTab" class="tab-content">
+        <div class="stats-grid">
+            <div class="stat-card total" style="--i:1">
+                <div class="stat-icon">📋</div>
+                <div class="stat-title">Всего задач</div>
+                <div class="stat-value" id="statTotal">0</div>
             </div>
-
-            <table class="main-table">
-
-                <thead>
-                    <tr>
-                        <th>Дата</th>
-                        <th>Оборудование</th>
-                        <th>Описание</th>
-                        <th>Запчасти</th>
-                    </tr>
-                </thead>
-
-                <tbody id="historyTableBody"></tbody>
-
-            </table>
-
-        </div>
-
-        <!-- АВАРИИ -->
-
-        <div id="accidentsTab" class="tab-content">
-
-            <table class="main-table">
-
-                <thead>
-                    <tr>
-                        <th>Дата аварии</th>
-                        <th>Оборудование</th>
-                        <th>Описание</th>
-                        <th>Статус</th>
-                    </tr>
-                </thead>
-
-                <tbody id="accidentsTableBody"></tbody>
-
-            </table>
-
-        </div>
-
-        <!-- СТАТИСТИКА -->
-
-        <div id="statsTab" class="tab-content">
-    <div class="stats-grid">
-        <div class="stat-card total" style="--i:1">
-            <div class="stat-icon">📋</div>
-            <div class="stat-title">Всего задач</div>
-            <div class="stat-value" id="statTotal">0</div>
-        </div>
-        <div class="stat-card completed" style="--i:2">
-            <div class="stat-icon">✅</div>
-            <div class="stat-title">Выполнено</div>
-            <div class="stat-value" id="statDone">0</div>
-        </div>
-        <div class="stat-card work" style="--i:3">
-            <div class="stat-icon">⚙️</div>
-            <div class="stat-title">В работе</div>
-            <div class="stat-value" id="statWork">0</div>
-        </div>
-        <div class="stat-card overdue" style="--i:4">
-            <div class="stat-icon">⚠️</div>
-            <div class="stat-title">Просрочено</div>
-            <div class="stat-value" id="statOverdue">0</div>
-        </div>
-        <div class="stat-card urgent" style="--i:5">
-            <div class="stat-icon">🚨</div>
-            <div class="stat-title">Срочных аварий</div>
-            <div class="stat-value" id="statUrgent">0</div>
-        </div>
-        <div class="stat-card today" style="--i:6">
-            <div class="stat-icon">📅</div>
-            <div class="stat-title">Задач на сегодня</div>
-            <div class="stat-value" id="statToday">0</div>
-        </div>
-        <div class="stat-card percent" style="--i:7">
-            <div class="stat-icon">📊</div>
-            <div class="stat-title">Процент выполнения</div>
-            <div class="stat-value" id="statPercent">0%</div>
-            <div class="progress-container">
-                <div class="progress-bar-bg">
-                    <div class="progress-fill" id="progressFill"></div>
+            <div class="stat-card completed" style="--i:2">
+                <div class="stat-icon">✅</div>
+                <div class="stat-title">Выполнено</div>
+                <div class="stat-value" id="statDone">0</div>
+            </div>
+            <div class="stat-card work" style="--i:3">
+                <div class="stat-icon">⚙️</div>
+                <div class="stat-title">В работе</div>
+                <div class="stat-value" id="statWork">0</div>
+            </div>
+            <div class="stat-card overdue" style="--i:4">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-title">Просрочено</div>
+                <div class="stat-value" id="statOverdue">0</div>
+            </div>
+            <div class="stat-card urgent" style="--i:5">
+                <div class="stat-icon">🚨</div>
+                <div class="stat-title">Срочных аварий</div>
+                <div class="stat-value" id="statUrgent">0</div>
+            </div>
+            <div class="stat-card today" style="--i:6">
+                <div class="stat-icon">📅</div>
+                <div class="stat-title">Задач на сегодня</div>
+                <div class="stat-value" id="statToday">0</div>
+            </div>
+            <div class="stat-card percent" style="--i:7">
+                <div class="stat-icon">📊</div>
+                <div class="stat-title">Процент выполнения</div>
+                <div class="stat-value" id="statPercent">0%</div>
+                <div class="progress-container">
+                    <div class="progress-bar-bg">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="stat-card avg" style="--i:8">
-            <div class="stat-icon">⏱️</div>
-            <div class="stat-title">Среднее время ремонта</div>
-            <div class="stat-value" id="statAvg">0 ч</div>
+            <div class="stat-card avg" style="--i:8">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-title">Среднее время ремонта</div>
+                <div class="stat-value" id="statAvg">0 дн</div>
+            </div>
         </div>
     </div>
 </div>
 
-    <!-- МОДАЛКА -->
-
-    <div id="reportModal" class="modal">
-
-        <div class="modal-content">
-
-            <div class="modal-header">
-                Отчёт о выполнении
-            </div>
-
-            <div class="modal-body">
-
-                <input type="hidden" id="reportTaskId">
-
-                <label>Оборудование</label>
-
-                <input type="text" id="reportEquipment" readonly>
-
-                <label>Использованные запчасти</label>
-
-                <select id="reportParts"  multiple size="4"></select>
-		<span style="font-size: 12px; color: #6b7280; margin-top: -5px; display: block;">
-    		Для выбора нескольких запчастей зажмите клавишу <strong>Ctrl</strong> (Заполнение не обязательно)
-		</span>
-
-                <label>Начало работы</label>
-
-                <input type="datetime-local" id="reportStartDate">
-
-                <label>Конец работы</label>
-
-                <input type="datetime-local" id="reportEndDate">
-
-                <label>Описание выполненных работ</label>
-
-                <textarea id="reportDescription"></textarea>
-
-            </div>
-
-            <div class="modal-footer">
-
-                <button onclick="submitReport()">
-                    Отправить отчёт
-                </button>
-
-                <button class="cancel-btn" onclick="closeModal()">
-                    Отмена
-                </button>
-
-            </div>
-
+<!-- МОДАЛЬНОЕ ОКНО ОТЧЁТА -->
+<div id="reportModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">Отчёт о выполнении</div>
+        <div class="modal-body">
+            <input type="hidden" id="reportTaskId">
+            <label>Оборудование</label>
+            <input type="text" id="reportEquipment" readonly>
+            <label>Использованные запчасти</label>
+            <select id="reportParts" multiple size="4"></select>
+            <span class="hint-text">Для выбора нескольких запчастей зажмите клавишу <kbd>Ctrl</kbd></span>
+            <label>Начало работы</label>
+            <input type="datetime-local" id="reportStartDate">
+            <label>Конец работы</label>
+            <input type="datetime-local" id="reportEndDate">
+            <label>Описание выполненных работ</label>
+            <textarea id="reportDescription"></textarea>
         </div>
-
+        <div class="modal-footer">
+            <button onclick="submitReport()">Отправить отчёт</button>
+            <button class="cancel-btn" onclick="closeModal()">Отмена</button>
+        </div>
     </div>
+</div>
 
-    <script src="js/repairs.js"></script>
-
+<script src="js/repairs.js"></script>
 </body>
 </html>
