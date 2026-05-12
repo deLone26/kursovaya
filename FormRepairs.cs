@@ -262,7 +262,7 @@ namespace WindowsFormsApp1
         END,
         TO_CHAR(p.data_nachala,'YYYY-MM-DD""T""HH24:MI'),
         CASE
-            WHEN p.data_nachala < CURRENT_DATE AND p.status <> 'Завершен' THEN true
+            WHEN DATE(p.data_nachala) < CURRENT_DATE AND p.status <> 'Завершен' THEN true
             ELSE false
         END as is_overdue
     FROM plan_to p
@@ -326,7 +326,10 @@ namespace WindowsFormsApp1
                     TO_CHAR(r.data_okonchaniya, 'DD.MM.YYYY') as completion_date,
                     COALESCE(r.opisanie, '') as description,
                     COALESCE(r.zamennaya_detal, '') as replaced_part,
-                    'Завершено' as status
+                    CASE 
+                        WHEN p.data_nachala < r.data_okonchaniya THEN 'Просрочена'
+                        ELSE 'В срок'
+                    END as deadline_status
                 FROM remont r
                 JOIN plan_to p ON r.plan_id = p.id
                 JOIN oborudovanie o ON r.oborudovanie_id = o.id
@@ -360,7 +363,7 @@ namespace WindowsFormsApp1
                                     completion_date = reader.GetString(2),
                                     description = reader.GetString(3),
                                     replaced_part = reader.GetString(4),
-                                    status = reader.GetString(5)
+                                    deadline_status = reader.GetString(5)  // Добавлено поле deadline_status
                                 });
                             }
                         }
@@ -464,8 +467,12 @@ namespace WindowsFormsApp1
                     COUNT(*) FILTER (WHERE otvetstvenniy_id = @emp AND status = 'В работе') AS inwork,
                     COUNT(*) FILTER (WHERE otvetstvenniy_id = @emp AND status <> 'Завершен' AND data_nachala < CURRENT_DATE) AS overdue,
                     COUNT(*) FILTER (WHERE otvetstvenniy_id = @emp AND is_urgent = true AND status <> 'Завершен') AS urgent,
-                    COUNT(*) FILTER (WHERE otvetstvenniy_id = @emp AND DATE(data_nachala) = CURRENT_DATE AND status <> 'Завершен') AS today
+                    COUNT(*) FILTER (WHERE otvetstvenniy_id = @emp AND DATE(data_nachala) <= CURRENT_DATE AND status <> 'Завершен') AS today
                 FROM plan_to";
+
+                    int total = 0, completed = 0, inwork = 0, overdue = 0, urgent = 0, today = 0;
+                    double percent = 0;
+                    double avgWorkDays = 0;
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -475,34 +482,35 @@ namespace WindowsFormsApp1
                         {
                             if (await reader.ReadAsync())
                             {
-                                int total = reader.GetInt32(0);
-                                int completed = reader.GetInt32(1);
-                                int inwork = reader.GetInt32(2);
-                                int overdue = reader.GetInt32(3);
-                                int urgent = reader.GetInt32(4);
-                                int today = reader.GetInt32(5);
-                                double percent = total > 0 ? Math.Round((double)completed / total * 100, 1) : 0;
-
-                                // Получаем среднее время ремонта в рабочих днях
-                                double avgWorkDays = await GetAverageRepairTime(conn);
-
-                                var stats = new
-                                {
-                                    total = total,
-                                    completed = completed,
-                                    inwork = inwork,
-                                    overdue = overdue,
-                                    urgent = urgent,
-                                    today = today,
-                                    percent = percent,
-                                    avg = avgWorkDays
-                                };
-
-                                string json = JsonSerializer.Serialize(stats);
-                                await ExecuteJsFunction("displayStats", json);
+                                total = reader.GetInt32(0);
+                                completed = reader.GetInt32(1);
+                                inwork = reader.GetInt32(2);
+                                overdue = reader.GetInt32(3);
+                                urgent = reader.GetInt32(4);
+                                today = reader.GetInt32(5);
+                                percent = total > 0 ? Math.Round((double)completed / total * 100, 1) : 0;
                             }
                         }
                     }
+
+                    // Закрываем первый reader перед вторым запросом
+                    // Получаем среднее время ремонта в отдельных соединении
+                    avgWorkDays = await GetAverageRepairTime();
+
+                    var stats = new
+                    {
+                        total = total,
+                        completed = completed,
+                        inwork = inwork,
+                        overdue = overdue,
+                        urgent = urgent,
+                        today = today,
+                        percent = percent,
+                        avg = avgWorkDays
+                    };
+
+                    string json = JsonSerializer.Serialize(stats);
+                    await ExecuteJsFunction("displayStats", json);
                 }
             }
             catch (Exception ex)
@@ -510,6 +518,66 @@ namespace WindowsFormsApp1
                 System.Diagnostics.Debug.WriteLine($"LoadStatistics error: {ex.Message}");
                 await ExecuteJsFunction("showError", ex.Message);
             }
+        }
+
+        private async Task<double> GetAverageRepairTime()
+        {
+            try
+            {
+                // Используем отдельное соединение для этого запроса
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string sql = @"
+                SELECT 
+                    data_nachala,
+                    data_okonchaniya
+                FROM plan_to
+                WHERE otvetstvenniy_id = @emp 
+                  AND status = 'Завершен'
+                  AND data_okonchaniya IS NOT NULL 
+                  AND data_nachala IS NOT NULL";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@emp", currentEmployeeId);
+
+                        var durations = new List<double>();
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                DateTime start = reader.GetDateTime(0);
+                                DateTime end = reader.GetDateTime(1);
+
+                                if (start.Date == end.Date)
+                                {
+                                    durations.Add(8);
+                                }
+                                else
+                                {
+                                    double workDays = CalculateWorkingDays(start, end);
+                                    double workHours = workDays * 8;
+                                    durations.Add(workHours);
+                                }
+                            }
+                        }
+
+                        if (durations.Count > 0)
+                        {
+                            return Math.Round(durations.Average(), 1);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetAverageRepairTime error: {ex.Message}");
+            }
+
+            return 0;
         }
 
         private async Task<double> GetAverageRepairTime(NpgsqlConnection conn)
@@ -896,9 +964,10 @@ namespace WindowsFormsApp1
                             await cmd.ExecuteNonQueryAsync();
                         }
 
-                        // Если есть связанная авария, обновляем её статус на "Завершена"
+                        // ========== ВАЖНО: Если есть связанная авария, обновляем её статус ==========
                         if (avariyaId.HasValue)
                         {
+                            // Обновляем статус аварии на "Завершена"
                             string updateAvariyaSql = "UPDATE avariya SET status = 'Завершена' WHERE id = @id";
                             using (var cmd = new NpgsqlCommand(updateAvariyaSql, conn))
                             {
@@ -915,7 +984,7 @@ namespace WindowsFormsApp1
                 await LoadTasks();
                 await LoadHistory("", "");
                 await LoadStatistics();
-                await LoadAccidentHistory("", ""); // ← ИСПРАВЛЕНО: добавлены пустые строки
+                await LoadAccidentHistory("", ""); // Обновляем историю аварий
             }
             catch (Exception ex)
             {
@@ -942,7 +1011,7 @@ namespace WindowsFormsApp1
                 FROM plan_to p
                 JOIN oborudovanie o ON p.oborudovanie_id = o.id
                 WHERE p.otvetstvenniy_id = @emp
-                  AND DATE(p.data_nachala) = CURRENT_DATE
+                  AND DATE(p.data_nachala) <= CURRENT_DATE  -- Изменено
                   AND p.status <> 'Завершен'
                 ORDER BY p.is_urgent DESC, p.data_nachala ASC";
 
@@ -1038,12 +1107,13 @@ namespace WindowsFormsApp1
                     COALESCE(p.opisanie, '') as description,
                     TO_CHAR(p.data_nachala, 'DD.MM.YYYY') as due_date,
                     COALESCE(p.is_urgent, false) as is_urgent,
-                    CASE WHEN p.avariya_id IS NOT NULL THEN 'Авария' ELSE 'ТО' END as type
+                    CASE WHEN p.avariya_id IS NOT NULL THEN 'Авария' ELSE 'ТО' END as type,
+                    p.data_nachala as plan_date
                 FROM plan_to p
                 JOIN oborudovanie o ON p.oborudovanie_id = o.id
                 WHERE p.otvetstvenniy_id = @employee_id
                   AND p.status = 'Зарегистрирован'
-                  AND p.data_nachala >= CURRENT_DATE";
+                  AND DATE(p.data_nachala) <= CURRENT_DATE";  // Изменено: <= вместо >=
 
                     using (var cmd = new NpgsqlCommand(sqlTasks, conn))
                     {
@@ -1055,6 +1125,7 @@ namespace WindowsFormsApp1
                             while (await reader.ReadAsync())
                             {
                                 int taskId = reader.GetInt32(0);
+                                DateTime planDate = reader.GetDateTime(6);
 
                                 if (isFirstLoad)
                                 {

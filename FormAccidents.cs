@@ -73,7 +73,13 @@ namespace WindowsFormsApp1
                 webView.Dock = DockStyle.Fill;
                 this.Controls.Add(webView);
 
-                await webView.EnsureCoreWebView2Async(null);
+                // Создаём папку для данных WebView2
+                string userDataFolder = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(),
+                    "WebView2Accidents_" + DateTime.Now.Ticks);
+
+                var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                await webView.EnsureCoreWebView2Async(env);
 
                 webView.CoreWebView2.Settings.IsScriptEnabled = true;
                 webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
@@ -86,11 +92,16 @@ namespace WindowsFormsApp1
                     webView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
                     isWebViewInitialized = true;
 
+                    // Ожидаем полной загрузки страницы и затем отправляем данные
                     webView.CoreWebView2.NavigationCompleted += async (s, e) =>
                     {
-                        await Task.Delay(500);
-                        await SetCurrentUserInWebView();
-                        await LoadInitialData();
+                        if (e.IsSuccess)
+                        {
+                            await Task.Delay(500);
+                            await SetCurrentUserInWebView();
+                            await LoadEquipment();
+                            await LoadInitialAccidents();
+                        }
                     };
                 }
                 else
@@ -102,6 +113,51 @@ namespace WindowsFormsApp1
             {
                 MessageBox.Show($"Ошибка WebView2: {ex.Message}");
             }
+        }
+
+        private async Task LoadInitialAccidents()
+        {
+            // Загружаем аварии с текущими фильтрами
+            string startDate = "";
+            string endDate = "";
+            bool showAll = false;
+
+            // Пытаемся получить значения из JavaScript после загрузки страницы
+            try
+            {
+                string script = @"
+            (function() {
+                const startDateElem = document.getElementById('startDate');
+                const endDateElem = document.getElementById('endDate');
+                const showAllElem = document.getElementById('showAll');
+                return JSON.stringify({
+                    startDate: startDateElem ? startDateElem.value : '',
+                    endDate: endDateElem ? endDateElem.value : '',
+                    showAll: showAllElem ? showAllElem.checked : false
+                });
+            })();";
+
+                string result = await webView.CoreWebView2.ExecuteScriptAsync(script);
+                // Убираем кавычки из результата
+                result = result.Trim('"').Replace("\\\"", "\"");
+
+                using (JsonDocument doc = JsonDocument.Parse(result))
+                {
+                    JsonElement root = doc.RootElement;
+                    startDate = root.GetProperty("startDate").GetString() ?? "";
+                    endDate = root.GetProperty("endDate").GetString() ?? "";
+                    showAll = root.GetProperty("showAll").GetBoolean();
+                }
+            }
+            catch
+            {
+                // Если не удалось получить из JS, используем значения по умолчанию
+                startDate = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd");
+                endDate = DateTime.Now.ToString("yyyy-MM-dd");
+                showAll = false;
+            }
+
+            await LoadAccidents(startDate, endDate, showAll);
         }
 
         private async Task SetCurrentUserInWebView()
@@ -420,7 +476,9 @@ namespace WindowsFormsApp1
             {
                 if (isWebViewInitialized && webView?.CoreWebView2 != null)
                 {
-                    string js = $"window.receiveFromCSharp('{command}', {data})";
+                    // Экранируем data для безопасной вставки в JavaScript
+                    string escapedData = data?.Replace("\\", "\\\\").Replace("'", "\\'") ?? "null";
+                    string js = $"window.receiveFromCSharp('{command}', '{escapedData}');";
                     webView.CoreWebView2.ExecuteScriptAsync(js);
                 }
             }
@@ -452,6 +510,14 @@ namespace WindowsFormsApp1
                             string startDate = root.TryGetProperty("startDate", out var s) ? s.GetString() : "";
                             string endDate = root.TryGetProperty("endDate", out var eDate) ? eDate.GetString() : "";
                             bool showAll = root.TryGetProperty("showAll", out var all) && all.GetBoolean();
+
+                            // Если даты не указаны, устанавливаем значения по умолчанию
+                            if (string.IsNullOrEmpty(startDate) && string.IsNullOrEmpty(endDate))
+                            {
+                                startDate = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd");
+                                endDate = DateTime.Now.ToString("yyyy-MM-dd");
+                            }
+
                             await LoadAccidents(startDate, endDate, showAll);
                             break;
 
