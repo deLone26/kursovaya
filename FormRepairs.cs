@@ -333,7 +333,8 @@ namespace WindowsFormsApp1
                 FROM remont r
                 JOIN plan_to p ON r.plan_id = p.id
                 JOIN oborudovanie o ON r.oborudovanie_id = o.id
-                WHERE r.sotrudnik_id = @emp";
+                WHERE r.sotrudnik_id = @emp
+                  AND p.avariya_id IS NULL";  // ← ТОЛЬКО ПЛАНОВЫЕ ТО, БЕЗ АВАРИЙ
 
                     if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
                     {
@@ -363,7 +364,7 @@ namespace WindowsFormsApp1
                                     completion_date = reader.GetString(2),
                                     description = reader.GetString(3),
                                     replaced_part = reader.GetString(4),
-                                    deadline_status = reader.GetString(5)  // Добавлено поле deadline_status
+                                    deadline_status = reader.GetString(5)
                                 });
                             }
                         }
@@ -758,12 +759,17 @@ namespace WindowsFormsApp1
 
                         await ExecuteJsFunction("showSuccess", "Задача принята в работу");
                     }
+                    else if (currentStatus == "В работе")
+                    {
+                        await ExecuteJsFunction("showError", "Задача уже в работе");
+                    }
                     else
                     {
                         await ExecuteJsFunction("showError", "Нельзя изменить статус этой задачи");
                     }
                 }
 
+                // ОБЯЗАТЕЛЬНО обновляем список задач после изменения статуса
                 await LoadTasks();
             }
             catch (Exception ex)

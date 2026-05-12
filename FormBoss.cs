@@ -40,16 +40,80 @@ namespace WindowsFormsApp1
         private void StartNotificationTimer()
         {
             notificationTimer = new Timer();
-            notificationTimer.Interval = 60000; // 30 секунд
+            notificationTimer.Interval = 30000;
             notificationTimer.Tick += async (s, e) =>
             {
-                await CheckNewAvariya();
-                await CheckOverdueAndExpiringPlans(); // Добавить эту строку
+                await CheckNewAvariya();  // ТОЛЬКО НОВЫЕ АВАРИИ
             };
             notificationTimer.Start();
         }
 
         private DateTime lastAvariyaCheckTime = DateTime.Now.AddMinutes(-1);
+
+        private async Task CheckOverdueAndExpiringPlansOnce()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    // Просроченные планы
+                    string overdueSql = @"
+                SELECT COUNT(*) 
+                FROM plan_to
+                WHERE status NOT IN ('Завершен', 'Отменен')
+                  AND data_okonchaniya < CURRENT_DATE";
+
+                    int overdueCount = 0;
+                    using (var cmd = new NpgsqlCommand(overdueSql, conn))
+                    {
+                        overdueCount = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    }
+
+                    if (overdueCount > 0)
+                    {
+                        await ExecuteJsFunction("showOnceOverdue", overdueCount.ToString());
+                    }
+
+                    // Истекающие планы (3 дня)
+                    string expiringSql = @"
+                SELECT p.id, o.nazvanie AS equipment, 
+                       TO_CHAR(p.data_okonchaniya, 'DD.MM.YYYY') as end_date
+                FROM plan_to p
+                JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                WHERE p.status NOT IN ('Завершен', 'Отменен')
+                  AND p.data_okonchaniya >= CURRENT_DATE
+                  AND p.data_okonchaniya <= CURRENT_DATE + INTERVAL '3 days'";
+
+                    var expiringPlans = new List<object>();
+                    using (var cmd = new NpgsqlCommand(expiringSql, conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            expiringPlans.Add(new
+                            {
+                                id = reader.GetInt32(0),
+                                equipment = reader.GetString(1),
+                                end_date = reader.GetString(2)
+                            });
+                        }
+                    }
+
+                    if (expiringPlans.Count > 0)
+                    {
+                        string json = JsonSerializer.Serialize(expiringPlans);
+                        await ExecuteJsFunction("showOnceExpiring", json);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CheckOverdueAndExpiringPlansOnce error: {ex.Message}");
+            }
+        }
+
 
         private async Task CheckNewAvariya()
         {
@@ -211,6 +275,9 @@ namespace WindowsFormsApp1
                             await LoadStatistics();
 
                             await CheckNewAvariya();
+
+                            // ========== ПРОВЕРКА ПРОСРОЧЕННЫХ ЗАДАЧ (ТОЛЬКО 1 РАЗ ПРИ ОТКРЫТИИ) ==========
+                            await CheckOverdueAndExpiringPlansOnce();
                         }
                     };
                 }
@@ -587,16 +654,16 @@ namespace WindowsFormsApp1
                 {
                     await conn.OpenAsync();
                     var sql = new StringBuilder(@"
-                        SELECT a.id, o.nazvanie AS equipment, 
-                               TO_CHAR(a.data_avarii, 'DD.MM.YYYY HH24:MI') as date,
-                               COALESCE(a.opisanie, '') AS description,
-                               COALESCE(a.posledstviya, '') AS consequences,
-                               a.status,
-                               CASE WHEN p.id IS NOT NULL THEN '✅' ELSE '❌' END AS has_plan
-                        FROM avariya a
-                        JOIN oborudovanie o ON a.oborudovanie_id = o.id
-                        LEFT JOIN plan_to p ON a.id = p.avariya_id
-                        WHERE a.status IN ('Зарегистрирована', 'В работе', 'Передано в работу')");
+                SELECT a.id, o.nazvanie AS equipment, 
+                       TO_CHAR(a.data_avarii, 'DD.MM.YYYY HH24:MI') as date,
+                       COALESCE(a.opisanie, '') AS description,
+                       COALESCE(a.posledstviya, '') AS consequences,
+                       a.status,
+                       CASE WHEN p.id IS NOT NULL THEN '✅' ELSE '❌' END AS has_plan
+                FROM avariya a
+                JOIN oborudovanie o ON a.oborudovanie_id = o.id
+                LEFT JOIN plan_to p ON a.id = p.avariya_id
+                WHERE a.status = 'Зарегистрирована'");  // ← ТОЛЬКО НОВЫЕ АВАРИИ
 
                     if (!string.IsNullOrEmpty(startDate))
                         sql.Append($" AND DATE(a.data_avarii) >= '{startDate}'");
@@ -1064,12 +1131,12 @@ namespace WindowsFormsApp1
                         cmd.Parameters.AddWithValue("@start", startDate);
                         cmd.Parameters.AddWithValue("@end", endDate);
                         cmd.Parameters.AddWithValue("@resp", responsibleId);
-                        cmd.Parameters.AddWithValue("@avariya_id", avariyaId);  // ← ТОЛЬКО ЗДЕСЬ!
+                        cmd.Parameters.AddWithValue("@avariya_id", avariyaId);
                         cmd.Parameters.AddWithValue("@desc", opisanie);
                         await cmd.ExecuteNonQueryAsync();
                     }
 
-                    // Обновляем статус аварии
+                    // Обновляем статус аварии на "В работе" (чтобы скрыть из списка активных заявок)
                     string updateAvariyaSql = "UPDATE avariya SET status = 'В работе' WHERE id = @id";
                     using (var cmd = new NpgsqlCommand(updateAvariyaSql, conn))
                     {
@@ -1080,7 +1147,7 @@ namespace WindowsFormsApp1
 
                 await ExecuteJsFunction("showSuccess", "План аварийного ремонта создан");
                 await LoadPlans(JsonDocument.Parse("{}").RootElement);
-                await LoadAvariya(JsonDocument.Parse("{}").RootElement);
+                await LoadAvariya(JsonDocument.Parse("{}").RootElement);  // Обновляем список (авария исчезнет)
                 await LoadStatistics();
             }
             catch (Exception ex)
@@ -1091,7 +1158,7 @@ namespace WindowsFormsApp1
 
         private async Task ExportToExcel(JsonElement json)
         {
-            // Ваш существующий код ExportToExcel
+            
             try
             {
                 string reportType = json.GetProperty("reportType").GetString();

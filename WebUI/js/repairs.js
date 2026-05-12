@@ -78,7 +78,7 @@ function displayTasks(data) {
     body.innerHTML = "";
 
     if (!tasks || tasks.length === 0) {
-        body.innerHTML = '<tr><td colspan="7" class="loading">Нет активных задач</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="loading">Нет активных задач</td<tr>';
         return;
     }
 
@@ -88,17 +88,22 @@ function displayTasks(data) {
             ? `<span class="type-badge type-avariya">🔴 Аварийный ремонт</span>`
             : `<span class="type-badge type-to">🔵 Техническое обслуживание</span>`;
 
-        // Кнопка "Принять в работу" меняет текст если задача просрочена
+        // Кнопка "Принять в работу" - для статусов "Зарегистрирован" и "Просрочен"
         let statusHtml = "";
-        if (t.status === "Просрочен" || t.is_overdue === true) {
-            statusHtml = `<button class="status-btn overdue-btn" onclick="changeStatus(${t.id})">⚠️ Принять (просрочено)</button>`;
-        } else if (t.status === "Зарегистрирован") {
-            statusHtml = `<button class="status-btn" onclick="changeStatus(${t.id})">Принять в работу</button>`;
-        } else if (t.status === "В работе") {
+        
+        if (t.status === "В работе") {
             statusHtml = `<span class="status-badge status-working">⚙️ В работе</span>`;
-        } else if (t.status === "Завершен") {
+        } 
+        else if (t.status === "Завершен") {
             statusHtml = `<span class="status-badge status-completed">✅ Завершено</span>`;
-        } else {
+        }
+        else if (t.status === "Просрочен") {
+            statusHtml = `<button class="status-btn overdue-btn" onclick="changeStatus(${t.id})">⚠️ Принять (просрочено)</button>`;
+        }
+        else if (t.status === "Зарегистрирован") {
+            statusHtml = `<button class="status-btn" onclick="changeStatus(${t.id})">Принять в работу</button>`;
+        }
+        else {
             statusHtml = `<span class="status-badge status-registered">${t.status}</span>`;
         }
 
@@ -111,17 +116,17 @@ function displayTasks(data) {
             : "-";
         
         let description = t.description || '-';
-        if (description.length > 60) description = description.substring(0, 57) + '...';
+        if (description.length > 80) description = description.substring(0, 77) + '...';
 
         body.innerHTML += `
             <tr class="${rowClass}" onclick="selectTaskRow(this, ${t.id})">
-                <td>${t.id}</td>
-                <td>${type}</td>
-                <td>${escapeHtml(t.equipment_name)}</td>
-                <td>${escapeHtml(description)}</td>
-                <td>${t.due_date || '-'}</td>
-                <td>${statusHtml}</td>
-                <td>${reportButton}</td>
+                <td style="width:40px">${t.id}</td>
+                <td style="width:130px">${type}</td>
+                <td style="width:160px">${escapeHtml(t.equipment_name)}</td>
+                <td style="width:auto">${escapeHtml(description)}</td>
+                <td style="width:110px">${t.due_date || '-'}</td>
+                <td style="width:140px">${statusHtml}</td>
+                <td style="width:70px">${reportButton}</td>
             </tr>
         `;
     });
@@ -266,9 +271,11 @@ function changeStatus(taskId) {
         "Вы уверены, что хотите принять эту задачу в работу?",
         function() {
             sendToCSharp("changeStatus", { taskId: taskId });
+            // После успешного изменения статуса, кнопка исчезнет при обновлении списка
         }
     );
 }
+
 
 function openReport(task) {
     document.getElementById("reportModal").style.display = "block";
