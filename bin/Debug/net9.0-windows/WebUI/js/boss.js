@@ -372,9 +372,9 @@ else if (command === 'displayStatisticsWithDates') {
     displayStatisticsWithDates(data);
 }
     else if (command === 'displayRepairHistory') {
-        allRepairHistoryOriginal = typeof data === 'string' ? JSON.parse(data) : data;
-        renderRepairHistoryTable(JSON.stringify(allRepairHistoryOriginal));
-    }
+    const items = typeof data === 'string' ? JSON.parse(data) : data;
+    renderRepairHistoryTable(JSON.stringify(items));
+}
     else if (command === 'updateStatistics') { 
         const s = typeof data === 'string' ? JSON.parse(data) : data;
         document.getElementById('statEquipment').innerHTML = s.totalEquipment || 0;
@@ -507,20 +507,24 @@ function renderCompletedAvariyaTable(data) {
     let items = typeof data === 'string' ? JSON.parse(data) : data;
     
     if (!items || !items.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="loading">Нет данных</td</tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="loading">Нет данных</td</tr>';
         return;
     }
     
     let html = '';
     for (let h of items) {
+        let deadlineClass = h.deadline_status === 'Просрочена' ? 'status-overdue' : 'status-on-time';
+        let deadlineText = h.deadline_status === 'Просрочена' ? '⚠️ Просрочена' : '✅ В срок';
+        
         html += `<tr data-id="${h.id || ''}">
             <td style="width:55px">${h.id || '-'}</td>
-            <td style="width:170px">${escapeHtml(h.equipment_name || '-')}</td>
-            <td style="width:120px">${h.accident_date || '-'}</td>
-            <td style="width:200px">${escapeHtml(h.description || '-')}</td>
+            <td style="width:160px">${escapeHtml(h.equipment_name || '-')}</td>
+            <td style="width:110px">${h.accident_date || '-'}</td>
+            <td style="width:190px">${escapeHtml(h.description || '-')}</td>
             <td style="width:140px">${escapeHtml(h.responsible || '-')}</td>
-            <td style="width:160px">${escapeHtml(h.spare_parts || '-')}</td>
+            <td style="width:150px">${escapeHtml(h.spare_parts || '-')}</td>
             <td style="width:110px">${h.completion_date || '-'}</td>
+            <td style="width:100px"><span class="status-badge ${deadlineClass}">${deadlineText}</span></td>
         </tr>`;
     }
     tbody.innerHTML = html;
@@ -531,20 +535,24 @@ function renderRepairHistoryTable(data) {
     let items = typeof data === 'string' ? JSON.parse(data) : data;
     
     if (!items || !items.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="loading">Нет данных</td</tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="loading">Нет данных</td</tr>';
         return;
     }
     
     let html = '';
     for (let h of items) {
+        let deadlineClass = h.deadline_status === 'Просрочена' ? 'status-overdue' : 'status-on-time';
+        let deadlineText = h.deadline_status === 'Просрочена' ? '⚠️ Просрочена' : '✅ В срок';
+        
         html += `<tr>
-            <td style="width:180px">${escapeHtml(h.equipment_name || '-')}</td>
-            <td style="width:120px">${escapeHtml(h.tip_name || '-')}</td>
+            <td style="width:170px">${escapeHtml(h.equipment_name || '-')}</td>
+            <td style="width:110px">${escapeHtml(h.tip_name || '-')}</td>
             <td style="width:100px">${h.plan_date || '-'}</td>
             <td style="width:100px">${h.completed_date || '-'}</td>
-            <td style="width:160px">${escapeHtml(h.sotrudnik_name || '-')}</td>
-            <td style="width:200px">${escapeHtml(h.opisanie || '-')}</td>
-            <td style="width:150px">${escapeHtml(h.zamennaya_detal || '-')}</td>
+            <td style="width:150px">${escapeHtml(h.sotrudnik_name || '-')}</td>
+            <td style="width:190px">${escapeHtml(h.opisanie || '-')}</td>
+            <td style="width:140px">${escapeHtml(h.zamennaya_detal || '-')}</td>
+            <td style="width:100px"><span class="status-badge ${deadlineClass}">${deadlineText}</span></td>
         </tr>`;
     }
     tbody.innerHTML = html;

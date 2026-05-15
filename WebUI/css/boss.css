@@ -439,39 +439,35 @@ th:hover {
 }
 
 /* ========== ТАБЛИЦА ИСТОРИИ АВАРИЙ (7 колонок) ========== */
-/* История аварий (7 колонок) */
+/* ========== ТАБЛИЦА ИСТОРИИ АВАРИЙ (8 колонок) ========== */
 #historyTable {
     table-layout: fixed;
     width: 100%;
 }
 
 #historyTable th:nth-child(1) { width: 55px; }
-#historyTable th:nth-child(2) { width: 170px; }
-#historyTable th:nth-child(3) { width: 120px; }
-#historyTable th:nth-child(4) { width: 200px; }
+#historyTable th:nth-child(2) { width: 160px; }
+#historyTable th:nth-child(3) { width: 110px; }
+#historyTable th:nth-child(4) { width: 190px; }
 #historyTable th:nth-child(5) { width: 140px; }
-#historyTable th:nth-child(6) { width: 160px; }
+#historyTable th:nth-child(6) { width: 150px; }
 #historyTable th:nth-child(7) { width: 110px; }
+#historyTable th:nth-child(8) { width: 100px; }
 
-#historyTable td {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* История ремонтов (7 колонок) */
+/* ========== ТАБЛИЦА ИСТОРИИ РЕМОНТОВ (8 колонок) ========== */
 #repairHistoryTable {
     table-layout: fixed;
     width: 100%;
 }
 
-#repairHistoryTable th:nth-child(1) { width: 180px; }
-#repairHistoryTable th:nth-child(2) { width: 120px; }
+#repairHistoryTable th:nth-child(1) { width: 170px; }
+#repairHistoryTable th:nth-child(2) { width: 110px; }
 #repairHistoryTable th:nth-child(3) { width: 100px; }
 #repairHistoryTable th:nth-child(4) { width: 100px; }
-#repairHistoryTable th:nth-child(5) { width: 160px; }
-#repairHistoryTable th:nth-child(6) { width: 200px; }
-#repairHistoryTable th:nth-child(7) { width: 150px; }
+#repairHistoryTable th:nth-child(5) { width: 150px; }
+#repairHistoryTable th:nth-child(6) { width: 190px; }
+#repairHistoryTable th:nth-child(7) { width: 140px; }
+#repairHistoryTable th:nth-child(8) { width: 100px; }
 
 #repairHistoryTable td {
     white-space: nowrap;

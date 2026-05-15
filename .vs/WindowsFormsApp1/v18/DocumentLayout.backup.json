@@ -3,6 +3,18 @@
   "WorkspaceRootPath": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya3\\kursovaya\\formplansto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formplansto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya3\\kursovaya\\formcharts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formcharts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya3\\kursovaya\\mainform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:mainform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya3\\kursovaya\\formrepairs.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formrepairs.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -11,28 +23,16 @@
       "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formboss.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya3\\kursovaya\\formcharts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formcharts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\formcharts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formcharts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
     },
     {
       "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya3\\kursovaya\\formaccidents.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formaccidents.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya3\\kursovaya\\formplansto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formplansto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya3\\kursovaya\\loginform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:loginform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|c:\\users\\daniil\\desktop\\4\\kursovaya3\\kursovaya\\mainform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:mainform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\formcharts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
-      "RelativeMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|solutionrelative:formcharts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
     },
     {
       "AbsoluteMoniker": "D:0:0:{E9B3E1F5-B4AE-4648-B03F-3490CF8A6EB4}|WindowsFormsApp1.csproj|C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\formboss.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
@@ -50,11 +50,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 6,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 6,
               "Title": "FormAccidents.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\FormAccidents.cs",
               "RelativeDocumentMoniker": "FormAccidents.cs",
@@ -62,23 +62,25 @@
               "RelativeToolTip": "FormAccidents.cs",
               "ViewState": "AgIAAOABAAAAAAAAAAAcwAMCAAAHAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-29T20:42:58.132Z"
+              "WhenOpened": "2026-04-29T20:42:58.132Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 0,
               "Title": "FormPlansTO.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\FormPlansTO.cs",
               "RelativeDocumentMoniker": "FormPlansTO.cs",
               "ToolTip": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\FormPlansTO.cs",
               "RelativeToolTip": "FormPlansTO.cs",
-              "ViewState": "AgIAAIYBAAAAAAAAAAAAwK8BAABVAAAAAAAAAA==",
+              "ViewState": "AgIAAJsBAAAAAAAAAAAiwNABAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-07T13:52:54.83Z"
+              "WhenOpened": "2026-04-07T13:52:54.83Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 7,
               "Title": "LoginForm.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\LoginForm.cs",
               "RelativeDocumentMoniker": "LoginForm.cs",
@@ -86,37 +88,38 @@
               "RelativeToolTip": "LoginForm.cs",
               "ViewState": "AgIAAIoAAAAAAAAAAAAkwI4AAAAhAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-07T12:56:45.062Z"
+              "WhenOpened": "2026-04-07T12:56:45.062Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 4,
               "Title": "FormBoss.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\FormBoss.cs",
               "RelativeDocumentMoniker": "FormBoss.cs",
               "ToolTip": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\FormBoss.cs",
               "RelativeToolTip": "FormBoss.cs",
-              "ViewState": "AgIAAEwCAAAAAAAAAAAIwGECAAB0AAAAAAAAAA==",
+              "ViewState": "AgIAALgAAAAAAAAAAAAqwO4AAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-31T19:48:57.45Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "FormCharts.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\FormCharts.cs",
               "RelativeDocumentMoniker": "FormCharts.cs",
               "ToolTip": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\FormCharts.cs",
               "RelativeToolTip": "FormCharts.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAqAAAAAAAAAA==",
+              "ViewState": "AgIAAH8BAAAAAAAAAAAswMMBAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-05-02T14:08:57.822Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 2,
               "Title": "MainForm.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\MainForm.cs",
               "RelativeDocumentMoniker": "MainForm.cs",
@@ -129,27 +132,28 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 3,
               "Title": "FormRepairs.cs",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\FormRepairs.cs",
               "RelativeDocumentMoniker": "FormRepairs.cs",
               "ToolTip": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\FormRepairs.cs",
               "RelativeToolTip": "FormRepairs.cs",
-              "ViewState": "AgIAAGMFAAAAAAAAAAAcwH0FAABBAAAAAAAAAA==",
+              "ViewState": "AgIAAC4FAAAAAAAAAAAAADEFAAAlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-31T18:54:40.131Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 5,
               "Title": "FormCharts.cs [\u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440]",
               "DocumentMoniker": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\FormCharts.cs",
               "RelativeDocumentMoniker": "FormCharts.cs",
               "ToolTip": "C:\\Users\\Daniil\\Desktop\\4\\kursovaya3\\kursovaya\\FormCharts.cs [\u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440]",
               "RelativeToolTip": "FormCharts.cs [\u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440]",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-05-02T14:07:57.896Z"
+              "WhenOpened": "2026-05-02T14:07:57.896Z",
+              "EditorCaption": " [\u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440]"
             },
             {
               "$type": "Document",

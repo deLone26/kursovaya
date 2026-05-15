@@ -124,66 +124,68 @@
     </div>
 
     <!-- Вкладка "История аварий" -->
-    <div id="historyTab" class="tab-content">
-        <div class="filters-bar">
-            <div class="filter-group"><label>С</label><input type="date" id="historyStartDate"></div>
-            <div class="filter-group"><label>По</label><input type="date" id="historyEndDate"></div>
-            <div class="filter-group">
-                <label>Поиск</label>
-                <input type="text" id="searchHistoryInput" placeholder="ID, оборудование, ответственный...">
-            </div>
-            <button class="btn-primary" id="applyHistoryFilterBtn">Применить</button>
+<div id="historyTab" class="tab-content">
+    <div class="filters-bar">
+        <div class="filter-group"><label>С</label><input type="date" id="historyStartDate"></div>
+        <div class="filter-group"><label>По</label><input type="date" id="historyEndDate"></div>
+        <div class="filter-group">
+            <label>Поиск</label>
+            <input type="text" id="searchHistoryInput" placeholder="ID, оборудование, ответственный...">
         </div>
-        <div class="table-container">
-            <table id="historyTable">
-                <thead>
-                    <tr>
-                        <th style="width:55px">ID</th>
-                        <th style="width:170px">Оборудование</th>
-                        <th style="width:120px">Дата аварии</th>
-                        <th style="width:200px">Описание</th>
-                        <th style="width:140px">Ответственный</th>
-                        <th style="width:160px">Запчасти</th>
-                        <th style="width:110px">Дата устранения</th>
-                    </tr>
-                </thead>
-                <tbody id="historyTableBody">
-                    <tr><td colspan="7" class="loading">Загрузка...</td</tr>
-                </tbody>
-            </table>
-        </div>
+        <button class="btn-primary" id="applyHistoryFilterBtn">Применить</button>
     </div>
+    <div class="table-container">
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th style="width:55px">ID</th>
+                    <th style="width:170px">Оборудование</th>
+                    <th style="width:120px">Дата аварии</th>
+                    <th style="width:200px">Описание</th>
+                    <th style="width:140px">Ответственный</th>
+                    <th style="width:160px">Запчасти</th>
+                    <th style="width:110px">Дата устранения</th>
+                    <th style="width:100px">Соблюдение сроков</th>
+                </tr>
+            </thead>
+            <tbody id="historyTableBody">
+                <tr><td colspan="8" class="loading">Загрузка...</td</tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
     <!-- Вкладка "История ремонтов" -->
-    <div id="repairHistoryTab" class="tab-content">
-        <div class="filters-bar">
-            <div class="filter-group"><label>С</label><input type="date" id="repairHistoryStartDate"></div>
-            <div class="filter-group"><label>По</label><input type="date" id="repairHistoryEndDate"></div>
-            <div class="filter-group">
-                <label>Поиск</label>
-                <input type="text" id="searchRepairInput" placeholder="Оборудование, исполнитель, тип ТО...">
-            </div>
-            <button class="btn-primary" id="applyRepairHistoryFilterBtn">Применить</button>
+<div id="repairHistoryTab" class="tab-content">
+    <div class="filters-bar">
+        <div class="filter-group"><label>С</label><input type="date" id="repairHistoryStartDate"></div>
+        <div class="filter-group"><label>По</label><input type="date" id="repairHistoryEndDate"></div>
+        <div class="filter-group">
+            <label>Поиск</label>
+            <input type="text" id="searchRepairInput" placeholder="Оборудование, исполнитель, тип ТО...">
         </div>
-        <div class="table-container">
-            <table id="repairHistoryTable">
-                <thead>
-                    <tr>
-                        <th style="width:180px">Оборудование</th>
-                        <th style="width:120px">Тип ТО</th>
-                        <th style="width:100px">Плановая дата</th>
-                        <th style="width:100px">Дата выполнения</th>
-                        <th style="width:160px">Исполнитель</th>
-                        <th style="width:200px">Описание работ</th>
-                        <th style="width:150px">Запчасти</th>
-                    </tr>
-                </thead>
-                <tbody id="repairHistoryTableBody">
-                    <tr><td colspan="7" class="loading">Загрузка...</td<tr>
-                </tbody>
-            </table>
-        </div>
+        <button class="btn-primary" id="applyRepairHistoryFilterBtn">Применить</button>
     </div>
+    <div class="table-container">
+        <table id="repairHistoryTable">
+            <thead>
+                <tr>
+                    <th style="width:180px">Оборудование</th>
+                    <th style="width:120px">Тип ТО</th>
+                    <th style="width:100px">Плановая дата</th>
+                    <th style="width:100px">Дата выполнения</th>
+                    <th style="width:160px">Исполнитель</th>
+                    <th style="width:200px">Описание работ</th>
+                    <th style="width:150px">Запчасти</th>
+                    <th style="width:100px">Соблюдение сроков</th>
+                </tr>
+            </thead>
+            <tbody id="repairHistoryTableBody">
+                <tr><td colspan="8" class="loading">Загрузка...</td</tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
     <!-- Вкладка "Статистика" -->
     <div id="statisticsTab" class="tab-content">

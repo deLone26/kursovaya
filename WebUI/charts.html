@@ -11,7 +11,25 @@
     <div class="charts-container">
         <div class="header">
             <h1 class="title">📊 Графики и аналитика</h1>
-            <p class="subtitle">Визуализация данных по техническому обслуживанию</p>
+            <p class="subtitle">Визуализация данных по техническому обслуживанию и авариям</p>
+        </div>
+
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label>Период с</label>
+                <input type="date" id="startDate" class="date-input">
+            </div>
+            <div class="filter-group">
+                <label>по</label>
+                <input type="date" id="endDate" class="date-input">
+            </div>
+            <div class="filter-group">
+                <label>Ответственный</label>
+                <select id="employeeFilter" class="filter-select">
+                    <option value="0">Все сотрудники</option>
+                </select>
+            </div>
+            <button id="refreshBtn" class="btn-primary">Обновить</button>
         </div>
 
         <div class="stats-cards">
@@ -31,41 +49,45 @@
                 <span class="stat-value" id="overduePlansStat">0</span>
                 <span class="stat-label">Просрочено</span>
             </div>
+            <div class="stat-card">
+                <span class="stat-value" id="totalAccidentsStat">0</span>
+                <span class="stat-label">Всего аварий</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="overdueAccidentsStat">0</span>
+                <span class="stat-label">Просрочено аварий</span>
+            </div>
         </div>
 
         <div class="charts-grid">
             <div class="chart-card">
-                <h3>Статусы планов ТО</h3>
-                <canvas id="statusChart" width="400" height="300"></canvas>
+                <h3>📈 Статусы планов ТО</h3>
+                <canvas id="statusChart" height="250"></canvas>
             </div>
             <div class="chart-card">
-                <h3>Загрузка сотрудников</h3>
-                <canvas id="workersChart" width="400" height="300"></canvas>
+                <h3>👥 Загрузка сотрудников</h3>
+                <canvas id="workersChart" height="250"></canvas>
             </div>
             <div class="chart-card">
-                <h3>Динамика выполнения планов</h3>
-                <canvas id="monthlyChart" width="400" height="300"></canvas>
+                <h3>📅 Динамика выполнения планов ТО</h3>
+                <canvas id="monthlyChart" height="250"></canvas>
             </div>
             <div class="chart-card">
-                <h3>Стоимость ремонтов по месяцам</h3>
-                <canvas id="costChart" width="400" height="300"></canvas>
+                <h3>⚠️ Просрочки ТО по месяцам</h3>
+                <canvas id="overdueTOChart" height="250"></canvas>
             </div>
             <div class="chart-card">
-                <h3>Аварии по оборудованию</h3>
-                <canvas id="accidentsChart" width="400" height="300"></canvas>
+                <h3>🚨 Просрочки аварий по месяцам</h3>
+                <canvas id="overdueAccidentChart" height="250"></canvas>
             </div>
-        </div>
-
-        <div class="filters-bar">
-            <div class="filter-group">
-                <label>Период для анализа:</label>
-                <div class="date-range">
-                    <input type="date" id="startDate" class="date-input">
-                    <span class="date-separator">—</span>
-                    <input type="date" id="endDate" class="date-input">
-                </div>
+            <div class="chart-card">
+                <h3>🏭 Аварии по оборудованию</h3>
+                <canvas id="accidentsChart" height="250"></canvas>
             </div>
-            <button id="refreshBtn" class="btn-primary">Обновить графики</button>
+            <div class="chart-card full-width">
+                <h3>📊 Статусы задач по сотрудникам</h3>
+                <canvas id="workerStatusChart" height="300"></canvas>
+            </div>
         </div>
     </div>
 

@@ -190,13 +190,17 @@ namespace WindowsFormsApp1
                     TO_CHAR(r.data_okonchaniya, 'DD.MM.YYYY') as completed_date,
                     COALESCE(r.sotrudnik_name, CONCAT(s.familiya, ' ', LEFT(s.imya, 1), '.', LEFT(s.otchestvo, 1), '.')) as sotrudnik_name,
                     COALESCE(r.opisanie, '') as opisanie,
-                    COALESCE(r.zamennaya_detal, '') as zamennaya_detal
+                    COALESCE(r.zamennaya_detal, '') as zamennaya_detal,
+                    CASE 
+                        WHEN p.data_nachala < r.data_okonchaniya THEN 'Просрочена'
+                        ELSE 'В срок'
+                    END as deadline_status
                 FROM remont r
                 JOIN plan_to p ON r.plan_id = p.id
                 JOIN oborudovanie o ON p.oborudovanie_id = o.id
                 LEFT JOIN tip_to t ON p.tip_to_id = t.id
                 JOIN sotrudniki s ON r.sotrudnik_id = s.id
-                WHERE p.avariya_id IS NULL");  // ← ТОЛЬКО ПЛАНОВЫЕ ТО, БЕЗ АВАРИЙ
+                WHERE p.avariya_id IS NULL");  // ТОЛЬКО ПЛАНОВЫЕ ТО
 
                     if (!string.IsNullOrEmpty(startDate))
                         sql.Append($" AND r.data_okonchaniya >= '{startDate}'");
@@ -219,7 +223,8 @@ namespace WindowsFormsApp1
                                 completed_date = reader.IsDBNull(3) ? "" : reader.GetString(3),
                                 sotrudnik_name = reader.GetString(4),
                                 opisanie = reader.GetString(5),
-                                zamennaya_detal = reader.GetString(6)
+                                zamennaya_detal = reader.GetString(6),
+                                deadline_status = reader.GetString(7)
                             });
                         }
                         string jsonResult = JsonSerializer.Serialize(list);

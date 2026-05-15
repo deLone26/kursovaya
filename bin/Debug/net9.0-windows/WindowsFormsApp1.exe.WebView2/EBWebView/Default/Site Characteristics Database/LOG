@@ -1,3 +1,2 @@
-2026/05/13-00:14:28.417 ddbc Reusing MANIFEST C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Site Characteristics Database/MANIFEST-000001
-2026/05/13-00:14:28.418 ddbc Recovering log #3
-2026/05/13-00:14:28.419 ddbc Reusing old log C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Site Characteristics Database/000003.log 
+2026/05/15-19:05:25.212 21b0 Creating DB C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Site Characteristics Database since it was missing.
+2026/05/15-19:05:25.215 21b0 Reusing MANIFEST C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Site Characteristics Database/MANIFEST-000001
