@@ -3,148 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BoilerMaintenance</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f7fa;
-            padding: 20px;
-        }
-        .dashboard {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: #2a5298;
-            margin-bottom: 10px;
-        }
-        .user-info {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .cards-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        .card {
-            background: white;
-            border-radius: 10px;
-            padding: 25px;
-            width: 250px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        .card h3 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-        .card p {
-            color: #666;
-            font-size: 14px;
-        }
-        .hidden {
-            display: none;
-        }
-    </style>
+    <title>BoilerMaintenance - Главная</title>
+    <link rel="stylesheet" href="menu.css">
 </head>
 <body>
     <div class="dashboard">
-        <h1>BoilerMaintenance</h1>
+        <div class="header">
+            <h1>⚙️ BoilerMaintenance</h1>
+            <p class="subtitle">Информационная система для автоматизации, планирования и учета технического обслуживания котельного оборудования</p>
+        </div>
+        
         <div class="user-info" id="userInfo">
             Загрузка...
         </div>
-        <div class="cards-container" id="menuContainer"></div>
+        
+        <div class="content">
+            <h2>Доступные разделы</h2>
+            <div class="cards-container" id="menuContainer"></div>
+        </div>
     </div>
-
-    <script>
-        let currentRole = '';
-        let currentDolzhnost = '';
-
-        // Функция, которую вызывает C# после загрузки страницы
-        window.setUserRole = function(role, dolzhnost) {
-            currentRole = role;
-            currentDolzhnost = dolzhnost;
-            document.getElementById('userInfo').innerHTML = `
-                <strong>${dolzhnost}</strong> | Роль: ${role}
-            `;
-            buildMenu();
-        };
-
-        // Настройка меню для каждой роли
-        const menuConfig = {
-            app_admin: [
-                { id: 'users', title: '👥 Управление пользователями', desc: 'Создание и редактирование учетных записей', action: 'openUsers' },
-                { id: 'employees', title: '👨‍🔧 Сотрудники', desc: 'Список и редактирование сотрудников', action: 'openEmployees' },
-                { id: 'equipment', title: '🔧 Оборудование', desc: 'Паспорта и характеристики оборудования', action: 'openEquipment' },
-                { id: 'plans', title: '📋 Планы ТО', desc: 'Графики технического обслуживания', action: 'openPlansTO' },
-                { id: 'accidents', title: '⚠️ Аварии', desc: 'Регистрация и контроль аварий', action: 'openAccidents' },
-                { id: 'repairs', title: '🔨 Ремонты', desc: 'Учет ремонтных работ', action: 'openRepairs' },
-                { id: 'reports', title: '📊 Отчеты', desc: 'Формирование отчетности', action: 'openReports' }
-            ],
-            app_boss: [
-                { id: 'employees', title: '👨‍🔧 Сотрудники', desc: 'Список сотрудников', action: 'openEmployees' },
-                { id: 'equipment', title: '🔧 Оборудование', desc: 'Паспорта оборудования', action: 'openEquipment' },
-                { id: 'plans', title: '📋 Планы ТО', desc: 'Графики обслуживания', action: 'openPlansTO' },
-                { id: 'accidents', title: '⚠️ Аварии', desc: 'Регистрация и контроль аварий', action: 'openAccidents' },
-                { id: 'repairs', title: '🔨 Ремонты', desc: 'Учет ремонтных работ', action: 'openRepairs' },
-                { id: 'reports', title: '📊 Отчеты', desc: 'Формирование отчетности', action: 'openReports' }
-            ],
-            app_operator: [
-                { id: 'equipment', title: '🔧 Оборудование', desc: 'Просмотр оборудования', action: 'openEquipment' },
-                { id: 'accidents', title: '⚠️ Аварии', desc: 'Просмотр аварий', action: 'openAccidents' }
-            ],
-            app_slesar: [
-                { id: 'equipment', title: '🔧 Оборудование', desc: 'Паспорта оборудования', action: 'openEquipment' },
-                { id: 'plans', title: '📋 Планы ТО', desc: 'Плановые работы', action: 'openPlansTO' },
-                { id: 'accidents', title: '⚠️ Аварии', desc: 'Аварийные ситуации', action: 'openAccidents' },
-                { id: 'repairs', title: '🔨 Ремонты', desc: 'Выполненные ремонты', action: 'openRepairs' }
-            ]
-        };
-
-        function buildMenu() {
-            const container = document.getElementById('menuContainer');
-            container.innerHTML = '';
-
-            const items = menuConfig[currentRole] || [];
-
-            if (items.length === 0) {
-                container.innerHTML = '<p>У вас нет доступа к разделам системы</p>';
-                return;
-            }
-
-            items.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.onclick = () => {
-                    // Отправляем сообщение в C# с action
-                    if (window.chrome && window.chrome.webview) {
-                        window.chrome.webview.postMessage(JSON.stringify({ 
-                            action: item.action,
-                            id: item.id 
-                        }));
-                    }
-                };
-                card.innerHTML = `
-                    <h3>${item.title}</h3>
-                    <p>${item.desc}</p>
-                `;
-                container.appendChild(card);
-            });
-        }
-    </script>
+    <script src="menu.js"></script>
 </body>
 </html>

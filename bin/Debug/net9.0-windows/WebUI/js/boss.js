@@ -53,6 +53,49 @@ function sortPlans(column) {
     renderPlansTable();
 }
 
+function loadStatisticsWithDates() {
+    const startDate = document.getElementById('statStartDate').value;
+    const endDate = document.getElementById('statEndDate').value;
+    sendToCSharp('loadStatisticsWithDates', { startDate: startDate, endDate: endDate });
+}
+
+function displayStatisticsWithDates(data) {
+    const stats = typeof data === 'string' ? JSON.parse(data) : data;
+    
+    document.getElementById('statEquipment').innerHTML = stats.totalEquipment || 0;
+    document.getElementById('statActiveAvariya').innerHTML = stats.activeAvariya || 0;
+    document.getElementById('statCompletedAvariya').innerHTML = stats.completedAvariya || 0;
+    document.getElementById('statPlans').innerHTML = stats.totalPlans || 0;
+    document.getElementById('statCompleted').innerHTML = stats.completedPlans || 0;
+    document.getElementById('statOverdue').innerHTML = stats.overduePlans || 0;
+    
+    // ИСПРАВЛЕННЫЙ расчет процента выполнения
+    // Процент = (Завершенные планы) / (Всего планов) * 100
+    const total = stats.totalPlans || 0;
+    const completed = stats.completedPlans || 0;
+    let percent = 0;
+    
+    if (total > 0) {
+        percent = Math.round((completed / total) * 100);
+        // Ограничиваем максимум 100%
+        if (percent > 100) percent = 100;
+    }
+    
+    const percentElement = document.getElementById('statPercent');
+    if (percentElement) {
+        percentElement.innerHTML = `${percent}%`;
+        
+        // Цвет в зависимости от процента
+        if (percent >= 80) {
+            percentElement.style.color = '#10b981'; // зеленый
+        } else if (percent >= 50) {
+            percentElement.style.color = '#f59e0b'; // оранжевый
+        } else {
+            percentElement.style.color = '#dc2626'; // красный
+        }
+    }
+}
+
 function sortAvariya(column) {
     if (sortConfig.avariya.column === column) {
         sortConfig.avariya.direction = sortConfig.avariya.direction === 'asc' ? 'desc' : 'asc';
@@ -343,12 +386,44 @@ window.receiveFromCSharp = function(command, data) {
     else if (command === 'fillTipTypesForPlan') fillSelect('createPlanTip', data, false);
     else if (command === 'fillResponsibleForPlan') fillSelect('createPlanResponsible', data, false);
     else if (command === 'fillTipTypes') fillSelect('planTip', data, false);
+else if (command === 'displayStatisticsWithDates') {
+    displayStatisticsWithDates(data);
+}
     else if (command === 'fillResponsible') { fillSelect('planResponsible', data, false); fillSelect('responsibleFilter', data, true); }
     else if (command === 'displayPlans') {
     const result = typeof data === 'string' ? JSON.parse(data) : data;
     allPlansOriginal = result.plans || [];
     allPlans = [...allPlansOriginal];
     renderPlansTable();
+}
+
+
+else if (command === 'showOverduePlansOnLogin') {
+    const plans = typeof data === 'string' ? JSON.parse(data) : data;
+    if (plans && plans.length > 0) {
+        let planList = plans.map(p => `• ${p.equipment} - срок до ${p.end_date} (ID: ${p.id})`).join('\n');
+        addBossNotification(
+            '❌ Просроченные задачи', 
+            `Обнаружено просроченных задач: ${plans.length}\n\n${planList}`, 
+            'error', 
+            null, 
+            plans[0].id
+        );
+    }
+}
+
+else if (command === 'showExpiringPlansOnLogin') {
+    const plans = typeof data === 'string' ? JSON.parse(data) : data;
+    if (plans && plans.length > 0) {
+        let planList = plans.map(p => `• ${p.equipment} - срок до ${p.end_date} (ID: ${p.id})`).join('\n');
+        addBossNotification(
+            '⚠️ Истекает срок выполнения', 
+            `Задач со сроком до 3 дней: ${plans.length}\n\n${planList}`, 
+            'warning', 
+            null, 
+            plans[0].id
+        );
+    }
 }
     else if (command === 'displayAvariya') {
     allAvariyaOriginal = typeof data === 'string' ? JSON.parse(data) : data;
@@ -662,9 +737,71 @@ function openCreatePlanModal(accidentId) {
     } 
     document.getElementById('createPlanModal').style.display = 'flex'; 
 }
-function exportToExcel() { sendToCSharp('exportToExcel', { reportType: document.getElementById('reportTypeSelect').value }); }
-function exportToWord() { sendToCSharp('exportToWord', { reportType: document.getElementById('reportTypeSelect').value }); }
-function previewReport() { sendToCSharp('previewReport'); }
+function exportToExcel() {
+    const reportType = document.getElementById('reportTypeSelect').value;
+
+    if (reportType === 'spareParts') {
+        const startDate = document.getElementById('startDateFilter').value;
+        const endDate = document.getElementById('endDateFilter').value;
+
+        if (!startDate || !endDate) {
+            showToast('Для отчета по запчастям укажите период в фильтрах', 'error');
+            return;
+        }
+
+        sendToCSharp('exportSparePartsToExcel', { 
+            startDate: startDate, 
+            endDate: endDate,
+            equipmentId: 0
+        });
+    } else {
+        sendToCSharp('exportToExcel', { reportType: reportType });
+    }
+}
+
+function exportToWord() {
+    const reportType = document.getElementById('reportTypeSelect').value;
+
+    if (reportType === 'spareParts') {
+        const startDate = document.getElementById('startDateFilter').value;
+        const endDate = document.getElementById('endDateFilter').value;
+
+        if (!startDate || !endDate) {
+            showToast('Для отчета по запчастям укажите период в фильтрах', 'error');
+            return;
+        }
+
+        sendToCSharp('exportSparePartsToWord', { 
+            startDate: startDate, 
+            endDate: endDate,
+            equipmentId: 0
+        });
+    } else {
+        sendToCSharp('exportToWord', { reportType: reportType });
+    }
+}
+
+function previewReport() {
+    const reportType = document.getElementById('reportTypeSelect').value;
+
+    if (reportType === 'spareParts') {
+        const startDate = document.getElementById('startDateFilter').value;
+        const endDate = document.getElementById('endDateFilter').value;
+
+        if (!startDate || !endDate) {
+            showToast('Для отчета по запчастям укажите период в фильтрах', 'error');
+            return;
+        }
+
+        sendToCSharp('previewSparePartsReport', { 
+            startDate: startDate, 
+            endDate: endDate 
+        });
+    } else {
+        sendToCSharp('previewReport');
+    }
+}
+
 function setDefaultDates() { 
     let today = new Date(), monthAgo = new Date(); 
     monthAgo.setMonth(monthAgo.getMonth() - 1); 

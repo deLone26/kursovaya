@@ -17,11 +17,8 @@ namespace WindowsFormsApp1
         private Panel contentPanel;
         private WebView2 webView;
         private Form activeForm = null;
-        private WebView2 activeWebView = null;
-
-        private bool isCollapsed = false;
-        private int expandedWidth = 250;
-        private int collapsedWidth = 70;
+        private TaskCompletionSource<bool> webViewInitTask = new TaskCompletionSource<bool>();
+        private bool isWebViewReady = false;
 
         private string connectionString;
         private int employeeId;
@@ -39,8 +36,12 @@ namespace WindowsFormsApp1
             InitializeComponent();
             InitializeLayout();
             CreateMenuButtons();
-            this.Load += async (s, e) => await InitializeWebView();
-            ShowHome();
+
+            this.Load += async (s, e) =>
+            {
+                await InitializeWebView();
+                ShowHome();
+            };
         }
 
         private string GetLoginByEmployeeId(int empId)
@@ -117,15 +118,14 @@ namespace WindowsFormsApp1
             if (userRole == "slesar")
                 return page == "home" || page == "dashboard" || page == "repairs" || page == "plans";
 
-            // Для начальника (boss) — всё, кроме accidents и repairs
+            // Для начальника (boss) — убираем dashboard, passports, budget
             if (userRole == "boss")
-                return page != "accidents" && page != "repairs";
+                return page == "home" || page == "equipment" || page == "plans" || page == "charts" || page == "boss" || page == "employees";
 
             // Для администратора — всё
             if (userRole == "admin")
                 return true;
 
-            // По умолчанию всё разрешено
             return true;
         }
 
@@ -137,7 +137,7 @@ namespace WindowsFormsApp1
 
             sidePanel = new Panel();
             sidePanel.Dock = DockStyle.Left;
-            sidePanel.Width = expandedWidth;
+            sidePanel.Width = 250;
             sidePanel.BackColor = Color.FromArgb(24, 28, 40);
             sidePanel.AutoScroll = true;
             sidePanel.Padding = new Padding(10, 20, 10, 10);
@@ -172,7 +172,12 @@ namespace WindowsFormsApp1
             row++;
 
             AddMenuButtonIfAllowed(tlp, "🏠", "Главная", "home", ref row);
-            AddMenuButtonIfAllowed(tlp, "📊", "Дашборд", "dashboard", ref row);
+
+            // Дашборд только для оператора, слесаря и админа (НЕ для начальника)
+            if (userRole != "boss")
+            {
+                AddMenuButtonIfAllowed(tlp, "📊", "Дашборд", "dashboard", ref row);
+            }
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
 
@@ -184,14 +189,18 @@ namespace WindowsFormsApp1
 
             AddMenuButtonIfAllowed(tlp, "🔧", "Всё оборудование", "equipment", ref row);
 
-            // Для начальника (boss) НЕ показываем Аварии и Ремонты
+            // Аварии и ремонты НЕ показываем начальнику
             if (userRole != "boss")
             {
                 AddMenuButtonIfAllowed(tlp, "⚠️", "Аварии", "accidents", ref row);
                 AddMenuButtonIfAllowed(tlp, "🔨", "Ремонты", "repairs", ref row);
             }
 
-            AddMenuButtonIfAllowed(tlp, "📋", "Паспорта", "passports", ref row);
+            // Паспорта НЕ показываем начальнику
+            if (userRole != "boss")
+            {
+                AddMenuButtonIfAllowed(tlp, "📋", "Паспорта", "passports", ref row);
+            }
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
 
@@ -201,7 +210,7 @@ namespace WindowsFormsApp1
             tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
             row++;
 
-            AddMenuButtonIfAllowed(tlp, "📅", "Планы ТО", "plans", ref row);
+            AddMenuButtonIfAllowed(tlp, "📋", "Планы ТО", "plans", ref row);
             AddMenuButtonIfAllowed(tlp, "📈", "Графики", "charts", ref row);
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
@@ -214,7 +223,12 @@ namespace WindowsFormsApp1
 
             AddMenuButtonIfAllowed(tlp, "👑", "Панель начальника", "boss", ref row);
             AddMenuButtonIfAllowed(tlp, "👥", "Сотрудники", "employees", ref row);
-            AddMenuButtonIfAllowed(tlp, "💰", "Бюджет", "budget", ref row);
+
+            // Бюджет НЕ показываем начальнику
+            if (userRole != "boss")
+            {
+                AddMenuButtonIfAllowed(tlp, "💰", "Бюджет", "budget", ref row);
+            }
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
 
@@ -324,28 +338,21 @@ namespace WindowsFormsApp1
         {
             try
             {
-                activeWebView = new WebView2();
-                activeWebView.Dock = DockStyle.Fill;
-                contentPanel.Controls.Clear();
-                contentPanel.Controls.Add(activeWebView);
+                webView = new WebView2();
+                webView.Dock = DockStyle.Fill;
 
-                await activeWebView.EnsureCoreWebView2Async(null);
+                string userDataFolder = Path.Combine(Path.GetTempPath(), "WebView2_Data_" + Guid.NewGuid().ToString());
 
-                activeWebView.CoreWebView2.Settings.IsScriptEnabled = true;
-                activeWebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+                var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                await webView.EnsureCoreWebView2Async(env);
 
-                string htmlPath = Path.Combine(webUIPath, "menu.html");
+                webView.CoreWebView2.Settings.IsScriptEnabled = true;
+                webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
 
-                if (File.Exists(htmlPath))
-                {
-                    activeWebView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
-                }
-                else
-                {
-                    MessageBox.Show($"Файл меню не найден: {htmlPath}");
-                }
+                isWebViewReady = true;
+                webViewInitTask.TrySetResult(true);
 
-                activeWebView.CoreWebView2.WebMessageReceived += (s, e) =>
+                webView.CoreWebView2.WebMessageReceived += (s, e) =>
                 {
                     string message = e.TryGetWebMessageAsString();
                     if (this.IsHandleCreated)
@@ -354,19 +361,96 @@ namespace WindowsFormsApp1
                     }
                 };
 
-                activeWebView.CoreWebView2.NavigationCompleted += async (s, e) =>
+                webView.CoreWebView2.NavigationCompleted += async (s, e) =>
                 {
-                    await Task.Delay(500);
-                    await SetUserRoleInWebView();
+                    if (e.IsSuccess)
+                    {
+                        await SetUserRoleInWebView();
+                    }
                 };
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка WebView2: {ex.Message}");
+                isWebViewReady = false;
+                webViewInitTask.TrySetResult(false);
+                MessageBox.Show($"Ошибка инициализации WebView2: {ex.Message}\n\n" +
+                    "Пожалуйста, установите Microsoft Edge WebView2 Runtime.\n" +
+                    "Скачать можно по ссылке: https://developer.microsoft.com/ru-ru/microsoft-edge/webview2/",
+                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void HandleWebViewMessage(string message)
+        private async Task LoadMainStatistics()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    string sql = @"
+                        SELECT 
+                            COUNT(*) as total_plans,
+                            SUM(CASE WHEN status = 'Завершен' THEN 1 ELSE 0 END) as completed_plans,
+                            SUM(CASE WHEN status NOT IN ('Завершен', 'Отменен') AND data_okonchaniya < CURRENT_DATE THEN 1 ELSE 0 END) as overdue_plans
+                        FROM plan_to
+                        WHERE status != 'Отменен'";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            var stats = new
+                            {
+                                totalPlans = reader.GetInt32(0),
+                                completedPlans = reader.GetInt32(1),
+                                overduePlans = reader.GetInt32(2)
+                            };
+                            string json = JsonSerializer.Serialize(stats);
+                            await ExecuteJsFunction("displayMainStatistics", json);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка статистики: {ex.Message}");
+            }
+        }
+
+        private async Task ExecuteJsFunction(string function, string data = null)
+        {
+            if (webView?.CoreWebView2 != null && isWebViewReady)
+            {
+                try
+                {
+                    string js;
+                    if (string.IsNullOrEmpty(data))
+                        js = $"if(window.{function}) window.{function}(null);";
+                    else
+                    {
+                        string escapedData = data.Replace("\\", "\\\\").Replace("'", "\\'");
+                        js = $"if(window.{function}) window.{function}('{escapedData}');";
+                    }
+                    await webView.CoreWebView2.ExecuteScriptAsync(js);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Ошибка ExecuteJsFunction: {ex.Message}");
+                }
+            }
+        }
+
+        private async Task WaitForWebViewReady()
+        {
+            if (!isWebViewReady)
+            {
+                await webViewInitTask.Task;
+            }
+        }
+
+        private async void HandleWebViewMessage(string message)
         {
             try
             {
@@ -397,11 +481,53 @@ namespace WindowsFormsApp1
                             case "openReports":
                                 ShowPlaceholder("Отчеты");
                                 break;
+                            case "mainPageReady":
+                                await SetUserRoleInWebView();
+                                await LoadMainStatistics();
+                                break;
+                            case "openSection":
+                                string section = root.GetProperty("section").GetString();
+                                HandleMenuClick(section);
+                                break;
+                            case "openReport":
+                                string reportType = root.GetProperty("reportType").GetString();
+                                if (reportType == "spareParts")
+                                {
+                                    OpenChildForm(new FormBoss(connectionString, employeeId));
+                                }
+                                else if (reportType == "plans" || reportType == "avariya")
+                                {
+                                    OpenChildForm(new FormBoss(connectionString, employeeId));
+                                }
+                                break;
+                            case "openReference":
+                                string refType = root.GetProperty("refType").GetString();
+                                switch (refType)
+                                {
+                                    case "equipment":
+                                        OpenChildForm(new Form1());
+                                        break;
+                                    case "employees":
+                                        OpenChildForm(new Form2());
+                                        break;
+                                    case "tip_to":
+                                        ShowPlaceholder("Типы ТО");
+                                        break;
+                                    case "spare_parts":
+                                        ShowPlaceholder("Запчасти");
+                                        break;
+                                }
+                                break;
+                            case "loadMainStatistics":
+                                await LoadMainStatistics();
+                                break;
                             case "openUsers":
                                 ShowPlaceholder("Управление пользователями");
                                 break;
+                            case "pageReady":
+                                break;
                             default:
-                                HandleMenuClick(message);
+                                HandleMenuClick(action);
                                 break;
                         }
                     }
@@ -450,10 +576,21 @@ namespace WindowsFormsApp1
 
         private async Task SetUserRoleInWebView()
         {
-            if (activeWebView?.CoreWebView2 != null)
+            if (webView?.CoreWebView2 != null && isWebViewReady)
             {
-                string script = $"if(typeof setUserRole === 'function') setUserRole('{userRole}');";
-                await activeWebView.CoreWebView2.ExecuteScriptAsync(script);
+                string roleForJs = userRole == "admin" ? "app_admin" :
+                                   (userRole == "boss" ? "app_boss" :
+                                   (userRole == "slesar" ? "app_slesar" : "app_operator"));
+
+                string script = $"if(typeof setUserRole === 'function') setUserRole('{roleForJs}');";
+                try
+                {
+                    await webView.CoreWebView2.ExecuteScriptAsync(script);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Ошибка выполнения скрипта: {ex.Message}");
+                }
             }
         }
 
@@ -504,6 +641,9 @@ namespace WindowsFormsApp1
                     break;
                 case "exit":
                     Application.Exit();
+                    break;
+                default:
+                    ShowHome();
                     break;
             }
         }
@@ -557,7 +697,12 @@ namespace WindowsFormsApp1
             contentPanel.Controls.Add(placeholder);
         }
 
-        private void ShowHome()
+        private void ShowDashboard()
+        {
+            OpenChildForm(new FormCharts(connectionString, employeeId, userLogin, userRole));
+        }
+
+        private async void ShowHome()
         {
             if (activeForm != null)
             {
@@ -567,20 +712,29 @@ namespace WindowsFormsApp1
 
             contentPanel.Controls.Clear();
 
-            if (activeWebView != null && activeWebView.CoreWebView2 != null)
+            await WaitForWebViewReady();
+
+            if (isWebViewReady && webView != null && webView.CoreWebView2 != null)
             {
-                contentPanel.Controls.Add(activeWebView);
-                string htmlPath = Path.Combine(webUIPath, "menu.html");
+                if (contentPanel.Controls.Contains(webView))
+                    contentPanel.Controls.Remove(webView);
+
+                contentPanel.Controls.Add(webView);
+
+                string htmlPath = Path.Combine(webUIPath, "main.html");
                 if (File.Exists(htmlPath))
                 {
-                    activeWebView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
+                    webView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
+                }
+                else
+                {
+                    ShowPlaceholder("Главное меню - файл не найден");
                 }
             }
-        }
-
-        private void ShowDashboard()
-        {
-            ShowHome();
+            else
+            {
+                ShowPlaceholder("Загрузка главного меню...");
+            }
         }
     }
 }

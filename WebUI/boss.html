@@ -53,21 +53,22 @@
         </div>
 
         <div class="export-panel">
-            <div class="filter-group">
-                <label>Тип отчета</label>
-                <select id="reportTypeSelect">
-                    <option value="all">Все планы</option>
-                    <option value="inprogress">В работе</option>
-                    <option value="completed">Завершенные</option>
-                    <option value="overdue">Просроченные</option>
-                    <option value="repairHistory">История ремонтов</option>
-                    <option value="avariyaHistory">История аварий</option>
-                </select>
-            </div>
-            <button class="btn-export" id="exportExcelBtn">Excel</button>
-            <button class="btn-export" id="exportWordBtn">Word</button>
-            <button class="btn-preview" id="previewReportBtn">Предпросмотр</button>
-        </div>
+    <div class="filter-group">
+        <label>Тип отчета</label>
+        <select id="reportTypeSelect">
+            <option value="all">Все планы</option>
+            <option value="inprogress">В работе</option>
+            <option value="completed">Завершенные</option>
+            <option value="overdue">Просроченные</option>
+            <option value="repairHistory">История ремонтов</option>
+            <option value="avariyaHistory">История аварий</option>
+            <option value="spareParts">Отчет по запчастям</option>
+        </select>
+    </div>
+    <button class="btn-export" id="exportExcelBtn">Excel</button>
+    <button class="btn-export" id="exportWordBtn">Word</button>
+    <button class="btn-preview" id="previewReportBtn">Предпросмотр</button>
+</div>
 
         <div class="table-container">
             <table id="plansTable">

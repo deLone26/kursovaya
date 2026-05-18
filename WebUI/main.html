@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главная - BoilerMaintenance</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="welcome-section">
+            <h1>🏭 BoilerMaintenance</h1>
+            <p class="subtitle">Система учета технического обслуживания котельного оборудования</p>
+            <div class="user-greeting" id="userGreeting">Загрузка...</div>
+        </div>
+
+        <div class="quick-access">
+            <h2>📌 Быстрый доступ</h2>
+            <div class="quick-buttons">
+                <button class="quick-btn" onclick="openSection('plans')">📋 Планы ТО</button>
+                <button class="quick-btn" onclick="openSection('equipment')">🔧 Оборудование</button>
+                <button class="quick-btn" onclick="openSection('boss')">👑 Панель начальника</button>
+                <button class="quick-btn" onclick="openSection('employees')">👥 Сотрудники</button>
+            </div>
+        </div>
+
+        <div class="reports-section">
+            <h2>📊 Отчеты</h2>
+            <div class="reports-grid">
+                <div class="report-card" onclick="openReport('spareParts')">
+                    <div class="report-icon">🔩</div>
+                    <div class="report-title">Отчет по запчастям</div>
+                    <div class="report-desc">Использованные запчасти за период</div>
+                </div>
+                <div class="report-card" onclick="openReport('plans')">
+                    <div class="report-icon">📅</div>
+                    <div class="report-title">Отчет по планам ТО</div>
+                    <div class="report-desc">Выполнение плановых работ</div>
+                </div>
+                <div class="report-card" onclick="openReport('avariya')">
+                    <div class="report-icon">⚠️</div>
+                    <div class="report-title">Отчет по авариям</div>
+                    <div class="report-desc">Статистика аварийных ситуаций</div>
+                </div>
+                <div class="report-card" onclick="openReport('repairs')">
+                    <div class="report-icon">🔨</div>
+                    <div class="report-title">Отчет по ремонтам</div>
+                    <div class="report-desc">Выполненные ремонтные работы</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="references-section">
+            <h2>📚 Справочники</h2>
+            <div class="references-grid">
+                <div class="ref-card" onclick="openReference('equipment')">
+                    <span>🔧</span>
+                    <span>Оборудование</span>
+                </div>
+                <div class="ref-card" onclick="openReference('employees')">
+                    <span>👥</span>
+                    <span>Сотрудники</span>
+                </div>
+                <div class="ref-card" onclick="openReference('tip_to')">
+                    <span>📌</span>
+                    <span>Типы ТО</span>
+                </div>
+                <div class="ref-card" onclick="openReference('spare_parts')">
+                    <span>🔩</span>
+                    <span>Запчасти</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <h2>📈 Статистика</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="statTotalPlans">-</div>
+                    <div class="stat-label">Активных планов</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statCompletedPlans">-</div>
+                    <div class="stat-label">Выполнено</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statOverduePlans">-</div>
+                    <div class="stat-label">Просрочено</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statPercent">-</div>
+                    <div class="stat-label">Процент выполнения</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/main.js"></script>
+</body>
+</html>
