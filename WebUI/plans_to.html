@@ -137,380 +137,454 @@
 
     <script>
         let employees = [];
-        let allPlans = [];
-        let currentView = 'week';
-        let currentDate = new Date();
-        let selectedDate = new Date();
-        let selectedEmployeeId = null;
-        
-        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-        
-        function isWeekend(date) {
-            const dayOfWeek = date.getDay();
-            return dayOfWeek === 0 || dayOfWeek === 6;
+let allPlans = [];
+let currentView = 'week';
+let currentDate = new Date();
+let selectedDate = new Date();
+let selectedEmployeeId = null;
+
+const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+function isWeekend(date) {
+    const dayOfWeek = date.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6;
+}
+
+function isHoliday(date) {
+    const day = date.getDate();
+    const month = date.getMonth();
+    if (month === 0 && day >= 1 && day <= 8) return true;
+    if (month === 1 && day === 23) return true;
+    if (month === 2 && day === 8) return true;
+    if (month === 4 && day === 1) return true;
+    if (month === 4 && day === 9) return true;
+    if (month === 5 && day === 12) return true;
+    if (month === 10 && day === 4) return true;
+    return false;
+}
+
+function isWorkingDay(date) {
+    return !isWeekend(date) && !isHoliday(date);
+}
+
+function getWorkingDaysCount(startDate, endDate) {
+    let start = new Date(startDate);
+    let end = new Date(endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    let workingDays = 0;
+    let current = new Date(start);
+    while (current <= end) {
+        if (isWorkingDay(current)) workingDays++;
+        current.setDate(current.getDate() + 1);
+    }
+    return workingDays;
+}
+
+function getWorkingDaysBetween(startDate, endDate, allDays) {
+    const result = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    
+    for (let day of allDays) {
+        const dayCopy = new Date(day);
+        dayCopy.setHours(0, 0, 0, 0);
+        if (dayCopy >= start && dayCopy <= end && isWorkingDay(dayCopy)) {
+            result.push(dayCopy);
         }
-        
-        function isHoliday(date) {
-            const day = date.getDate();
-            const month = date.getMonth();
-            if (month === 0 && day >= 1 && day <= 8) return true;
-            if (month === 1 && day === 23) return true;
-            if (month === 2 && day === 8) return true;
-            if (month === 4 && day === 1) return true;
-            if (month === 4 && day === 9) return true;
-            if (month === 5 && day === 12) return true;
-            if (month === 10 && day === 4) return true;
-            return false;
-        }
-        
-        function isWorkingDay(date) {
-            return !isWeekend(date) && !isHoliday(date);
-        }
-        
-        function getWorkingDaysCount(startDate, endDate) {
-            let start = new Date(startDate);
-            let end = new Date(endDate);
-            start.setHours(0, 0, 0, 0);
-            end.setHours(0, 0, 0, 0);
-            let workingDays = 0;
-            let current = new Date(start);
-            while (current <= end) {
-                if (isWorkingDay(current)) workingDays++;
-                current.setDate(current.getDate() + 1);
-            }
-            return workingDays;
-        }
-        
-        function sendToCSharp(action, data = {}) {
-            const msg = JSON.stringify({ action: action, ...data });
-            if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(msg);
-        }
-        
-        window.receiveFromCSharp = function(command, data) {
-            if (command === 'initialData') {
-                if (data.employees) renderEmployees(data.employees);
-                if (data.plans) { allPlans = data.plans; applyFilters(); }
-                if (data.urgent) renderUrgentReminders(data.urgent);
-            }
-            else if (command === 'plansData') { allPlans = data; applyFilters(); }
-            else if (command === 'showError') console.error('Error:', data);
-        };
-        
-        function renderEmployees(data) {
-            const container = document.getElementById('employeesList');
-            if (!data || !data.length) { container.innerHTML = '<div class="loading">Нет сотрудников</div>'; return; }
-            employees = data;
-            container.innerHTML = employees.map(emp => `
-                <div class="employee-item ${selectedEmployeeId === emp.id ? 'active' : ''}" data-id="${emp.id}">
-                    <span class="employee-name" title="${emp.fio}">${emp.fio}</span>
-                    <span class="employee-count">${emp.tasks_count || 0}</span>
-                </div>
-            `).join('');
-            document.querySelectorAll('.employee-item').forEach(item => {
-                item.onclick = () => {
-                    const id = parseInt(item.dataset.id);
-                    selectedEmployeeId = selectedEmployeeId === id ? null : id;
-                    renderEmployees(employees);
-                    applyFilters();
-                };
-            });
-        }
-        
-        function renderUrgentReminders(data) {
-            const container = document.getElementById('urgentList');
-            if (!data || !data.length) { container.innerHTML = '<div class="loading">Нет напоминаний</div>'; return; }
-            
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            
-            const activeReminders = data.filter(item => item.status !== 'Завершен').sort((a, b) => new Date(a.end_date) - new Date(b.end_date));
-            
-            if (activeReminders.length === 0) {
-                container.innerHTML = '<div class="loading">Нет активных напоминаний</div>';
-                return;
-            }
-            
-            container.innerHTML = activeReminders.map(item => {
-                let itemClass = '', daysClass = '';
-                let endDate = new Date(item.end_date);
-                endDate.setHours(0, 0, 0, 0);
-                const daysLeft = getWorkingDaysCount(now, endDate);
-                
-                if (daysLeft < 0) {
-                    itemClass = 'critical';
-                    daysClass = 'days-critical';
-                } else if (daysLeft <= 2) {
-                    itemClass = 'critical';
-                    daysClass = 'days-critical';
-                } else if (daysLeft <= 5) {
-                    itemClass = 'warning';
-                    daysClass = 'days-warning';
-                }
-                
-                const daysText = daysLeft < 0 ? `Просрочен на ${Math.abs(daysLeft)} раб. дн.` : `${daysLeft} раб. дн.`;
-                return `<div class="urgent-item ${itemClass}">
-                            <div class="urgent-date">${item.end_date}</div>
-                            <div class="urgent-title" title="${item.equipment}">${item.equipment}</div>
-                            <div class="urgent-days ${daysClass}">${daysText}</div>
-                        </div>`;
-            }).join('');
-        }
-        
-        function applyFilters() {
-            let filtered = [...allPlans];
-            if (selectedEmployeeId !== null) {
-                filtered = filtered.filter(p => p.responsible_id === selectedEmployeeId);
-            }
-            renderTimeline(filtered);
-            updateStats();
-        }
-        
-        function updateStats() {
-            const completedPlans = allPlans.filter(p => p.status === 'Завершен');
-            const overduePlans = allPlans.filter(p => p.is_overdue === true);
-            const criticalPlans = allPlans.filter(p => {
-                if (p.is_overdue === true || p.status === 'Завершен') return false;
-                if (!p.end_date) return false;
-                let endDate = new Date(p.end_date);
-                endDate.setHours(0, 0, 0, 0);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const daysLeft = getWorkingDaysCount(today, endDate);
-                return daysLeft <= 2;
-            });
-            document.getElementById('totalPlans').innerHTML = allPlans.length;
-            document.getElementById('completedCount').innerHTML = completedPlans.length;
-            document.getElementById('overdueCount').innerHTML = overduePlans.length;
-            document.getElementById('criticalCount').innerHTML = criticalPlans.length;
-        }
-        
-        function getDaysArray() {
-            const days = [];
-            if (currentView === 'week') {
-                const weekStart = new Date(selectedDate);
-                const dayOfWeek = weekStart.getDay();
-                const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                weekStart.setDate(weekStart.getDate() - diffToMonday);
-                for (let i = 0; i < 7; i++) {
-                    const day = new Date(weekStart);
-                    day.setDate(weekStart.getDate() + i);
-                    days.push(day);
-                }
-            } else if (currentView === 'month') {
-                const year = selectedDate.getFullYear();
-                const month = selectedDate.getMonth();
-                const daysInMonth = new Date(year, month + 1, 0).getDate();
-                for (let i = 1; i <= daysInMonth; i++) {
-                    days.push(new Date(year, month, i));
-                }
-            }
-            return days;
-        }
-        
-        function getColumnWidth(daysCount) {
-            if (daysCount <= 7) return '85px';
-            if (daysCount <= 15) return '60px';
-            if (daysCount <= 22) return '50px';
-            return '40px';
-        }
-        
-        // Функция проверки - нужно ли показывать задачу в этот день
-        function shouldShowTaskOnDay(task, day) {
-            // Если день выходной или праздник - не показываем
-            if (!isWorkingDay(day)) {
-                return false;
-            }
-            
-            const taskStart = new Date(task.start_date);
-            let taskEnd = new Date(task.end_date);
-            taskStart.setHours(0, 0, 0, 0);
-            taskEnd.setHours(0, 0, 0, 0);
-            day.setHours(0, 0, 0, 0);
-            
-            // День должен быть между началом и концом задачи
-            return day >= taskStart && day <= taskEnd;
-        }
-        
-        function renderWeekMonthView(plansData, days) {
-            const plansByEmployee = new Map();
-            plansData.forEach(plan => {
-                const key = plan.responsible_id;
-                if (!plansByEmployee.has(key)) {
-                    plansByEmployee.set(key, { name: plan.responsible, id: key, plans: [] });
-                }
-                plansByEmployee.get(key).plans.push(plan);
-            });
-            
-            for (let [key, emp] of plansByEmployee) {
-                emp.plans.sort((a,b) => new Date(a.start_date) - new Date(b.start_date));
-            }
-            
-            const columnWidth = getColumnWidth(days.length);
-            
-            let html = `<table class="gantt-table">`;
-            html += `<thead>`;
-            html += `<tr>`;
-            html += `<th style="width: 200px; position: sticky; left: 0; background: #f8fafc;">Сотрудник</th>`;
-            days.forEach(day => {
-                const isWeekendDay = !isWorkingDay(day);
-                const dayNum = day.getDate();
-                const monthName = monthNames[day.getMonth()];
-                html += `<th class="${isWeekendDay ? 'weekend-day' : ''}" style="width: ${columnWidth};">${dayNum}<br><span style="font-size:9px; font-weight:normal;">${monthName}</span></th>`;
-            });
-            html += `</tr>`;
-            html += `</thead>`;
-            html += `<tbody>`;
-            
-            for (let [key, emp] of plansByEmployee) {
-                const dailyTasks = [];
-                for (let i = 0; i < days.length; i++) {
-                    const day = days[i];
-                    const tasks = [];
-                    for (let plan of emp.plans) {
-                        if (shouldShowTaskOnDay(plan, day)) {
-                            tasks.push(plan);
-                        }
-                    }
-                    dailyTasks.push(tasks);
-                }
-                
-                const maxTasksPerDay = Math.max(1, ...dailyTasks.map(t => t.length));
-                
-                for (let level = 0; level < maxTasksPerDay; level++) {
-                    html += `<tr>`;
-                    if (level === 0) {
-                        const rowspan = maxTasksPerDay;
-                        html += `<td class="employee-cell" rowspan="${rowspan}" style="position: sticky; left: 0; background: #f8fafc; vertical-align: middle; width: 200px;">${emp.name}</td>`;
-                    }
-                    
-                    let colIdx = 0;
-                    while (colIdx < days.length) {
-                        const day = days[colIdx];
-                        
-                        // Пропускаем выходные дни - они уже имеют класс weekend-day
-                        if (!isWorkingDay(day)) {
-                            html += `<td class="weekend-day"></td>`;
-                            colIdx++;
-                            continue;
-                        }
-                        
-                        const tasks = dailyTasks[colIdx];
-                        const task = tasks[level];
-                        
-                        if (task) {
-                            let taskClass = '';
-                            if (task.status === 'Завершен') taskClass = 'completed';
-                            else if (task.is_overdue) taskClass = 'critical';
-                            else if (task.days_left <= 3) taskClass = 'warning';
-                            
-                            let span = 1;
-                            let nextCol = colIdx + 1;
-                            while (nextCol < days.length) {
-                                const nextDay = days[nextCol];
-                                if (!isWorkingDay(nextDay)) {
-                                    nextCol++;
-                                    continue;
-                                }
-                                const nextTasks = dailyTasks[nextCol];
-                                const nextTask = nextTasks[level];
-                                if (nextTask && nextTask.id === task.id) {
-                                    span++;
-                                    nextCol++;
-                                } else {
-                                    break;
-                                }
-                            }
-                            
-                            let workingDaysCount = getWorkingDaysCount(new Date(task.start_date), new Date(task.end_date));
-                            let dateRange = `${task.start_date} - ${task.end_date} (${workingDaysCount} раб. дн.)`;
-                            html += `<td colspan="${span}" class="task-cell ${taskClass}" style="cursor:pointer;" title="${task.equipment}">
-                                        <div class="task-cell-content">
-                                            <div class="task-title">${task.equipment}</div>
-                                            <div class="task-date">${dateRange}</div>
-                                        </div>
-                                        </td>`;
-                            colIdx += span;
-                        } else {
-                            html += `<td class="empty-cell"></td>`;
-                            colIdx++;
-                        }
-                    }
-                    html += `</tr>`;
-                }
-            }
-            html += `</tbody>`;
-            html += `</table>`;
-            
-            let title = '';
-            if (currentView === 'week') {
-                const weekStart = days[0], weekEnd = days[days.length-1];
-                title = `График работ за неделю ${weekStart.toLocaleDateString('ru-RU')} - ${weekEnd.toLocaleDateString('ru-RU')}`;
-            } else {
-                title = `График работ за ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
-            }
-            document.getElementById('currentDateRange').innerHTML = title;
-            document.getElementById('timelineContainer').innerHTML = `<div class="timeline-header"><div class="timeline-title">${title}</div></div>${html}`;
-        }
-        
-        function renderTimeline(plansData) {
-            const days = getDaysArray();
-            renderWeekMonthView(plansData, days);
-        }
-        
-        function navigateDate(delta) {
-            if (currentView === 'week') {
-                currentDate.setDate(currentDate.getDate() + delta * 7);
-            } else if (currentView === 'month') {
-                currentDate.setMonth(currentDate.getMonth() + delta);
-            }
-            selectedDate = new Date(currentDate);
-            applyFilters();
-        }
-        
-        function loadInitialData() { sendToCSharp('getInitialData'); }
-        function exportToExcel() { sendToCSharp('exportToExcel'); }
-        
-        function searchPlans() {
-            const term = document.getElementById('searchInput').value.toLowerCase();
-            if (!term) { applyFilters(); return; }
-            const filtered = allPlans.filter(p => p.equipment?.toLowerCase().includes(term) || p.responsible?.toLowerCase().includes(term));
-            renderTimeline(filtered);
-        }
-        
-        function filterEmployees(filter) {
-            selectedEmployeeId = null;
-            if (filter === 'without') {
-                const withoutEmp = employees.find(e => e.fio === 'Без ответственного');
-                if (withoutEmp) selectedEmployeeId = withoutEmp.id;
-            }
-            document.querySelectorAll('.filter-all, .filter-btn').forEach(b => b.classList.remove('active'));
-            if (filter === 'all') document.querySelector('.filter-all').classList.add('active');
-            else document.querySelector('.filter-btn').classList.add('active');
+    }
+    return result;
+}
+
+function sendToCSharp(action, data = {}) {
+    const msg = JSON.stringify({ action: action, ...data });
+    if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(msg);
+}
+
+window.receiveFromCSharp = function(command, data) {
+    if (command === 'initialData') {
+        if (data.employees) renderEmployees(data.employees);
+        if (data.plans) { allPlans = data.plans; applyFilters(); }
+        if (data.urgent) renderUrgentReminders(data.urgent);
+    }
+    else if (command === 'plansData') { allPlans = data; applyFilters(); }
+    else if (command === 'showError') console.error('Error:', data);
+};
+
+function renderEmployees(data) {
+    const container = document.getElementById('employeesList');
+    if (!data || !data.length) { container.innerHTML = '<div class="loading">Нет сотрудников</div>'; return; }
+    employees = data;
+    container.innerHTML = employees.map(emp => `
+        <div class="employee-item ${selectedEmployeeId === emp.id ? 'active' : ''}" data-id="${emp.id}">
+            <span class="employee-name" title="${emp.fio}">${emp.fio}</span>
+            <span class="employee-count">${emp.tasks_count || 0}</span>
+        </div>
+    `).join('');
+    document.querySelectorAll('.employee-item').forEach(item => {
+        item.onclick = () => {
+            const id = parseInt(item.dataset.id);
+            selectedEmployeeId = selectedEmployeeId === id ? null : id;
             renderEmployees(employees);
             applyFilters();
+        };
+    });
+}
+
+function renderUrgentReminders(data) {
+    const container = document.getElementById('urgentList');
+    if (!data || !data.length) { container.innerHTML = '<div class="loading">Нет напоминаний</div>'; return; }
+    
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    const activeReminders = data.filter(item => item.status !== 'Завершен').sort((a, b) => new Date(a.end_date) - new Date(b.end_date));
+    
+    if (activeReminders.length === 0) {
+        container.innerHTML = '<div class="loading">Нет активных напоминаний</div>';
+        return;
+    }
+    
+    container.innerHTML = activeReminders.map(item => {
+        let itemClass = '', daysClass = '';
+        let endDate = new Date(item.end_date);
+        endDate.setHours(0, 0, 0, 0);
+        const daysLeft = getWorkingDaysCount(now, endDate);
+        
+        if (daysLeft < 0) {
+            itemClass = 'critical';
+            daysClass = 'days-critical';
+        } else if (daysLeft <= 2) {
+            itemClass = 'critical';
+            daysClass = 'days-critical';
+        } else if (daysLeft <= 5) {
+            itemClass = 'warning';
+            daysClass = 'days-warning';
         }
         
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('prevBtn').onclick = () => navigateDate(-1);
-            document.getElementById('nextBtn').onclick = () => navigateDate(1);
-            document.getElementById('searchBtn').onclick = searchPlans;
-            document.getElementById('exportBtn').onclick = exportToExcel;
+        const daysText = daysLeft < 0 ? `Просрочен на ${Math.abs(daysLeft)} раб. дн.` : `${daysLeft} раб. дн.`;
+        return `<div class="urgent-item ${itemClass}">
+                    <div class="urgent-date">${item.end_date}</div>
+                    <div class="urgent-title" title="${item.equipment}">${item.equipment}</div>
+                    <div class="urgent-days ${daysClass}">${daysText}</div>
+                </div>`;
+    }).join('');
+}
+
+function applyFilters() {
+    let filtered = [...allPlans];
+    if (selectedEmployeeId !== null) {
+        filtered = filtered.filter(p => p.responsible_id === selectedEmployeeId);
+    }
+    renderTimeline(filtered);
+    updateStats();
+}
+
+function updateStats() {
+    const completedPlans = allPlans.filter(p => p.status === 'Завершен');
+    const overduePlans = allPlans.filter(p => p.is_overdue === true);
+    const criticalPlans = allPlans.filter(p => {
+        if (p.is_overdue === true || p.status === 'Завершен') return false;
+        if (!p.end_date) return false;
+        let endDate = new Date(p.end_date);
+        endDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const daysLeft = getWorkingDaysCount(today, endDate);
+        return daysLeft <= 2;
+    });
+    document.getElementById('totalPlans').innerHTML = allPlans.length;
+    document.getElementById('completedCount').innerHTML = completedPlans.length;
+    document.getElementById('overdueCount').innerHTML = overduePlans.length;
+    document.getElementById('criticalCount').innerHTML = criticalPlans.length;
+}
+
+function getDaysArray() {
+    const days = [];
+    if (currentView === 'week') {
+        const weekStart = new Date(selectedDate);
+        const dayOfWeek = weekStart.getDay();
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        weekStart.setDate(weekStart.getDate() - diffToMonday);
+        for (let i = 0; i < 7; i++) {
+            const day = new Date(weekStart);
+            day.setDate(weekStart.getDate() + i);
+            days.push(day);
+        }
+    } else if (currentView === 'month') {
+        const year = selectedDate.getFullYear();
+        const month = selectedDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let i = 1; i <= daysInMonth; i++) {
+            days.push(new Date(year, month, i));
+        }
+    }
+    return days;
+}
+
+function getColumnWidth(daysCount) {
+    if (daysCount <= 7) return '85px';
+    if (daysCount <= 15) return '60px';
+    if (daysCount <= 22) return '50px';
+    return '40px';
+}
+
+function isTaskOnWorkingDay(task, day, allDays) {
+    const workingDays = getWorkingDaysBetween(task.start_date, task.end_date, allDays);
+    const dayCopy = new Date(day);
+    dayCopy.setHours(0, 0, 0, 0);
+    return workingDays.some(d => d.getTime() === dayCopy.getTime());
+}
+
+function getTaskClass(task) {
+    if (task.status === 'Завершен') return 'completed';
+    if (task.is_overdue) return 'critical';
+    if (task.days_left <= 3) return 'warning';
+    return '';
+}
+
+function getTaskLabel(task) {
+    const workingDays = getWorkingDaysCount(task.start_date, task.end_date);
+    return `${task.equipment} (${task.start_date} - ${task.end_date}, ${workingDays} раб. дн.)`;
+}
+
+function renderTimeline(plansData) {
+    const days = getDaysArray();
+    const columnWidth = getColumnWidth(days.length);
+    
+    const plansByEmployee = new Map();
+    plansData.forEach(plan => {
+        const key = plan.responsible_id;
+        if (!plansByEmployee.has(key)) {
+            plansByEmployee.set(key, { name: plan.responsible, id: key, plans: [] });
+        }
+        plansByEmployee.get(key).plans.push(plan);
+    });
+    
+    for (let [key, emp] of plansByEmployee) {
+        emp.plans.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+    }
+    
+    const employeeMaxLevels = new Map();
+    
+    for (let [key, emp] of plansByEmployee) {
+        const dayTaskCount = new Array(days.length).fill(0);
+        for (let plan of emp.plans) {
+            for (let i = 0; i < days.length; i++) {
+                const day = days[i];
+                if (isTaskOnWorkingDay(plan, day, days)) {
+                    dayTaskCount[i]++;
+                }
+            }
+        }
+        const maxLevel = Math.max(...dayTaskCount, 1);
+        employeeMaxLevels.set(key, Math.min(maxLevel, 5)); // Ограничиваем 5 уровнями
+    }
+    
+    let html = `<div style="overflow-x: auto; max-height: calc(100vh - 200px); overflow-y: auto;">`;
+    html += `<table style="width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed;">`;
+    
+    // Заголовок
+    html += `<thead>`;
+    html += `<tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">`;
+    // Уменьшаем ширину колонки сотрудника до 130px
+    html += `<th style="position: sticky; left: 0; background: #f8fafc; padding: 10px 6px; width: 130px; min-width: 130px; max-width: 130px; text-align: left; z-index: 20;">Сотрудник</th>`;
+    days.forEach(day => {
+        const isWeekendDay = !isWorkingDay(day);
+        const dayNum = day.getDate();
+        const monthName = monthNames[day.getMonth()].substring(0, 3);
+        const dayOfWeek = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][day.getDay()];
+        html += `<th class="${isWeekendDay ? 'weekend-day' : ''}" style="width: ${columnWidth}; min-width: 50px; padding: 6px 2px; text-align: center; font-weight: normal; font-size: 10px; ${isWeekendDay ? 'background: #fef2f2;' : ''}">
+                    ${dayNum}<br><span style="font-size: 8px;">${monthName}</span><br>
+                    <span style="font-size: 7px; color: #94a3b8;">${dayOfWeek}</span>
+                 </th>`;
+    });
+    html += `</tr>`;
+    html += `</thead>`;
+    
+    html += `<tbody>`;
+    
+    for (let [key, emp] of plansByEmployee) {
+        const maxLevels = employeeMaxLevels.get(key);
+        
+        const levels = Array(maxLevels).fill().map(() => Array(days.length).fill(null));
+        
+        for (let plan of emp.plans) {
+            const activeIndices = [];
+            for (let i = 0; i < days.length; i++) {
+                if (isTaskOnWorkingDay(plan, days[i], days)) {
+                    activeIndices.push(i);
+                }
+            }
             
-            document.querySelectorAll('.view-btn').forEach(btn => {
-                btn.onclick = () => {
-                    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    currentView = btn.dataset.view;
-                    applyFilters();
-                };
-            });
+            if (activeIndices.length === 0) continue;
             
-            document.querySelectorAll('.filter-all, .filter-btn').forEach(btn => {
-                btn.onclick = () => filterEmployees(btn.dataset.filter);
-            });
+            let assignedLevel = -1;
+            for (let level = 0; level < maxLevels; level++) {
+                let conflict = false;
+                for (let idx of activeIndices) {
+                    if (levels[level][idx] !== null) {
+                        conflict = true;
+                        break;
+                    }
+                }
+                if (!conflict) {
+                    assignedLevel = level;
+                    break;
+                }
+            }
             
-            setTimeout(() => loadInitialData(), 500);
-        });
+            if (assignedLevel !== -1) {
+                for (let idx of activeIndices) {
+                    levels[assignedLevel][idx] = plan;
+                }
+            }
+        }
+        
+        const totalRowsForEmployee = maxLevels;
+        
+        for (let level = 0; level < maxLevels; level++) {
+            html += `<tr style="border-bottom: 1px solid #f1f5f9;">`;
+            
+            if (level === 0) {
+                // Уменьшаем ширину и используем перенос текста для длинных имен
+                html += `<td rowspan="${totalRowsForEmployee}" style="position: sticky; left: 0; background: #f8fafc; padding: 8px 4px; width: 130px; min-width: 130px; max-width: 130px; font-weight: 500; font-size: 11px; vertical-align: middle; border-right: 1px solid #e2e8f0; word-wrap: break-word; word-break: break-word;">
+                            ${emp.name.length > 25 ? emp.name.substring(0, 25) + '...' : emp.name}
+                          </td>`;
+            }
+            
+            let colIdx = 0;
+            while (colIdx < days.length) {
+                const day = days[colIdx];
+                const isWeekendDay = !isWorkingDay(day);
+                const task = levels[level][colIdx];
+                
+                if (task && !isWeekendDay) {
+                    let span = 1;
+                    let nextCol = colIdx + 1;
+                    while (nextCol < days.length) {
+                        const nextTask = levels[level][nextCol];
+                        const nextDay = days[nextCol];
+                        const nextIsWeekend = !isWorkingDay(nextDay);
+                        if (nextTask && nextTask.id === task.id && !nextIsWeekend) {
+                            span++;
+                            nextCol++;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    const taskClass = getTaskClass(task);
+                    let bgColor = '';
+                    if (taskClass === 'completed') bgColor = '#e8f5e9';
+                    else if (taskClass === 'critical') bgColor = '#fee2e2';
+                    else if (taskClass === 'warning') bgColor = '#fed7aa';
+                    else bgColor = '#eff6ff';
+                    
+                    const taskLabel = getTaskLabel(task);
+                    
+                    // Уменьшаем размер шрифта в ячейках задач
+                    html += `<td colspan="${span}" style="background: ${bgColor}; border-radius: 4px; margin: 1px; cursor: pointer; border: 1px solid #e2e8f0; text-align: center;" 
+                                onclick="showTaskDetails(${task.id})" title="${taskLabel}">
+                                <div style="padding: 4px 2px;">
+                                    <div style="font-size: 9px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${task.equipment}</div>
+                                </div>
+                               </td>`;
+                    colIdx += span;
+                } else {
+                    html += `<td class="${isWeekendDay ? 'weekend-day' : 'empty-cell'}" style="background: ${isWeekendDay ? '#fef2f2' : 'white'}; padding: 4px 0; text-align: center;">
+                             </td>`;
+                    colIdx++;
+                }
+            }
+            html += `</tr>`;
+        }
+    }
+    
+    html += `</tbody>`;
+    html += `</table>`;
+    html += `</div>`;
+    
+    let title = '';
+    if (currentView === 'week') {
+        const weekStart = days[0];
+        const weekEnd = days[days.length - 1];
+        title = `График работ за неделю ${weekStart.toLocaleDateString('ru-RU')} - ${weekEnd.toLocaleDateString('ru-RU')}`;
+    } else {
+        title = `График работ за ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+    }
+    document.getElementById('currentDateRange').innerHTML = title;
+    document.getElementById('timelineContainer').innerHTML = `
+        <div class="timeline-header">
+            <div class="timeline-title">${title}</div>
+        </div>
+        ${html}
+    `;
+}
+
+function showTaskDetails(taskId) {
+    const task = allPlans.find(p => p.id === taskId);
+    if (task) {
+        const workingDays = getWorkingDaysCount(task.start_date, task.end_date);
+        alert(`Задача: ${task.equipment}\nТип: ${task.tip}\nПериод: ${task.start_date} - ${task.end_date}\nРабочих дней: ${workingDays}\nОтветственный: ${task.responsible}\nСтатус: ${task.status}`);
+    }
+}
+
+function navigateDate(delta) {
+    if (currentView === 'week') {
+        selectedDate.setDate(selectedDate.getDate() + delta * 7);
+    } else if (currentView === 'month') {
+        selectedDate.setMonth(selectedDate.getMonth() + delta);
+    }
+    applyFilters();
+}
+
+function loadInitialData() { sendToCSharp('getInitialData'); }
+function exportToExcel() { sendToCSharp('exportToExcel'); }
+
+function searchPlans() {
+    const term = document.getElementById('searchInput').value.toLowerCase();
+    if (!term) { applyFilters(); return; }
+    const filtered = allPlans.filter(p => p.equipment?.toLowerCase().includes(term) || p.responsible?.toLowerCase().includes(term));
+    renderTimeline(filtered);
+}
+
+function filterEmployees(filter) {
+    selectedEmployeeId = null;
+    if (filter === 'without') {
+        const withoutEmp = employees.find(e => e.fio === 'Без ответственного');
+        if (withoutEmp) selectedEmployeeId = withoutEmp.id;
+    }
+    document.querySelectorAll('.filter-all, .filter-btn').forEach(b => b.classList.remove('active'));
+    if (filter === 'all') document.querySelector('.filter-all').classList.add('active');
+    else document.querySelector('.filter-btn').classList.add('active');
+    renderEmployees(employees);
+    applyFilters();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('prevBtn').onclick = () => navigateDate(-1);
+    document.getElementById('nextBtn').onclick = () => navigateDate(1);
+    document.getElementById('searchBtn').onclick = searchPlans;
+    document.getElementById('exportBtn').onclick = exportToExcel;
+    
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentView = btn.dataset.view;
+            applyFilters();
+        };
+    });
+    
+    document.querySelectorAll('.filter-all, .filter-btn').forEach(btn => {
+        btn.onclick = () => filterEmployees(btn.dataset.filter);
+    });
+    
+    setTimeout(() => loadInitialData(), 500);
+});
     </script>
 </body>
 </html>

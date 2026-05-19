@@ -1,7 +1,7 @@
 {
-  "version": 3,
+  "version": 4,
   "targets": {
-    "net9.0-windows7.0": {
+    "net9.0-windows": {
       "BouncyCastle.NetCore/1.8.5": {
         "type": "package",
         "compile": {
@@ -5340,7 +5340,7 @@
     }
   },
   "projectFileDependencyGroups": {
-    "net9.0-windows7.0": [
+    "net9.0-windows": [
       "Jenga.NET >= 4.0.0",
       "Microsoft.CSharp >= 4.7.0",
       "Microsoft.Web.WebView2 >= 1.0.3800.47",
@@ -5378,7 +5378,7 @@
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
-        "net9.0-windows7.0": {
+        "net9.0-windows": {
           "framework": "net9.0-windows7.0",
           "targetAlias": "net9.0-windows",
           "projectReferences": {}
@@ -5394,10 +5394,10 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "10.0.200"
+      "SdkAnalysisLevel": "10.0.300"
     },
     "frameworks": {
-      "net9.0-windows7.0": {
+      "net9.0-windows": {
         "framework": "net9.0-windows7.0",
         "targetAlias": "net9.0-windows",
         "dependencies": {
@@ -5440,19 +5440,19 @@
         "downloadDependencies": [
           {
             "name": "Microsoft.AspNetCore.App.Ref",
-            "version": "[9.0.15, 9.0.15]"
+            "version": "[9.0.16, 9.0.16]"
           },
           {
             "name": "Microsoft.NETCore.App.Host.win-x64",
-            "version": "[9.0.15, 9.0.15]"
+            "version": "[9.0.16, 9.0.16]"
           },
           {
             "name": "Microsoft.NETCore.App.Ref",
-            "version": "[9.0.15, 9.0.15]"
+            "version": "[9.0.16, 9.0.16]"
           },
           {
             "name": "Microsoft.WindowsDesktop.App.Ref",
-            "version": "[9.0.15, 9.0.15]"
+            "version": "[9.0.16, 9.0.16]"
           }
         ],
         "frameworkReferences": {
@@ -5463,7 +5463,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300/PortableRuntimeIdentifierGraph.json"
       }
     }
   },
