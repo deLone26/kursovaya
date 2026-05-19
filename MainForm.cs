@@ -1,13 +1,14 @@
-﻿using Microsoft.Web.WebView2.WinForms;
-using Microsoft.Web.WebView2.Core;
+﻿using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
+using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Npgsql;
 
 namespace WindowsFormsApp1
 {
@@ -510,16 +511,14 @@ namespace WindowsFormsApp1
                                     case "employees":
                                         OpenChildForm(new Form2());
                                         break;
-                                    case "tip_to":
-                                        ShowPlaceholder("Типы ТО");
-                                        break;
-                                    case "spare_parts":
-                                        ShowPlaceholder("Запчасти");
-                                        break;
                                 }
                                 break;
                             case "loadMainStatistics":
                                 await LoadMainStatistics();
+                                break;
+                            case "exportReportDirectly":
+                                string reportTypeParam = root.GetProperty("reportType").GetString();
+                                await ExportReportDirectly(reportTypeParam);
                                 break;
                             case "openUsers":
                                 ShowPlaceholder("Управление пользователями");
@@ -544,6 +543,129 @@ namespace WindowsFormsApp1
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Ошибка обработки сообщения: {ex.Message}");
+            }
+        }
+
+        private async Task ExportReportDirectly(string reportTypeParam)
+        {
+            try
+            {
+                // Устанавливаем даты (последний месяц)
+                string endDate = DateTime.Now.ToString("yyyy-MM-dd");
+                string startDate = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd");
+
+                SaveFileDialog save = new SaveFileDialog();
+                save.Filter = "CSV файлы (*.csv)|*.csv";
+
+                string sql = "";
+                string fileName = "";
+                string[] headers = null;
+
+                switch (reportTypeParam)
+                {
+                    case "spareParts":
+                        fileName = $"Отчет_по_запчастям_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
+                        sql = $@"
+                    SELECT 
+                        sp.naimenovanie as Наименование,
+                        COALESCE(sp.artikul, '') as Артикул,
+                        COALESCE(sp.edinica, 'шт') as Ед_изм,
+                        1 as Количество,
+                        o.nazvanie as Оборудование,
+                        TO_CHAR(r.data_okonchaniya, 'DD.MM.YYYY') as Дата_использования,
+                        COALESCE(r.opisanie, '') as Описание_работ
+                    FROM remont r
+                    JOIN plan_to p ON r.plan_id = p.id
+                    JOIN oborudovanie o ON r.oborudovanie_id = o.id
+                    CROSS JOIN LATERAL unnest(string_to_array(r.zamennaya_detal, ',')) as det
+                    JOIN spare_parts sp ON sp.naimenovanie ILIKE TRIM(det)
+                    WHERE r.zamennaya_detal IS NOT NULL AND r.zamennaya_detal != ''
+                      AND DATE(r.data_okonchaniya) BETWEEN '{startDate}' AND '{endDate}'
+                    ORDER BY r.data_okonchaniya DESC";
+                        headers = new[] { "Наименование", "Артикул", "Ед.изм", "Количество", "Оборудование", "Дата использования", "Описание работ" };
+                        break;
+
+                    case "plans":
+                        fileName = $"Отчет_по_планам_ТО_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
+                        sql = $@"
+                    SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), 
+                           TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), 
+                           COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status
+                    FROM plan_to p 
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id 
+                    LEFT JOIN tip_to t ON p.tip_to_id = t.id 
+                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id 
+                    WHERE p.data_nachala BETWEEN '{startDate}' AND '{endDate}'
+                    ORDER BY p.data_nachala DESC";
+                        headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус" };
+                        break;
+
+                    case "avariya":
+                        fileName = $"Отчет_по_авариям_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
+                        sql = $@"
+                    SELECT a.id, o.nazvanie, TO_CHAR(a.data_avarii,'DD.MM.YYYY'), 
+                           COALESCE(a.opisanie,''), COALESCE(a.posledstviya,''), a.status
+                    FROM avariya a
+                    JOIN oborudovanie o ON a.oborudovanie_id = o.id
+                    WHERE DATE(a.data_avarii) BETWEEN '{startDate}' AND '{endDate}'
+                    ORDER BY a.data_avarii DESC";
+                        headers = new[] { "ID", "Оборудование", "Дата аварии", "Описание", "Последствия", "Статус" };
+                        break;
+
+                    case "repairs":
+                        fileName = $"Отчет_по_ремонтам_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
+                        sql = $@"
+                    SELECT COALESCE(r.equipment_name,o.nazvanie), COALESCE(r.tip_name,'Не указан'),
+                           TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(r.data_okonchaniya,'DD.MM.YYYY'),
+                           COALESCE(r.sotrudnik_name,'Не указан'), COALESCE(r.opisanie,'')
+                    FROM remont r
+                    JOIN plan_to p ON r.plan_id = p.id
+                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                    WHERE r.data_okonchaniya BETWEEN '{startDate}' AND '{endDate}'
+                    ORDER BY r.data_okonchaniya DESC";
+                        headers = new[] { "Оборудование", "Тип ТО", "Плановая дата", "Дата выполнения", "Исполнитель", "Описание работ" };
+                        break;
+
+                    default:
+                        await ExecuteJsFunction("showError", "Неизвестный тип отчета");
+                        return;
+                }
+
+                save.FileName = fileName;
+
+                if (save.ShowDialog() == DialogResult.OK)
+                {
+                    using (var conn = new NpgsqlConnection(connectionString))
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        await conn.OpenAsync();
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        using (var sw = new StreamWriter(save.FileName, false, Encoding.UTF8))
+                        {
+                            sw.WriteLine(string.Join(";", headers));
+                            while (await reader.ReadAsync())
+                            {
+                                var values = new List<string>();
+                                for (int i = 0; i < reader.FieldCount; i++)
+                                {
+                                    string val = reader[i]?.ToString() ?? "";
+                                    if (val.Contains(";") || val.Contains("\""))
+                                        val = $"\"{val.Replace("\"", "\"\"")}\"";
+                                    values.Add(val);
+                                }
+                                sw.WriteLine(string.Join(";", values));
+                            }
+                        }
+                    }
+
+                    MessageBox.Show($"Отчет '{fileName}' успешно сохранен!", "Успех",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка экспорта: {ex.Message}", "Ошибка",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
