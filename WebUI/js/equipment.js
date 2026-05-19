@@ -3,14 +3,22 @@ let equipmentData = [];
 let statusesData = [];
 let selectedEquipmentId = -1;
 
-console.log("===== equipment.js загружен =====");
-
 // ================== ИНИЦИАЛИЗАЦИЯ ==================
 document.addEventListener('DOMContentLoaded', function() {
     loadEquipment();
+    loadStatuses();
+    
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchEquipment();
+            }
+        });
+    }
 });
 
-// ================== ЗАГРУЗКА ДАННЫХ ==================
+// ================== ЗАГРУЗКА ОБОРУДОВАНИЯ ==================
 function loadEquipment(filter = '') {
     if (window.chrome?.webview) {
         window.chrome.webview.postMessage(JSON.stringify({
@@ -20,10 +28,17 @@ function loadEquipment(filter = '') {
     }
 }
 
+// ================== ЗАГРУЗКА СТАТУСОВ ==================
+function loadStatuses() {
+    if (window.chrome?.webview) {
+        window.chrome.webview.postMessage(JSON.stringify({
+            action: 'loadStatuses'
+        }));
+    }
+}
+
 // ================== ОБНОВЛЕНИЕ ТАБЛИЦЫ ИЗ C# ==================
 window.updateEquipment = function(data) {
-    console.log("updateEquipment вызван с данными:", data);
-    
     if (data && data.data) {
         equipmentData = data.data;
         displayEquipment(equipmentData);
@@ -31,23 +46,24 @@ window.updateEquipment = function(data) {
     }
 };
 
-// ================== ЗАГРУЗКА СТАТУСОВ ==================
-window.loadStatuses = function(data) {
+// ================== ЗАГРУЗКА СТАТУСОВ В ВЫПАДАЮЩИЙ СПИСОК ==================
+window.loadStatusesToSelect = function(data) {
     if (data && data.data) {
         statusesData = data.data;
         const select = document.getElementById('status');
-        select.innerHTML = '';
-        
-        statusesData.forEach(status => {
-            const option = document.createElement('option');
-            option.value = status.id;
-            option.textContent = status.nazvanie;
-            select.appendChild(option);
-        });
+        if (select) {
+            select.innerHTML = '';
+            statusesData.forEach(status => {
+                const option = document.createElement('option');
+                option.value = status.id;
+                option.textContent = status.nazvanie;
+                select.appendChild(option);
+            });
+        }
     }
 };
 
-// ================== ОТОБРАЖЕНИЕ ОБОРУДОВАНИЯ ==================
+// ================== ОТОБРАЖЕНИЕ ОБОРУДОВАНИЯ В ТАБЛИЦЕ ==================
 function displayEquipment(equipment) {
     const tbody = document.getElementById('equipmentTableBody');
     
@@ -72,29 +88,37 @@ function displayEquipment(equipment) {
         row.onclick = () => selectEquipment(eq.id);
         row.id = `eq-${eq.id}`;
         
-        // Определяем класс для статуса
         let statusClass = 'status-work';
+        let statusName = eq.status_name || 'Работает';
         
-        if (eq.status_name?.toLowerCase().includes('ремонт')) {
+        if (statusName.toLowerCase().includes('ремонт')) {
             statusClass = 'status-repair';
-        } else if (eq.status_name?.toLowerCase().includes('консерв')) {
+        } else if (statusName.toLowerCase().includes('консерв')) {
             statusClass = 'status-conservation';
-        } else if (eq.status_name?.toLowerCase().includes('авар')) {
+        } else if (statusName.toLowerCase().includes('авар')) {
             statusClass = 'status-emergency';
         }
         
         row.innerHTML = `
             <td>${eq.id}</td>
-            <td>${eq.nazvanie || ''}</td>
-            <td>${eq.tip || ''}</td>
-            <td>${eq.model || ''}</td>
-            <td>${eq.seriinomer || ''}</td>
-            <td>${eq.mesto || ''}</td>
-            <td><span class="status-badge ${statusClass}">${eq.status_name || 'Работает'}</span></td>
+            <td>${escapeHtml(eq.nazvanie || '')}</td>
+            <td>${escapeHtml(eq.tip || '')}</td>
+            <td>${escapeHtml(eq.model || '')}</td>
+            <td>${escapeHtml(eq.seriinomer || '')}</td>
+            <td>${escapeHtml(eq.mesto || '')}</td>
+            <td><span class="status-badge ${statusClass}">${escapeHtml(statusName)}</span></td>
         `;
         
         tbody.appendChild(row);
     });
+    
+    // Восстанавливаем выделение
+    if (selectedEquipmentId !== -1) {
+        const selectedRow = document.getElementById(`eq-${selectedEquipmentId}`);
+        if (selectedRow) {
+            selectedRow.classList.add('selected');
+        }
+    }
 }
 
 // ================== ВЫБОР ОБОРУДОВАНИЯ ==================
@@ -102,7 +126,6 @@ function selectEquipment(id) {
     selectedEquipmentId = id;
     document.getElementById('selectedEquipmentId').value = id;
     
-    // Подсветка строки
     document.querySelectorAll('tbody tr').forEach(row => {
         row.classList.remove('selected');
     });
@@ -112,48 +135,99 @@ function selectEquipment(id) {
         selectedRow.classList.add('selected');
     }
     
-    // Заполняем форму
-    const eq = equipmentData.find(e => e.id === id);
-    if (eq) {
-        document.getElementById('nazvanie').value = eq.nazvanie || '';
-        document.getElementById('tip').value = eq.tip || '';
-        document.getElementById('model').value = eq.model || '';
-        document.getElementById('seriinomer').value = eq.seriinomer || '';
-        document.getElementById('mesto').value = eq.mesto || '';
-        document.getElementById('moshnost').value = eq.moshnost || '';
-        document.getElementById('davlenie').value = eq.davlenie || '';
-        document.getElementById('proizvoditel').value = eq.proizvoditel || '';
-        if (eq.data_ustanovki) {
-            document.getElementById('dataUstanovki').value = eq.data_ustanovki.substring(0, 10);
-        }
-        document.getElementById('status').value = eq.status_id || 1;
+    const equipment = equipmentData.find(eq => eq.id === id);
+    if (equipment) {
+        fillForm(equipment);
     }
 }
 
-// ================== ПОИСК ==================
+// ================== ЗАПОЛНЕНИЕ ФОРМЫ ==================
+function fillForm(equipment) {
+    if (!equipment) return;
+    
+    document.getElementById('nazvanie').value = equipment.nazvanie || '';
+    document.getElementById('tip').value = equipment.tip || '';
+    document.getElementById('model').value = equipment.model || '';
+    document.getElementById('seriinomer').value = equipment.seriinomer || '';
+    document.getElementById('mesto').value = equipment.mesto || '';
+    document.getElementById('moshnost').value = equipment.moshnost || 0;
+    document.getElementById('davlenie').value = equipment.davlenie || 0;
+    document.getElementById('proizvoditel').value = equipment.proizvoditel || '';
+    
+    if (equipment.data_ustanovki) {
+        let dateStr = equipment.data_ustanovki;
+        if (dateStr.includes('.')) {
+            let parts = dateStr.split('.');
+            dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        document.getElementById('dataUstanovki').value = dateStr.substring(0, 10);
+    } else {
+        document.getElementById('dataUstanovki').value = '';
+    }
+    
+    document.getElementById('status').value = equipment.status_id || 1;
+}
+
+// ================== ПОИСК (точное совпадение по ID) ==================
 function searchEquipment() {
-    const searchText = document.getElementById('searchInput').value.toLowerCase();
-    loadEquipment(searchText);
+    const searchText = document.getElementById('searchInput').value.trim();
+    
+    if (!searchText) {
+        displayEquipment(equipmentData);
+        return;
+    }
+    
+    // Проверяем, является ли поисковый запрос числом (ID)
+    const isNumeric = /^\d+$/.test(searchText);
+    
+    let filtered;
+    if (isNumeric) {
+        const searchId = parseInt(searchText);
+        // Поиск по точному ID
+        filtered = equipmentData.filter(eq => eq.id === searchId);
+    } else {
+        const searchLower = searchText.toLowerCase();
+        // Поиск по текстовым полям
+        filtered = equipmentData.filter(eq => {
+            return (eq.nazvanie && eq.nazvanie.toLowerCase().includes(searchLower)) ||
+                   (eq.tip && eq.tip.toLowerCase().includes(searchLower)) ||
+                   (eq.model && eq.model.toLowerCase().includes(searchLower)) ||
+                   (eq.proizvoditel && eq.proizvoditel.toLowerCase().includes(searchLower)) ||
+                   (eq.seriinomer && eq.seriinomer.toLowerCase().includes(searchLower));
+        });
+    }
+    
+    displayEquipment(filtered);
+    
+    if (filtered.length === 0) {
+        alert('Ничего не найдено');
+    }
+}
+
+// ================== СБРОС ПОИСКА ==================
+function resetSearch() {
+    document.getElementById('searchInput').value = '';
+    displayEquipment(equipmentData);
 }
 
 // ================== ДОБАВЛЕНИЕ ==================
 function addEquipment() {
     if (!validateForm()) return;
     
+    const equipment = {
+        nazvanie: document.getElementById('nazvanie').value,
+        tip: document.getElementById('tip').value,
+        model: document.getElementById('model').value,
+        seriinomer: document.getElementById('seriinomer').value,
+        mesto: document.getElementById('mesto').value,
+        moshnost: parseFloat(document.getElementById('moshnost').value) || 0,
+        davlenie: parseFloat(document.getElementById('davlenie').value) || 0,
+        proizvoditel: document.getElementById('proizvoditel').value,
+        data_ustanovki: document.getElementById('dataUstanovki').value,
+        status_id: parseInt(document.getElementById('status').value)
+    };
+    
     if (window.chrome?.webview) {
-        const equipment = {
-            nazvanie: document.getElementById('nazvanie').value,
-            tip: document.getElementById('tip').value,
-            model: document.getElementById('model').value,
-            seriinomer: document.getElementById('seriinomer').value,
-            mesto: document.getElementById('mesto').value,
-            moshnost: parseFloat(document.getElementById('moshnost').value) || 0,
-            davlenie: parseFloat(document.getElementById('davlenie').value) || 0,
-            proizvoditel: document.getElementById('proizvoditel').value,
-            data_ustanovki: document.getElementById('dataUstanovki').value,
-            status_id: parseInt(document.getElementById('status').value)
-        };
-        
         window.chrome.webview.postMessage(JSON.stringify({
             action: 'addEquipment',
             data: equipment
@@ -164,27 +238,27 @@ function addEquipment() {
 // ================== ОБНОВЛЕНИЕ ==================
 function updateEquipment() {
     if (selectedEquipmentId === -1) {
-        showMessage('Выберите оборудование!', 'warning');
+        alert('Выберите оборудование для редактирования!');
         return;
     }
     
     if (!validateForm()) return;
     
+    const equipment = {
+        id: selectedEquipmentId,
+        nazvanie: document.getElementById('nazvanie').value,
+        tip: document.getElementById('tip').value,
+        model: document.getElementById('model').value,
+        seriinomer: document.getElementById('seriinomer').value,
+        mesto: document.getElementById('mesto').value,
+        moshnost: parseFloat(document.getElementById('moshnost').value) || 0,
+        davlenie: parseFloat(document.getElementById('davlenie').value) || 0,
+        proizvoditel: document.getElementById('proizvoditel').value,
+        data_ustanovki: document.getElementById('dataUstanovki').value,
+        status_id: parseInt(document.getElementById('status').value)
+    };
+    
     if (window.chrome?.webview) {
-        const equipment = {
-            id: selectedEquipmentId,
-            nazvanie: document.getElementById('nazvanie').value,
-            tip: document.getElementById('tip').value,
-            model: document.getElementById('model').value,
-            seriinomer: document.getElementById('seriinomer').value,
-            mesto: document.getElementById('mesto').value,
-            moshnost: parseFloat(document.getElementById('moshnost').value) || 0,
-            davlenie: parseFloat(document.getElementById('davlenie').value) || 0,
-            proizvoditel: document.getElementById('proizvoditel').value,
-            data_ustanovki: document.getElementById('dataUstanovki').value,
-            status_id: parseInt(document.getElementById('status').value)
-        };
-        
         window.chrome.webview.postMessage(JSON.stringify({
             action: 'updateEquipment',
             data: equipment
@@ -195,11 +269,11 @@ function updateEquipment() {
 // ================== УДАЛЕНИЕ ==================
 function deleteEquipment() {
     if (selectedEquipmentId === -1) {
-        showMessage('Выберите оборудование!', 'warning');
+        alert('Выберите оборудование для удаления!');
         return;
     }
     
-    if (confirm('Вы уверены, что хотите удалить оборудование?')) {
+    if (confirm('Вы уверены, что хотите удалить это оборудование?')) {
         if (window.chrome?.webview) {
             window.chrome.webview.postMessage(JSON.stringify({
                 action: 'deleteEquipment',
@@ -222,11 +296,11 @@ function clearForm() {
     document.getElementById('davlenie').value = '';
     document.getElementById('proizvoditel').value = '';
     document.getElementById('dataUstanovki').value = '';
+    
     if (statusesData.length > 0) {
         document.getElementById('status').value = statusesData[0].id;
     }
     
-    // Снимаем выделение
     document.querySelectorAll('tbody tr').forEach(row => {
         row.classList.remove('selected');
     });
@@ -237,37 +311,25 @@ function validateForm() {
     const nazvanie = document.getElementById('nazvanie').value.trim();
     const tip = document.getElementById('tip').value.trim();
     const model = document.getElementById('model').value.trim();
-    const moshnost = document.getElementById('moshnost').value;
-    const davlenie = document.getElementById('davlenie').value;
     const dataUstanovki = document.getElementById('dataUstanovki').value;
     
     if (!nazvanie) {
-        showMessage('Введите название оборудования!', 'warning');
+        alert('Введите название оборудования!');
         return false;
     }
     
     if (!tip) {
-        showMessage('Введите тип оборудования!', 'warning');
+        alert('Введите тип оборудования!');
         return false;
     }
     
     if (!model) {
-        showMessage('Введите модель оборудования!', 'warning');
-        return false;
-    }
-    
-    if (moshnost && isNaN(parseFloat(moshnost))) {
-        showMessage('Мощность должна быть числом!', 'warning');
-        return false;
-    }
-    
-    if (davlenie && isNaN(parseFloat(davlenie))) {
-        showMessage('Давление должно быть числом!', 'warning');
+        alert('Введите модель оборудования!');
         return false;
     }
     
     if (!dataUstanovki) {
-        showMessage('Введите дату установки!', 'warning');
+        alert('Введите дату установки!');
         return false;
     }
     
@@ -282,58 +344,65 @@ function updateStatistics() {
     
     if (totalEl) totalEl.textContent = equipmentData.length;
     
-    const active = equipmentData.filter(eq => 
-        eq.status_name?.toLowerCase().includes('работает')).length;
+    const active = equipmentData.filter(eq => {
+        const status = (eq.status_name || '').toLowerCase();
+        return status.includes('работает') || status.includes('work');
+    }).length;
     if (activeEl) activeEl.textContent = active;
     
-    const repair = equipmentData.filter(eq => 
-        eq.status_name?.toLowerCase().includes('ремонт') || 
-        eq.status_name?.toLowerCase().includes('авар')).length;
+    const repair = equipmentData.filter(eq => {
+        const status = (eq.status_name || '').toLowerCase();
+        return status.includes('ремонт') || status.includes('авар');
+    }).length;
     if (repairEl) repairEl.textContent = repair;
 }
 
-// ================== СООБЩЕНИЯ ==================
-function showMessage(text, type = 'info') {
-    alert(text);
+// ================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==================
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // ================== СЛУШАЕМ СООБЩЕНИЯ ОТ C# ==================
 if (window.chrome?.webview) {
     window.chrome.webview.addEventListener('message', event => {
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        console.log("Получено от C#:", data);
         
         switch(data.action) {
             case 'equipmentLoaded':
-                equipmentData = data.data;
-                displayEquipment(equipmentData);
-                updateStatistics();
+                if (Array.isArray(data.data)) {
+                    equipmentData = data.data;
+                    displayEquipment(equipmentData);
+                    updateStatistics();
+                }
                 break;
                 
             case 'statusesLoaded':
-                statusesData = data.data;
-                const select = document.getElementById('status');
-                select.innerHTML = '';
-                statusesData.forEach(status => {
-                    const option = document.createElement('option');
-                    option.value = status.id;
-                    option.textContent = status.nazvanie;
-                    select.appendChild(option);
-                });
+                if (Array.isArray(data.data)) {
+                    statusesData = data.data;
+                    const select = document.getElementById('status');
+                    if (select) {
+                        select.innerHTML = '';
+                        statusesData.forEach(status => {
+                            const option = document.createElement('option');
+                            option.value = status.id;
+                            option.textContent = status.nazvanie;
+                            select.appendChild(option);
+                        });
+                    }
+                }
                 break;
                 
             case 'success':
-                showMessage('✅ ' + data.message, 'success');
+                alert('✅ ' + data.message);
                 loadEquipment();
                 clearForm();
                 break;
                 
-            case 'warning':
-                showMessage('⚠️ ' + data.message, 'warning');
-                break;
-                
             case 'error':
-                showMessage('❌ ' + data.message, 'error');
+                alert('❌ ' + data.message);
                 break;
         }
     });

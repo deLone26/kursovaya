@@ -53,43 +53,47 @@ namespace WindowsFormsApp1
                 webView.Dock = DockStyle.Fill;
                 this.Controls.Add(webView);
 
-                await webView.EnsureCoreWebView2Async(null);
+                // Создаем папку для данных WebView2
+                string userDataFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WebView2_Equipment_" + this.GetHashCode());
 
-                // Разрешаем скрипты и сообщения
+                var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                await webView.EnsureCoreWebView2Async(env);
+
                 webView.CoreWebView2.Settings.IsScriptEnabled = true;
                 webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+                webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = true;
 
-                // Регистрируем обработчик для сообщений от JavaScript
                 webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
                 string htmlPath = Path.Combine(webUIPath, "equipment.html");
-                System.Diagnostics.Debug.WriteLine($"Загрузка HTML из: {htmlPath}");
 
                 if (File.Exists(htmlPath))
                 {
-                    webView.CoreWebView2.Navigate($"file:///{htmlPath}");
+                    webView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
                     isWebViewInitialized = true;
 
                     webView.CoreWebView2.NavigationCompleted += async (s, e) =>
                     {
-                        System.Diagnostics.Debug.WriteLine("Навигация завершена");
-                        await Task.Delay(1000);
-                        await LoadEquipment();
-                        await LoadStatuses();
+                        if (e.IsSuccess)
+                        {
+                            System.Diagnostics.Debug.WriteLine("Навигация успешно завершена");
+                            await LoadEquipment();
+                            await LoadStatuses();
+                        }
                     };
                 }
                 else
                 {
-                    MessageBox.Show($"Файл не найден: {htmlPath}\n\nПроверьте путь к папке WebUI",
-                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show($"Файл не найден: {htmlPath}");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка инициализации WebView2: {ex.Message}",
-                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Ошибка инициализации WebView2: {ex.Message}");
             }
         }
+
+
 
         // ================== ЗАГРУЗКА СТАТУСОВ ==================
         private async Task LoadStatuses()
@@ -275,6 +279,10 @@ namespace WindowsFormsApp1
                     case "updateEquipment":
                         var updateData = JsonSerializer.Deserialize<EquipmentData>(root.GetProperty("data").GetRawText());
                         await UpdateEquipment(updateData);
+                        break;
+
+                    case "loadStatuses":
+                        await LoadStatuses();
                         break;
 
                     case "deleteEquipment":

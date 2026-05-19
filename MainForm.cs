@@ -1,6 +1,5 @@
-﻿using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.WinForms;
-using Npgsql;
+﻿using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Web.WebView2.Core;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -9,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Npgsql;
 
 namespace WindowsFormsApp1
 {
@@ -113,19 +113,19 @@ namespace WindowsFormsApp1
         {
             // Для оператора
             if (userRole == "operator")
-                return page == "home" || page == "dashboard" || page == "accidents";
+                return page == "home" || page == "accidents";
 
             // Для слесаря
             if (userRole == "slesar")
-                return page == "home" || page == "dashboard" || page == "repairs" || page == "plans";
+                return page == "home" || page == "repairs" || page == "plans";
 
-            // Для начальника (boss) — убираем dashboard, passports, budget
+            // Для начальника (boss)
             if (userRole == "boss")
                 return page == "home" || page == "equipment" || page == "plans" || page == "charts" || page == "boss" || page == "employees";
 
-            // Для администратора — всё
+            // Для администратора - всё, кроме dashboard, passports, budget
             if (userRole == "admin")
-                return true;
+                return page != "dashboard" && page != "passports" && page != "budget";
 
             return true;
         }
@@ -174,21 +174,15 @@ namespace WindowsFormsApp1
 
             AddMenuButtonIfAllowed(tlp, "🏠", "Главная", "home", ref row);
 
-            // Дашборд только для оператора, слесаря и админа (НЕ для начальника)
-            if (userRole != "boss")
-            {
-                AddMenuButtonIfAllowed(tlp, "📊", "Дашборд", "dashboard", ref row);
-            }
-
             tlp.Controls.Add(CreateSeparator(), 0, row++);
 
-            // ОБОРУДОВАНИЕ
+            // ОБОРУДОВАНИЕ И РАБОТЫ
             tlp.RowCount = row + 1;
-            tlp.Controls.Add(CreateHeaderLabel("ОБОРУДОВАНИЕ"), 0, row);
+            tlp.Controls.Add(CreateHeaderLabel("ОБОРУДОВАНИЕ И РАБОТЫ"), 0, row);
             tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
             row++;
 
-            AddMenuButtonIfAllowed(tlp, "🔧", "Всё оборудование", "equipment", ref row);
+            AddMenuButtonIfAllowed(tlp, "🔧", "Оборудование", "equipment", ref row);
 
             // Аварии и ремонты НЕ показываем начальнику
             if (userRole != "boss")
@@ -197,11 +191,7 @@ namespace WindowsFormsApp1
                 AddMenuButtonIfAllowed(tlp, "🔨", "Ремонты", "repairs", ref row);
             }
 
-            // Паспорта НЕ показываем начальнику
-            if (userRole != "boss")
-            {
-                AddMenuButtonIfAllowed(tlp, "📋", "Паспорта", "passports", ref row);
-            }
+            AddMenuButtonIfAllowed(tlp, "📋", "Планы ТО", "plans", ref row);
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
 
@@ -211,7 +201,6 @@ namespace WindowsFormsApp1
             tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
             row++;
 
-            AddMenuButtonIfAllowed(tlp, "📋", "Планы ТО", "plans", ref row);
             AddMenuButtonIfAllowed(tlp, "📈", "Графики", "charts", ref row);
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
@@ -224,12 +213,6 @@ namespace WindowsFormsApp1
 
             AddMenuButtonIfAllowed(tlp, "👑", "Панель начальника", "boss", ref row);
             AddMenuButtonIfAllowed(tlp, "👥", "Сотрудники", "employees", ref row);
-
-            // Бюджет НЕ показываем начальнику
-            if (userRole != "boss")
-            {
-                AddMenuButtonIfAllowed(tlp, "💰", "Бюджет", "budget", ref row);
-            }
 
             tlp.Controls.Add(CreateSeparator(), 0, row++);
 
@@ -490,16 +473,9 @@ namespace WindowsFormsApp1
                                 string section = root.GetProperty("section").GetString();
                                 HandleMenuClick(section);
                                 break;
-                            case "openReport":
-                                string reportType = root.GetProperty("reportType").GetString();
-                                if (reportType == "spareParts")
-                                {
-                                    OpenChildForm(new FormBoss(connectionString, employeeId));
-                                }
-                                else if (reportType == "plans" || reportType == "avariya")
-                                {
-                                    OpenChildForm(new FormBoss(connectionString, employeeId));
-                                }
+                            case "exportReportDirectly":
+                                string reportTypeParam = root.GetProperty("reportType").GetString();
+                                await ExportReportDirectly(reportTypeParam);
                                 break;
                             case "openReference":
                                 string refType = root.GetProperty("refType").GetString();
@@ -515,10 +491,6 @@ namespace WindowsFormsApp1
                                 break;
                             case "loadMainStatistics":
                                 await LoadMainStatistics();
-                                break;
-                            case "exportReportDirectly":
-                                string reportTypeParam = root.GetProperty("reportType").GetString();
-                                await ExportReportDirectly(reportTypeParam);
                                 break;
                             case "openUsers":
                                 ShowPlaceholder("Управление пользователями");
@@ -550,7 +522,6 @@ namespace WindowsFormsApp1
         {
             try
             {
-                // Устанавливаем даты (последний месяц)
                 string endDate = DateTime.Now.ToString("yyyy-MM-dd");
                 string startDate = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd");
 
@@ -566,68 +537,67 @@ namespace WindowsFormsApp1
                     case "spareParts":
                         fileName = $"Отчет_по_запчастям_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
                         sql = $@"
-                    SELECT 
-                        sp.naimenovanie as Наименование,
-                        COALESCE(sp.artikul, '') as Артикул,
-                        COALESCE(sp.edinica, 'шт') as Ед_изм,
-                        1 as Количество,
-                        o.nazvanie as Оборудование,
-                        TO_CHAR(r.data_okonchaniya, 'DD.MM.YYYY') as Дата_использования,
-                        COALESCE(r.opisanie, '') as Описание_работ
-                    FROM remont r
-                    JOIN plan_to p ON r.plan_id = p.id
-                    JOIN oborudovanie o ON r.oborudovanie_id = o.id
-                    CROSS JOIN LATERAL unnest(string_to_array(r.zamennaya_detal, ',')) as det
-                    JOIN spare_parts sp ON sp.naimenovanie ILIKE TRIM(det)
-                    WHERE r.zamennaya_detal IS NOT NULL AND r.zamennaya_detal != ''
-                      AND DATE(r.data_okonchaniya) BETWEEN '{startDate}' AND '{endDate}'
-                    ORDER BY r.data_okonchaniya DESC";
+                            SELECT 
+                                sp.naimenovanie,
+                                COALESCE(sp.artikul, ''),
+                                COALESCE(sp.edinica, 'шт'),
+                                1,
+                                o.nazvanie,
+                                TO_CHAR(r.data_okonchaniya, 'DD.MM.YYYY'),
+                                COALESCE(r.opisanie, '')
+                            FROM remont r
+                            JOIN plan_to p ON r.plan_id = p.id
+                            JOIN oborudovanie o ON r.oborudovanie_id = o.id
+                            CROSS JOIN LATERAL unnest(string_to_array(r.zamennaya_detal, ',')) as det
+                            JOIN spare_parts sp ON sp.naimenovanie ILIKE TRIM(det)
+                            WHERE r.zamennaya_detal IS NOT NULL AND r.zamennaya_detal != ''
+                              AND DATE(r.data_okonchaniya) BETWEEN '{startDate}' AND '{endDate}'
+                            ORDER BY r.data_okonchaniya DESC";
                         headers = new[] { "Наименование", "Артикул", "Ед.изм", "Количество", "Оборудование", "Дата использования", "Описание работ" };
                         break;
 
                     case "plans":
                         fileName = $"Отчет_по_планам_ТО_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
                         sql = $@"
-                    SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), 
-                           TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), 
-                           COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status
-                    FROM plan_to p 
-                    JOIN oborudovanie o ON p.oborudovanie_id = o.id 
-                    LEFT JOIN tip_to t ON p.tip_to_id = t.id 
-                    LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id 
-                    WHERE p.data_nachala BETWEEN '{startDate}' AND '{endDate}'
-                    ORDER BY p.data_nachala DESC";
+                            SELECT p.id, o.nazvanie, COALESCE(t.nazvanie,'Не указан'), 
+                                   TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(p.data_okonchaniya,'DD.MM.YYYY'), 
+                                   COALESCE(s.familiya||' '||s.imya||' '||s.otchestvo,'Не назначен'), p.status
+                            FROM plan_to p 
+                            JOIN oborudovanie o ON p.oborudovanie_id = o.id 
+                            LEFT JOIN tip_to t ON p.tip_to_id = t.id 
+                            LEFT JOIN sotrudniki s ON p.otvetstvenniy_id = s.id 
+                            WHERE p.data_nachala BETWEEN '{startDate}' AND '{endDate}'
+                            ORDER BY p.data_nachala DESC";
                         headers = new[] { "ID", "Оборудование", "Тип ТО", "Дата начала", "Дата окончания", "Ответственный", "Статус" };
                         break;
 
                     case "avariya":
                         fileName = $"Отчет_по_авариям_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
                         sql = $@"
-                    SELECT a.id, o.nazvanie, TO_CHAR(a.data_avarii,'DD.MM.YYYY'), 
-                           COALESCE(a.opisanie,''), COALESCE(a.posledstviya,''), a.status
-                    FROM avariya a
-                    JOIN oborudovanie o ON a.oborudovanie_id = o.id
-                    WHERE DATE(a.data_avarii) BETWEEN '{startDate}' AND '{endDate}'
-                    ORDER BY a.data_avarii DESC";
+                            SELECT a.id, o.nazvanie, TO_CHAR(a.data_avarii,'DD.MM.YYYY'), 
+                                   COALESCE(a.opisanie,''), COALESCE(a.posledstviya,''), a.status
+                            FROM avariya a
+                            JOIN oborudovanie o ON a.oborudovanie_id = o.id
+                            WHERE DATE(a.data_avarii) BETWEEN '{startDate}' AND '{endDate}'
+                            ORDER BY a.data_avarii DESC";
                         headers = new[] { "ID", "Оборудование", "Дата аварии", "Описание", "Последствия", "Статус" };
                         break;
 
                     case "repairs":
                         fileName = $"Отчет_по_ремонтам_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
                         sql = $@"
-                    SELECT COALESCE(r.equipment_name,o.nazvanie), COALESCE(r.tip_name,'Не указан'),
-                           TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(r.data_okonchaniya,'DD.MM.YYYY'),
-                           COALESCE(r.sotrudnik_name,'Не указан'), COALESCE(r.opisanie,'')
-                    FROM remont r
-                    JOIN plan_to p ON r.plan_id = p.id
-                    JOIN oborudovanie o ON p.oborudovanie_id = o.id
-                    WHERE r.data_okonchaniya BETWEEN '{startDate}' AND '{endDate}'
-                    ORDER BY r.data_okonchaniya DESC";
+                            SELECT COALESCE(r.equipment_name,o.nazvanie), COALESCE(r.tip_name,'Не указан'),
+                                   TO_CHAR(p.data_nachala,'DD.MM.YYYY'), TO_CHAR(r.data_okonchaniya,'DD.MM.YYYY'),
+                                   COALESCE(r.sotrudnik_name,'Не указан'), COALESCE(r.opisanie,'')
+                            FROM remont r
+                            JOIN plan_to p ON r.plan_id = p.id
+                            JOIN oborudovanie o ON p.oborudovanie_id = o.id
+                            WHERE r.data_okonchaniya BETWEEN '{startDate}' AND '{endDate}'
+                            ORDER BY r.data_okonchaniya DESC";
                         headers = new[] { "Оборудование", "Тип ТО", "Плановая дата", "Дата выполнения", "Исполнитель", "Описание работ" };
                         break;
 
                     default:
-                        await ExecuteJsFunction("showError", "Неизвестный тип отчета");
                         return;
                 }
 
@@ -731,9 +701,6 @@ namespace WindowsFormsApp1
                 case "home":
                     ShowHome();
                     break;
-                case "dashboard":
-                    ShowDashboard();
-                    break;
                 case "equipment":
                     OpenChildForm(new Form1());
                     break;
@@ -742,9 +709,6 @@ namespace WindowsFormsApp1
                     break;
                 case "repairs":
                     OpenChildForm(new FormRepairs(connectionString, employeeId, userLogin, userRole, GetEmployeeIdByLogin(userLogin)));
-                    break;
-                case "passports":
-                    ShowPlaceholder("Паспорта оборудования");
                     break;
                 case "plans":
                     OpenPlansTOForm();
@@ -757,9 +721,6 @@ namespace WindowsFormsApp1
                     break;
                 case "employees":
                     OpenChildForm(new Form2());
-                    break;
-                case "budget":
-                    ShowPlaceholder("Бюджет и затраты");
                     break;
                 case "exit":
                     Application.Exit();
@@ -817,11 +778,6 @@ namespace WindowsFormsApp1
             placeholder.Controls.Add(lblTitle);
             placeholder.Controls.Add(lblDesc);
             contentPanel.Controls.Add(placeholder);
-        }
-
-        private void ShowDashboard()
-        {
-            OpenChildForm(new FormCharts(connectionString, employeeId, userLogin, userRole));
         }
 
         private async void ShowHome()
