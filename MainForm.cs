@@ -450,8 +450,9 @@ namespace WindowsFormsApp1
                             case "openPlansTO":
                                 OpenPlansTOForm();
                                 break;
-                            case "openEmployees":
-                                OpenChildForm(new Form2());
+                            case "employees":
+                                OpenChildForm(new Form2(userRole, employeeId));
+                                break;
                                 break;
                             case "openEquipment":
                                 OpenChildForm(new Form1());
@@ -720,7 +721,7 @@ namespace WindowsFormsApp1
                     OpenChildForm(new FormBoss(connectionString, employeeId));
                     break;
                 case "employees":
-                    OpenChildForm(new Form2());
+                    OpenChildForm(new Form2(userRole, employeeId));
                     break;
                 case "exit":
                     Application.Exit();

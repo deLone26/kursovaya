@@ -185,34 +185,77 @@ tbody tr.selected {
     margin-bottom: 10px;
 }
 
+/* ========== СТАТУСЫ ОБОРУДОВАНИЯ ========== */
 .status-badge {
     display: inline-block;
-    padding: 4px 10px;
+    padding: 5px 12px;
     border-radius: 20px;
     font-size: 11px;
-    font-weight: bold;
+    font-weight: 600;
+    text-align: center;
+    min-width: 100px;
 }
 
+/* Работает - зеленый */
 .status-work {
-    background: #2ecc71;
-    color: white;
+    background: #d1fae5;
+    color: #065f46;
+    border-left: 3px solid #10b981;
 }
 
+/* На ремонте - оранжевый */
 .status-repair {
-    background: #f39c12;
-    color: white;
+    background: #fed7aa;
+    color: #92400e;
+    border-left: 3px solid #f59e0b;
 }
 
+/* Не работает - красный */
+.status-notwork {
+    background: #fee2e2;
+    color: #991b1b;
+    border-left: 3px solid #ef4444;
+}
+
+/* Просрочено ТО - фиолетовый */
+.status-overdue {
+    background: #f3e8ff;
+    color: #6b21a5;
+    border-left: 3px solid #9333ea;
+}
+
+/* На консервации - серый */
 .status-conservation {
-    background: #95a5a6;
-    color: white;
+    background: #e2e8f0;
+    color: #334155;
+    border-left: 3px solid #64748b;
 }
 
+/* Авария - мигающий красный */
 .status-emergency {
-    background: #e74c3c;
+    background: #dc2626;
     color: white;
+    border-left: 3px solid #991b1b;
+    animation: pulseRed 1.5s infinite;
 }
 
+/* Анимация для аварийного статуса */
+@keyframes pulseRed {
+    0% {
+        background: #dc2626;
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+    }
+    70% {
+        background: #ef4444;
+        box-shadow: 0 0 0 5px rgba(220, 38, 38, 0);
+    }
+    100% {
+        background: #dc2626;
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+    }
+}
+
+/* ========== ФОРМЫ ========== */
 .form-section {
     margin-bottom: 25px;
     padding: 20px;
@@ -283,6 +326,7 @@ tbody tr.selected {
     margin: 0;
 }
 
+/* ========== КНОПКИ ========== */
 .action-buttons {
     display: flex;
     gap: 10px;
@@ -327,6 +371,7 @@ tbody tr.selected {
     background: linear-gradient(135deg, #95a5a6, #7f8c8d);
 }
 
+/* ========== СТАТИСТИКА ========== */
 .stats-bar {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
@@ -351,4 +396,24 @@ tbody tr.selected {
 .stat-label {
     font-size: 13px;
     opacity: 0.9;
+}
+
+/* ========== СКРОЛЛ ========== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }

@@ -1,13 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -17,6 +9,7 @@ using System.Security.Cryptography;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 using Npgsql;
+using System.Text.Json.Serialization;
 
 namespace WindowsFormsApp1
 {
@@ -33,22 +26,19 @@ namespace WindowsFormsApp1
         private WebView2 webView;
         private string webUIPath;
         private bool isWebViewInitialized = false;
+        private string currentUserRole;
+        private int currentUserId;
 
-        public Form2()
+        public Form2(string userRole = "admin", int userId = 0)
         {
             InitializeComponent();
-
-            // Путь к папке WebUI
+            currentUserRole = userRole;
+            currentUserId = userId;
             webUIPath = @"C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\WebUI";
-
-            // Настройка формы
             this.Text = "Управление сотрудниками";
             this.WindowState = FormWindowState.Maximized;
             this.StartPosition = FormStartPosition.CenterScreen;
-
-            // Очищаем все старые элементы
             this.Controls.Clear();
-
             InitializeWebView();
         }
 
@@ -60,13 +50,13 @@ namespace WindowsFormsApp1
                 webView.Dock = DockStyle.Fill;
                 this.Controls.Add(webView);
 
-                await webView.EnsureCoreWebView2Async(null);
+                string userDataFolder = Path.Combine(Path.GetTempPath(), "WebView2_Employees_" + this.GetHashCode());
+                var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                await webView.EnsureCoreWebView2Async(env);
 
-                // Разрешаем скрипты и сообщения
                 webView.CoreWebView2.Settings.IsScriptEnabled = true;
                 webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
-
-                // Регистрируем обработчик для сообщений от JavaScript
+                webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = true;
                 webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
                 string htmlPath = Path.Combine(webUIPath, "employees.html");
@@ -74,14 +64,18 @@ namespace WindowsFormsApp1
 
                 if (File.Exists(htmlPath))
                 {
-                    webView.CoreWebView2.Navigate($"file:///{htmlPath}");
+                    webView.CoreWebView2.Navigate($"file:///{htmlPath.Replace('\\', '/')}");
                     isWebViewInitialized = true;
 
                     webView.CoreWebView2.NavigationCompleted += async (s, e) =>
                     {
-                        System.Diagnostics.Debug.WriteLine("Навигация завершена");
-                        await Task.Delay(1000);
-                        await LoadEmployees();
+                        if (e.IsSuccess)
+                        {
+                            System.Diagnostics.Debug.WriteLine("Навигация завершена");
+                            await Task.Delay(500);
+                            await SetUserRole();
+                            await LoadEmployees();
+                        }
                     };
                 }
                 else
@@ -95,7 +89,17 @@ namespace WindowsFormsApp1
             }
         }
 
-        // ================== ЗАГРУЗКА ВСЕХ СОТРУДНИКОВ ==================
+        private async Task SetUserRole()
+        {
+            if (webView?.CoreWebView2 != null && isWebViewInitialized)
+            {
+                // Передаем роль и ID текущего пользователя
+                string script = $"if(typeof setCurrentUserRole === 'function') setCurrentUserRole('{currentUserRole}', {currentUserId});";
+                System.Diagnostics.Debug.WriteLine($"Отправляем роль: {script}");
+                await webView.CoreWebView2.ExecuteScriptAsync(script);
+            }
+        }
+
         private async Task LoadEmployees()
         {
             try
@@ -122,26 +126,21 @@ namespace WindowsFormsApp1
                         LEFT JOIN users u ON s.id = u.sotrudnik_id
                         ORDER BY s.id";
 
-                    System.Diagnostics.Debug.WriteLine($"2. Выполняем запрос: {sql}");
-
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        System.Diagnostics.Debug.WriteLine("3. Читаем данные...");
-
                         while (await reader.ReadAsync())
                         {
                             int sotrudnikId = Convert.ToInt32(reader["id"]);
                             string login = reader["login"]?.ToString() ?? "";
-                            string role = "operator"; // роль по умолчанию
+                            string role = "operator";
 
-                            // Если есть логин, определяем роль
                             if (!string.IsNullOrEmpty(login))
                             {
                                 role = await GetUserRole(login);
                             }
 
-                            var emp = new
+                            employees.Add(new
                             {
                                 id = sotrudnikId,
                                 familiya = reader["familiya"]?.ToString() ?? "",
@@ -152,44 +151,35 @@ namespace WindowsFormsApp1
                                 email = reader["email"]?.ToString() ?? "",
                                 role = role,
                                 login = login
-                            };
-                            employees.Add(emp);
-                            System.Diagnostics.Debug.WriteLine($"   - Загружен: ID={emp.id}, {emp.familiya} {emp.imya}, роль={emp.role}");
+                            });
                         }
                     }
                 }
 
-                System.Diagnostics.Debug.WriteLine($"4. Всего загружено сотрудников: {employees.Count}");
+                System.Diagnostics.Debug.WriteLine($"Всего загружено сотрудников: {employees.Count}");
 
-                // Отправляем данные в JavaScript
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                };
-
-                string json = JsonSerializer.Serialize(new { employees = employees }, options);
-                System.Diagnostics.Debug.WriteLine($"5. JSON для отправки: {json}");
-
-                // Вызываем JavaScript функцию для обновления таблицы
-                string script = $"window.updateEmployees({json});";
-                System.Diagnostics.Debug.WriteLine($"6. Выполняем скрипт: {script}");
-
-                if (isWebViewInitialized && webView?.CoreWebView2 != null)
-                {
-                    await webView.CoreWebView2.ExecuteScriptAsync(script);
-                    System.Diagnostics.Debug.WriteLine("7. Скрипт выполнен");
-                }
-
-                System.Diagnostics.Debug.WriteLine("========== КОНЕЦ ЗАГРУЗКИ ==========");
+                var result = new { employees = employees };
+                string json = JsonSerializer.Serialize(result, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                await ExecuteJsFunction("updateEmployees", json);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"!!!!!!!!!! ОШИБКА: {ex.Message}");
-                MessageBox.Show($"Ошибка загрузки данных:\n{ex.Message}", "Ошибка");
+                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки: {ex.Message}");
+                await ExecuteJsFunction("showMessage", $"Ошибка загрузки: {ex.Message}", "error");
             }
         }
 
-        // ================== ОПРЕДЕЛЕНИЕ РОЛИ ПОЛЬЗОВАТЕЛЯ ==================
+        private string HashPassword(string password)
+        {
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+                StringBuilder builder = new StringBuilder();
+                foreach (byte b in bytes)
+                    builder.Append(b.ToString("x2"));
+                return builder.ToString();
+            }
+        }
         private async Task<string> GetUserRole(string login)
         {
             try
@@ -197,8 +187,6 @@ namespace WindowsFormsApp1
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     await conn.OpenAsync();
-
-                    // Проверяем членство в группах ролей
                     string[] roles = { "admin", "boss", "slesar", "operator" };
 
                     foreach (string role in roles)
@@ -214,286 +202,355 @@ namespace WindowsFormsApp1
                         {
                             cmd.Parameters.AddWithValue("@login", login);
                             cmd.Parameters.AddWithValue("@role", $"app_{role}");
-
                             var result = await cmd.ExecuteScalarAsync();
-                            if (result != null)
-                            {
-                                return role;
-                            }
+                            if (result != null) return role;
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Ошибка определения роли для {login}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Ошибка определения роли: {ex.Message}");
             }
-
             return "operator";
         }
 
-        // ================== ОТПРАВКА СООБЩЕНИЙ В JAVASCRIPT ==================
-        private void SendToJavaScript(object data)
+        private async Task ExecuteJsFunction(string function, string data = null, string type = null)
         {
-            try
+            if (webView?.CoreWebView2 != null && isWebViewInitialized)
             {
-                if (isWebViewInitialized && webView?.CoreWebView2 != null)
+                try
                 {
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    };
-                    string json = JsonSerializer.Serialize(data, options);
-                    webView.CoreWebView2.PostWebMessageAsString(json);
+                    string js;
+                    if (string.IsNullOrEmpty(data))
+                        js = $"if(window.{function}) window.{function}();";
+                    else if (type != null)
+                        js = $"if(window.{function}) window.{function}('{data}', '{type}');";
+                    else
+                        js = $"if(window.{function}) window.{function}({data});";
+
+                    await webView.CoreWebView2.ExecuteScriptAsync(js);
                 }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Ошибка отправки: {ex.Message}");
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Ошибка выполнения скрипта: {ex.Message}");
+                }
             }
         }
 
-        // ================== ОБРАБОТКА СООБЩЕНИЙ ОТ JAVASCRIPT ==================
-        private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        private string GetDolzhnostByRole(string role)
+        {
+            switch (role)
+            {
+                case "admin":
+                    return "Администратор";
+                case "boss":
+                    return "Начальник котельной";
+                case "slesar":
+                    return "Слесарь";
+                case "operator":
+                    return "Оператор";
+                default:
+                    return "Сотрудник";
+            }
+        }
+        private async void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             string message = e.TryGetWebMessageAsString();
             System.Diagnostics.Debug.WriteLine($"Получено от JS: {message}");
 
             try
             {
-                var jsonDoc = JsonDocument.Parse(message);
-                var root = jsonDoc.RootElement;
-
-                string action = root.GetProperty("action").GetString();
-
-                switch (action)
+                using (JsonDocument doc = JsonDocument.Parse(message))
                 {
-                    case "loadEmployees":
-                        _ = LoadEmployees();
-                        break;
+                    JsonElement root = doc.RootElement;
+                    string action = root.GetProperty("action").GetString();
 
-                    case "addEmployee":
-                        var newEmployee = JsonSerializer.Deserialize<EmployeeData>(root.GetProperty("data").GetRawText());
-                        _ = AddEmployee(newEmployee);
-                        break;
+                    switch (action)
+                    {
+                        case "loadEmployees":
+                            await LoadEmployees();
+                            break;
+                        case "addEmployee":
+                            // Только администратор может добавлять
+                            if (currentUserRole != "admin")
+                            {
+                                await ExecuteJsFunction("showMessage", "У вас нет прав на добавление сотрудников", "error");
+                                break;
+                            }
+                            var newEmployee = JsonSerializer.Deserialize<EmployeeData>(root.GetProperty("data").GetRawText());
+                            await AddEmployee(newEmployee);
+                            break;
+                        case "updateEmployee":
+                            // Начальник может обновлять только телефон и email (не роль и не логин)
+                            var updateData = JsonSerializer.Deserialize<EmployeeData>(root.GetProperty("data").GetRawText());
 
-                    case "updateEmployee":
-                        var updateData = JsonSerializer.Deserialize<EmployeeData>(root.GetProperty("data").GetRawText());
-                        _ = UpdateEmployee(updateData);
-                        break;
+                            // Проверка: нельзя менять роль на admin или boss
+                            if (updateData.Role == "admin" || updateData.Role == "boss")
+                            {
+                                // Проверяем, не пытается ли кто-то назначить админа или начальника
+                                if (currentUserRole != "admin")
+                                {
+                                    await ExecuteJsFunction("showMessage", "Назначение роли Администратор или Начальник запрещено!", "error");
+                                    break;
+                                }
+                            }
 
-                    case "deleteEmployee":
-                        int deleteId = root.GetProperty("id").GetInt32();
-                        _ = DeleteEmployee(deleteId);
-                        break;
+                            // Проверка смены роли существующего пользователя
+                            if (updateData.Id > 0)
+                            {
+                                string currentRole = await GetUserRoleByEmployeeId(updateData.Id);
+                                if ((currentRole == "admin" || currentRole == "boss") && currentUserRole != "admin")
+                                {
+                                    await ExecuteJsFunction("showMessage", "Нельзя изменять данные Администратора или Начальника", "error");
+                                    break;
+                                }
+                            }
+
+                            await UpdateEmployee(updateData);
+                            break;
+                        case "deleteEmployee":
+                            if (currentUserRole != "admin")
+                            {
+                                await ExecuteJsFunction("showMessage", "У вас нет прав на удаление сотрудников", "error");
+                                break;
+                            }
+                            int deleteId = root.GetProperty("id").GetInt32();
+                            await DeleteEmployee(deleteId);
+                            break;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Ошибка парсинга: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Ошибка: {ex.Message}");
+                await ExecuteJsFunction("showMessage", ex.Message, "error");
             }
         }
 
-        // ================== ХЕШИРОВАНИЕ ПАРОЛЯ ==================
-        private string HashPassword(string password)
+        private async Task<string> GetUserRoleByEmployeeId(int employeeId)
         {
-            using (SHA256 sha256 = SHA256.Create())
+            try
             {
-                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-                StringBuilder builder = new StringBuilder();
-                foreach (byte b in bytes)
-                    builder.Append(b.ToString("x2"));
-                return builder.ToString();
+                using (var conn = new NpgsqlConnection(connectionString))
+                {
+                    await conn.OpenAsync();
+                    string sql = "SELECT login FROM users WHERE sotrudnik_id = @id";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", employeeId);
+                        string login = await cmd.ExecuteScalarAsync() as string;
+                        if (!string.IsNullOrEmpty(login))
+                        {
+                            return await GetUserRole(login);
+                        }
+                    }
+                }
             }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка: {ex.Message}");
+            }
+            return "operator";
         }
 
-        // ================== ДОБАВЛЕНИЕ СОТРУДНИКА ==================
         private async Task AddEmployee(EmployeeData employee)
         {
             try
             {
+                // Запрещаем создание админов и начальников для обычных пользователей
+                if ((employee.Role == "admin" || employee.Role == "boss") && currentUserRole != "admin")
+                {
+                    await ExecuteJsFunction("showMessage", "Создание пользователей с ролью Администратор или Начальник запрещено!", "error");
+                    return;
+                }
+
+                // Проверка на существование логина
+                using (var checkConn = new NpgsqlConnection(connectionString))
+                {
+                    await checkConn.OpenAsync();
+                    string checkSql = "SELECT COUNT(*) FROM users WHERE login = @login";
+                    using (var checkCmd = new NpgsqlCommand(checkSql, checkConn))
+                    {
+                        checkCmd.Parameters.AddWithValue("@login", employee.Login);
+                        int exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                        if (exists > 0)
+                        {
+                            await ExecuteJsFunction("showMessage", $"Логин '{employee.Login}' уже существует!", "error");
+                            return;
+                        }
+                    }
+                }
+
+                // Автоматически определяем должность по роли
+                string dolzhnost = GetDolzhnostByRole(employee.Role);
+                string passwordHash = HashPassword(employee.Password);
+
                 int sotrudnikId;
 
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     await conn.OpenAsync();
-
                     using (var transaction = await conn.BeginTransactionAsync())
                     {
-                        try
+                        string sqlSotrudnik = @"
+                    INSERT INTO sotrudniki (familiya, imya, otchestvo, dolzhnost, telefon, email)
+                    VALUES (@familiya, @imya, @otchestvo, @dolzhnost, @telefon, @email)
+                    RETURNING id";
+
+                        using (var cmd = new NpgsqlCommand(sqlSotrudnik, conn))
                         {
-                            // Добавляем сотрудника
-                            string sqlSotrudnik = @"
-                                INSERT INTO sotrudniki
-                                (familiya, imya, otchestvo, dolzhnost, telefon, email)
-                                VALUES (@familiya, @imya, @otchestvo, @dolzhnost, @telefon, @email)
-                                RETURNING id";
+                            cmd.Parameters.AddWithValue("@familiya", employee.Familiya ?? "");
+                            cmd.Parameters.AddWithValue("@imya", employee.Imya ?? "");
+                            cmd.Parameters.AddWithValue("@otchestvo", employee.Otchestvo ?? "");
+                            cmd.Parameters.AddWithValue("@dolzhnost", dolzhnost);
+                            cmd.Parameters.AddWithValue("@telefon", employee.Telefon ?? "");
+                            cmd.Parameters.AddWithValue("@email", employee.Email ?? "");
 
-                            using (var cmd = new NpgsqlCommand(sqlSotrudnik, conn))
-                            {
-                                cmd.Parameters.AddWithValue("@familiya", employee.Familiya);
-                                cmd.Parameters.AddWithValue("@imya", employee.Imya);
-                                cmd.Parameters.AddWithValue("@otchestvo", employee.Otchestvo ?? "");
-                                cmd.Parameters.AddWithValue("@dolzhnost", employee.Dolzhnost ?? "");
-                                cmd.Parameters.AddWithValue("@telefon", employee.Telefon ?? "");
-                                cmd.Parameters.AddWithValue("@email", employee.Email ?? "");
-
-                                sotrudnikId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-                            }
-
-                            // Добавляем пользователя
-                            string sqlUser = @"
-                                INSERT INTO users 
-                                (login, created_at, is_active, sotrudnik_id)
-                                VALUES 
-                                (@login, @created_at, @is_active, @sotrudnik_id)";
-
-                            using (var cmd = new NpgsqlCommand(sqlUser, conn))
-                            {
-                                cmd.Parameters.AddWithValue("@login", employee.Login);
-                                cmd.Parameters.AddWithValue("@created_at", DateTime.Now);
-                                cmd.Parameters.AddWithValue("@is_active", true);
-                                cmd.Parameters.AddWithValue("@sotrudnik_id", sotrudnikId);
-                                await cmd.ExecuteNonQueryAsync();
-                            }
-
-                            await transaction.CommitAsync();
+                            sotrudnikId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                         }
-                        catch
+
+                        string sqlUser = @"
+                    INSERT INTO users (login, created_at, is_active, sotrudnik_id, password_hash, role)
+                    VALUES (@login, @created_at, @is_active, @sotrudnik_id, @password_hash, @role)";
+
+                        using (var cmd = new NpgsqlCommand(sqlUser, conn))
                         {
-                            await transaction.RollbackAsync();
-                            throw;
+                            cmd.Parameters.AddWithValue("@login", employee.Login);
+                            cmd.Parameters.AddWithValue("@created_at", DateTime.Now);
+                            cmd.Parameters.AddWithValue("@is_active", true);
+                            cmd.Parameters.AddWithValue("@sotrudnik_id", sotrudnikId);
+                            cmd.Parameters.AddWithValue("@password_hash", passwordHash);
+                            cmd.Parameters.AddWithValue("@role", $"app_{employee.Role}");
+
+                            await cmd.ExecuteNonQueryAsync();
                         }
+
+                        await transaction.CommitAsync();
                     }
                 }
 
-                // Создаем пользователя PostgreSQL и назначаем роль
+                // Создание пользователя в PostgreSQL
                 try
                 {
                     await CreatePostgresUser(employee.Login, employee.Password, employee.Role);
                 }
                 catch (Exception pgEx)
                 {
-                    SendToJavaScript(new
-                    {
-                        action = "warning",
-                        message = "Сотрудник добавлен, но ошибка создания пользователя БД: " + pgEx.Message
-                    });
-
+                    await ExecuteJsFunction("showMessage", $"Сотрудник добавлен, но ошибка создания пользователя БД: {pgEx.Message}", "warning");
+                    await LoadEmployees();
                     return;
                 }
 
-                SendToJavaScript(new
-                {
-                    action = "success",
-                    message = "Сотрудник успешно добавлен!"
-                });
-
+                await ExecuteJsFunction("showMessage", "Сотрудник успешно добавлен!", "success");
                 await LoadEmployees();
             }
             catch (Exception ex)
             {
-                SendToJavaScript(new
-                {
-                    action = "error",
-                    message = "Ошибка добавления сотрудника: " + ex.Message
-                });
+                System.Diagnostics.Debug.WriteLine($"Ошибка добавления: {ex.Message}");
+                await ExecuteJsFunction("showMessage", $"Ошибка добавления: {ex.Message}", "error");
             }
         }
 
-        // ================== ОБНОВЛЕНИЕ СОТРУДНИКА ==================
         private async Task UpdateEmployee(EmployeeData employee)
         {
             try
             {
+                if (employee == null || employee.Id <= 0)
+                {
+                    await ExecuteJsFunction("showMessage", "Неверные данные сотрудника", "error");
+                    return;
+                }
+
+                // Автоматически определяем должность по роли
+                string dolzhnost = GetDolzhnostByRole(employee.Role);
+
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     await conn.OpenAsync();
-
                     using (var transaction = await conn.BeginTransactionAsync())
                     {
-                        try
+                        string sqlSotrudnik = @"
+                    UPDATE sotrudniki SET 
+                        familiya = @familiya, 
+                        imya = @imya, 
+                        otchestvo = @otchestvo,
+                        dolzhnost = @dolzhnost, 
+                        telefon = @telefon, 
+                        email = @email
+                    WHERE id = @id";
+
+                        using (var cmd = new NpgsqlCommand(sqlSotrudnik, conn))
                         {
-                            // Обновляем сотрудника
-                            string sqlSotrudnik = @"
-                                UPDATE sotrudniki SET 
-                                    familiya = @familiya,
-                                    imya = @imya,
-                                    otchestvo = @otchestvo,
-                                    dolzhnost = @dolzhnost,
-                                    telefon = @telefon,
-                                    email = @email
-                                WHERE id = @id";
+                            cmd.Parameters.AddWithValue("@id", employee.Id);
+                            cmd.Parameters.AddWithValue("@familiya", employee.Familiya ?? "");
+                            cmd.Parameters.AddWithValue("@imya", employee.Imya ?? "");
+                            cmd.Parameters.AddWithValue("@otchestvo", employee.Otchestvo ?? "");
+                            cmd.Parameters.AddWithValue("@dolzhnost", dolzhnost);
+                            cmd.Parameters.AddWithValue("@telefon", employee.Telefon ?? "");
+                            cmd.Parameters.AddWithValue("@email", employee.Email ?? "");
 
-                            using (var cmd = new NpgsqlCommand(sqlSotrudnik, conn))
-                            {
-                                cmd.Parameters.AddWithValue("@id", employee.Id);
-                                cmd.Parameters.AddWithValue("@familiya", employee.Familiya);
-                                cmd.Parameters.AddWithValue("@imya", employee.Imya);
-                                cmd.Parameters.AddWithValue("@otchestvo", employee.Otchestvo ?? "");
-                                cmd.Parameters.AddWithValue("@dolzhnost", employee.Dolzhnost ?? "");
-                                cmd.Parameters.AddWithValue("@telefon", employee.Telefon ?? "");
-                                cmd.Parameters.AddWithValue("@email", employee.Email ?? "");
-                                await cmd.ExecuteNonQueryAsync();
-                            }
+                            await cmd.ExecuteNonQueryAsync();
+                        }
 
-                            // Обновляем логин
-                            string sqlUser = @"
-                                UPDATE users SET 
-                                    login = @login
-                                WHERE sotrudnik_id = @id";
-
+                        // Обновляем пользователя
+                        if (!string.IsNullOrEmpty(employee.Password))
+                        {
+                            string passwordHash = HashPassword(employee.Password);
+                            string sqlUser = "UPDATE users SET login = @login, password_hash = @password_hash, role = @role WHERE sotrudnik_id = @id";
                             using (var cmd = new NpgsqlCommand(sqlUser, conn))
                             {
                                 cmd.Parameters.AddWithValue("@id", employee.Id);
-                                cmd.Parameters.AddWithValue("@login", employee.Login);
+                                cmd.Parameters.AddWithValue("@login", employee.Login ?? "");
+                                cmd.Parameters.AddWithValue("@password_hash", passwordHash);
+                                cmd.Parameters.AddWithValue("@role", $"app_{employee.Role}");
                                 await cmd.ExecuteNonQueryAsync();
                             }
-
-                            await transaction.CommitAsync();
                         }
-                        catch
+                        else
                         {
-                            await transaction.RollbackAsync();
-                            throw;
+                            string sqlUser = "UPDATE users SET login = @login, role = @role WHERE sotrudnik_id = @id";
+                            using (var cmd = new NpgsqlCommand(sqlUser, conn))
+                            {
+                                cmd.Parameters.AddWithValue("@id", employee.Id);
+                                cmd.Parameters.AddWithValue("@login", employee.Login ?? "");
+                                cmd.Parameters.AddWithValue("@role", $"app_{employee.Role}");
+                                await cmd.ExecuteNonQueryAsync();
+                            }
                         }
+
+                        await transaction.CommitAsync();
                     }
                 }
 
                 // Обновляем роль в PostgreSQL
                 if (!string.IsNullOrEmpty(employee.Password))
-                {
                     await UpdatePostgresUserRole(employee.Login, employee.Role, employee.Password);
-                }
                 else
-                {
                     await UpdatePostgresUserRole(employee.Login, employee.Role);
-                }
 
-                SendToJavaScript(new
-                {
-                    action = "success",
-                    message = "Данные сотрудника обновлены!"
-                });
-
+                await ExecuteJsFunction("showMessage", "Данные сотрудника обновлены!", "success");
                 await LoadEmployees();
             }
             catch (Exception ex)
             {
-                SendToJavaScript(new
-                {
-                    action = "error",
-                    message = "Ошибка обновления сотрудника: " + ex.Message
-                });
+                System.Diagnostics.Debug.WriteLine($"Ошибка обновления: {ex.Message}");
+                await ExecuteJsFunction("showMessage", $"Ошибка обновления: {ex.Message}", "error");
             }
         }
 
-        // ================== УДАЛЕНИЕ СОТРУДНИКА ==================
         private async Task DeleteEmployee(int id)
         {
             try
             {
-                // Получаем логин пользователя перед удалением
+                // Запрещаем удаление админов и начальников
+                string userRole = await GetUserRoleByEmployeeId(id);
+                if (userRole == "admin" || userRole == "boss")
+                {
+                    await ExecuteJsFunction("showMessage", "Нельзя удалить Администратора или Начальника!", "error");
+                    return;
+                }
+
                 string login = "";
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
@@ -503,46 +560,33 @@ namespace WindowsFormsApp1
                     {
                         cmd.Parameters.AddWithValue("@id", id);
                         var result = await cmd.ExecuteScalarAsync();
-                        if (result != null)
-                            login = result.ToString();
+                        if (result != null) login = result.ToString();
                     }
                 }
 
                 using (var conn = new NpgsqlConnection(connectionString))
                 {
                     await conn.OpenAsync();
-
                     using (var transaction = await conn.BeginTransactionAsync())
                     {
-                        try
+                        string sqlUser = "DELETE FROM users WHERE sotrudnik_id = @id";
+                        using (var cmd = new NpgsqlCommand(sqlUser, conn))
                         {
-                            // Удаляем из users
-                            string sqlUser = "DELETE FROM users WHERE sotrudnik_id = @id";
-                            using (var cmd = new NpgsqlCommand(sqlUser, conn))
-                            {
-                                cmd.Parameters.AddWithValue("@id", id);
-                                await cmd.ExecuteNonQueryAsync();
-                            }
-
-                            // Удаляем из sotrudniki
-                            string sqlSotrudnik = "DELETE FROM sotrudniki WHERE id = @id";
-                            using (var cmd = new NpgsqlCommand(sqlSotrudnik, conn))
-                            {
-                                cmd.Parameters.AddWithValue("@id", id);
-                                await cmd.ExecuteNonQueryAsync();
-                            }
-
-                            await transaction.CommitAsync();
+                            cmd.Parameters.AddWithValue("@id", id);
+                            await cmd.ExecuteNonQueryAsync();
                         }
-                        catch
+
+                        string sqlSotrudnik = "DELETE FROM sotrudniki WHERE id = @id";
+                        using (var cmd = new NpgsqlCommand(sqlSotrudnik, conn))
                         {
-                            await transaction.RollbackAsync();
-                            throw;
+                            cmd.Parameters.AddWithValue("@id", id);
+                            await cmd.ExecuteNonQueryAsync();
                         }
+
+                        await transaction.CommitAsync();
                     }
                 }
 
-                // Удаляем пользователя PostgreSQL
                 if (!string.IsNullOrEmpty(login))
                 {
                     try
@@ -550,115 +594,79 @@ namespace WindowsFormsApp1
                         using (var adminConn = new NpgsqlConnection(adminConnectionString))
                         {
                             await adminConn.OpenAsync();
-
-                            // Отзываем все роли
                             string[] roles = { "admin", "boss", "slesar", "operator" };
                             foreach (string role in roles)
                             {
                                 try
                                 {
                                     using (var cmd = new NpgsqlCommand($"REVOKE app_{role} FROM \"{login}\"", adminConn))
-                                    {
-                                        await cmd.ExecuteNonQueryAsync();
-                                    }
+                                    { await cmd.ExecuteNonQueryAsync(); }
                                 }
                                 catch { }
                             }
-
-                            // Удаляем пользователя
                             using (var cmd = new NpgsqlCommand($"DROP USER IF EXISTS \"{login}\"", adminConn))
-                            {
-                                await cmd.ExecuteNonQueryAsync();
-                            }
+                            { await cmd.ExecuteNonQueryAsync(); }
                         }
                     }
                     catch (Exception pgEx)
                     {
-                        SendToJavaScript(new
-                        {
-                            action = "warning",
-                            message = "Сотрудник удален, но ошибка удаления пользователя БД: " + pgEx.Message
-                        });
+                        await ExecuteJsFunction("showMessage", $"Сотрудник удален, но ошибка удаления пользователя БД: {pgEx.Message}", "warning");
                         return;
                     }
                 }
 
-                SendToJavaScript(new
-                {
-                    action = "success",
-                    message = "Сотрудник удален!"
-                });
-
+                await ExecuteJsFunction("showMessage", "Сотрудник удален!", "success");
                 await LoadEmployees();
             }
             catch (Exception ex)
             {
-                SendToJavaScript(new
-                {
-                    action = "error",
-                    message = "Ошибка удаления сотрудника: " + ex.Message
-                });
+                await ExecuteJsFunction("showMessage", $"Ошибка удаления: {ex.Message}", "error");
             }
         }
 
-        // ================== СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ POSTGRESQL ==================
         private async Task CreatePostgresUser(string login, string password, string role)
         {
             using (var adminConn = new NpgsqlConnection(adminConnectionString))
             {
                 await adminConn.OpenAsync();
 
-                // Проверяем существование пользователя
-                using (var cmdCheck = new NpgsqlCommand())
+                using (var cmdCheck = new NpgsqlCommand("SELECT 1 FROM pg_roles WHERE rolname = @login", adminConn))
                 {
-                    cmdCheck.Connection = adminConn;
-                    cmdCheck.CommandText = "SELECT 1 FROM pg_roles WHERE rolname = @login";
                     cmdCheck.Parameters.AddWithValue("@login", login);
                     var exists = await cmdCheck.ExecuteScalarAsync();
 
                     if (exists == null)
                     {
-                        // Создаем пользователя
-                        using (var cmdCreate = new NpgsqlCommand())
+                        using (var cmdCreate = new NpgsqlCommand($"CREATE USER \"{login}\" WITH PASSWORD @password", adminConn))
                         {
-                            cmdCreate.Connection = adminConn;
-                            cmdCreate.CommandText = $"CREATE USER \"{login}\" WITH PASSWORD @password";
                             cmdCreate.Parameters.AddWithValue("@password", password);
                             await cmdCreate.ExecuteNonQueryAsync();
                         }
                     }
-
-                    // Назначаем роль (сначала отзываем все, потом назначаем нужную)
-                    string[] roles = { "admin", "boss", "slesar", "operator" };
-                    foreach (string r in roles)
-                    {
-                        try
-                        {
-                            using (var cmdRevoke = new NpgsqlCommand($"REVOKE app_{r} FROM \"{login}\"", adminConn))
-                            {
-                                await cmdRevoke.ExecuteNonQueryAsync();
-                            }
-                        }
-                        catch { }
-                    }
-
-                    // Назначаем новую роль
-                    using (var cmdGrant = new NpgsqlCommand($"GRANT app_{role} TO \"{login}\"", adminConn))
-                    {
-                        await cmdGrant.ExecuteNonQueryAsync();
-                    }
                 }
+
+                string[] roles = { "admin", "boss", "slesar", "operator" };
+                foreach (string r in roles)
+                {
+                    try
+                    {
+                        using (var cmd = new NpgsqlCommand($"REVOKE app_{r} FROM \"{login}\"", adminConn))
+                        { await cmd.ExecuteNonQueryAsync(); }
+                    }
+                    catch { }
+                }
+
+                using (var cmdGrant = new NpgsqlCommand($"GRANT app_{role} TO \"{login}\"", adminConn))
+                { await cmdGrant.ExecuteNonQueryAsync(); }
             }
         }
 
-        // ================== ОБНОВЛЕНИЕ РОЛИ ПОЛЬЗОВАТЕЛЯ POSTGRESQL ==================
         private async Task UpdatePostgresUserRole(string login, string role, string password = null)
         {
             using (var adminConn = new NpgsqlConnection(adminConnectionString))
             {
                 await adminConn.OpenAsync();
 
-                // Обновляем пароль, если передан
                 if (!string.IsNullOrEmpty(password))
                 {
                     using (var cmdPass = new NpgsqlCommand($"ALTER USER \"{login}\" WITH PASSWORD @password", adminConn))
@@ -668,40 +676,55 @@ namespace WindowsFormsApp1
                     }
                 }
 
-                // Обновляем роль
                 string[] roles = { "admin", "boss", "slesar", "operator" };
                 foreach (string r in roles)
                 {
                     try
                     {
-                        using (var cmdRevoke = new NpgsqlCommand($"REVOKE app_{r} FROM \"{login}\"", adminConn))
-                        {
-                            await cmdRevoke.ExecuteNonQueryAsync();
-                        }
+                        using (var cmd = new NpgsqlCommand($"REVOKE app_{r} FROM \"{login}\"", adminConn))
+                        { await cmd.ExecuteNonQueryAsync(); }
                     }
                     catch { }
                 }
 
                 using (var cmdGrant = new NpgsqlCommand($"GRANT app_{role} TO \"{login}\"", adminConn))
-                {
-                    await cmdGrant.ExecuteNonQueryAsync();
-                }
+                { await cmdGrant.ExecuteNonQueryAsync(); }
             }
         }
 
-        // ================== КЛАСС ДЛЯ ДАННЫХ СОТРУДНИКА ==================
         public class EmployeeData
         {
+            [JsonPropertyName("id")]
             public int Id { get; set; }
+
+            [JsonPropertyName("familiya")]
             public string Familiya { get; set; }
+
+            [JsonPropertyName("imya")]
             public string Imya { get; set; }
+
+            [JsonPropertyName("otchestvo")]
             public string Otchestvo { get; set; }
+
+            [JsonPropertyName("dolzhnost")]
             public string Dolzhnost { get; set; }
+
+            [JsonPropertyName("telefon")]
             public string Telefon { get; set; }
+
+            [JsonPropertyName("email")]
             public string Email { get; set; }
+
+            [JsonPropertyName("login")]
             public string Login { get; set; }
+
+            [JsonPropertyName("password")]
             public string Password { get; set; }
+
+            [JsonPropertyName("role")]
             public string Role { get; set; }
+
+            [JsonPropertyName("isActive")]
             public bool IsActive { get; set; }
         }
 
@@ -712,5 +735,3 @@ namespace WindowsFormsApp1
         }
     }
 }
-
-
