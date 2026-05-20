@@ -1,3 +1,2 @@
-2026/05/20-23:29:32.328 36ac Reusing MANIFEST C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Session Storage/MANIFEST-000001
-2026/05/20-23:29:32.329 36ac Recovering log #3
-2026/05/20-23:29:32.330 36ac Reusing old log C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Session Storage/000003.log 
+2026/05/20-23:58:32.909 4e60 Creating DB C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Session Storage__tmp_for_rebuild since it was missing.
+2026/05/20-23:58:32.917 4e60 Reusing MANIFEST C:\Users\Daniil\Desktop\4\kursovaya3\kursovaya\bin\Debug\net9.0-windows\WindowsFormsApp1.exe.WebView2\EBWebView\Default\Session Storage__tmp_for_rebuild/MANIFEST-000001
